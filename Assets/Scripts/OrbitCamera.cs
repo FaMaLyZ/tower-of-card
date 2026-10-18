@@ -5,9 +5,9 @@ using UnityEngine.InputSystem;
 public class OrbitCamera : MonoBehaviour
 {
     public TowerBuilder tower;
-    public float distance = 8f;
+    public float distance = 10f;
     public float minDistance = 3f;
-    public float maxDistance = 30f;
+    public float maxDistance = 40f;
     public float orbitSpeed = 0.2f;
     public float zoomSpeed = 0.01f;
     public float followSpeed = 4f;
@@ -17,6 +17,8 @@ public class OrbitCamera : MonoBehaviour
 
     void Start()
     {
+        if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
+
         Vector3 e = transform.eulerAngles;
         yaw = e.y;
         pitch = e.x;

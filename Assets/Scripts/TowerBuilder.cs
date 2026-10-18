@@ -1,7 +1,16 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
+/// House-of-cards builder.
+/// Card prefab = Unity Cube with scale (thickness, length, width), e.g. (0.02, 1.5, 1.0).
+///
+///   TENT  = a LEFT card + a RIGHT card leaning on each other (/\)
+///   FLOOR = a flat card laid on top of two neighbouring tents
+///   Next level = tents standing on the floor cards, and so on up the pyramid.
+///
+/// Turns are handled by TurnManager; the HUD (hand buttons, snap markers, text) is controlled by GameUI.
 public class TowerBuilder : MonoBehaviour
 {
     [Header("Setup")]
@@ -10,9 +19,18 @@ public class TowerBuilder : MonoBehaviour
     public int handSize = 3;
     public float groundY = 0f;
 
+    [Header("References (auto-found if empty)")]
+    public TurnManager turnManager;
+
     [Header("House of cards")]
     [Range(5f, 45f)] public float tiltAngle = 20f;   // how far cards lean from vertical
     public int maxBaseTents = 4;                     // tents on the bottom row (4 = 4 levels high)
+
+    [Header("Physics")]
+    [Tooltip("When the turn ends, unfreeze all cards so gravity and collisions apply.")]
+    public bool physicsOnEndTurn = true;
+    [Tooltip("When the next turn begins playing, freeze all cards again where they are.")]
+    public bool freezeWhenTurnBegins = true;
 
     [Header("Snapping")]
     public float snapRadiusPixels = 90f;             // mouse must be this close to a slot (screen pixels)
@@ -43,7 +61,34 @@ public class TowerBuilder : MonoBehaviour
     Vector3 origin;                   // x = centre of tent 0, y = ground, z = depth of the structure
     float L, W, T, sin, cos, S, levelH;
 
-    // Used by OrbitCamera
+    // ---------- Public info (used by GameUI / OrbitCamera) ----------
+
+    // True when the turn system allows placing cards (or there is no TurnManager)
+    public bool CanAct => turnManager == null || turnManager.CanPlaceCard;
+
+    public string HintText
+    {
+        get
+        {
+            if (!CanAct) return "";
+            switch (state)
+            {
+                case State.WaitingFirstClick: return "Click on the ground to place the first card";
+                case State.Placing: return "Click a snap point to place. Right-click: cancel. Middle-drag: orbit. Scroll: zoom.";
+                default: return "Choose your next card (click or press 1-" + handSize + ")";
+            }
+        }
+    }
+
+    // --- Read by GameUI ---
+    public CardData[] Hand => hand;
+    public int SelectedIndex => selected;
+    public bool IsWaitingFirstClick => state == State.WaitingFirstClick;
+    public bool ShowSlots => state == State.Placing && CanAct;   // show snap markers?
+    public int SlotCount => slots.Count;
+    public int BestSlotIndex => bestSlot;
+    public Vector3 GetSlotPosition(int i) => slots[i].pos;
+
     public Vector3 FocusPoint
     {
         get
@@ -59,6 +104,30 @@ public class TowerBuilder : MonoBehaviour
         }
     }
 
+    // ---------- Lifecycle ----------
+
+    void Awake()
+    {
+        if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
+
+        if (turnManager != null)
+        {
+            turnManager.OnStartTurn += HandleStartTurn;
+            turnManager.OnDuringTurn += HandleDuringTurn;
+            turnManager.OnEndTurn += HandleEndTurn;
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (turnManager != null)
+        {
+            turnManager.OnStartTurn -= HandleStartTurn;
+            turnManager.OnDuringTurn -= HandleDuringTurn;
+            turnManager.OnEndTurn -= HandleEndTurn;
+        }
+    }
+
     void Start()
     {
         cam = Camera.main;
@@ -71,6 +140,37 @@ public class TowerBuilder : MonoBehaviour
         levelH = L * cos + T;         // height of one level (tent + floor card)
 
         DealHand();
+    }
+
+    // ---------- Turn events ----------
+
+    // New turn = fresh hand
+    void HandleStartTurn(int turn)
+    {
+        DealHand();
+    }
+
+    // Player can build again = lock every card in place
+    void HandleDuringTurn(int turn)
+    {
+        if (freezeWhenTurnBegins) SetCardsFrozen(true);
+    }
+
+    // Turn over = drop the card the player was holding, then let physics act on the tower
+    void HandleEndTurn(int turn)
+    {
+        if (state == State.Placing) CancelSelection();
+        if (physicsOnEndTurn) SetCardsFrozen(false);
+    }
+
+    // true = freeze all placed cards, false = apply physics to them
+    void SetCardsFrozen(bool frozen)
+    {
+        foreach (var c in cards.Values)
+        {
+            if (frozen) c.Freeze();
+            else c.Unfreeze();
+        }
     }
 
     // ---------- Geometry ----------
@@ -100,7 +200,6 @@ public class TowerBuilder : MonoBehaviour
     // ---------- Slots ----------
 
     bool Has(int k, int l, int i) => cards.ContainsKey((k, l, i));
-    bool TentExists(int l, int i) => Has(LEFT, l, i) || Has(RIGHT, l, i);
     bool TentComplete(int l, int i) => Has(LEFT, l, i) && Has(RIGHT, l, i);
 
     void BuildSlots()
@@ -160,89 +259,117 @@ public class TowerBuilder : MonoBehaviour
     }
 
     // ---------- Update ----------
+
+    // Per-frame mouse info (filled by ReadMouse, used by the handlers below)
     Vector2 mouseScreenPos;
     Ray mouseRay;
     bool mouseOverUI;
+
     void Update()
     {
         var mouse = Mouse.current;
         if (mouse == null) return;
- 
+
         ReadMouse(mouse);
- 
+
+        // Turn system says "not now" (start/end of turn, game over)
+        if (!CanAct)
+        {
+            if (state == State.Placing) CancelSelection();
+            return;
+        }
+
         switch (state)
         {
             case State.WaitingFirstClick:
                 HandleFirstClick(mouse);
                 break;
- 
+
             case State.Choosing:
                 HandleHandKeys();
                 break;
- 
+
             case State.Placing:
                 HandleHandKeys();
                 HandlePlacing(mouse);
                 break;
         }
     }
+
+    // Reads the mouse once per frame
     void ReadMouse(Mouse mouse)
     {
         mouseScreenPos = mouse.position.ReadValue();
-        mouseOverUI = MouseOverHandUI(mouseScreenPos);
+        mouseOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
         mouseRay = cam.ScreenPointToRay(mouseScreenPos);
     }
+
+    // ----- State: WaitingFirstClick -----
+
     void HandleFirstClick(Mouse mouse)
     {
         if (!mouse.leftButton.wasPressedThisFrame || mouseOverUI) return;
- 
+
         var ground = new Plane(Vector3.up, new Vector3(0, groundY, 0));
         if (ground.Raycast(mouseRay, out float d))
             StartTower(mouseRay.GetPoint(d));
     }
+
+    // Sets the tower origin and places the very first card
     void StartTower(Vector3 clickPoint)
     {
         origin = new Vector3(clickPoint.x, groundY, clickPoint.z);
         PlaceCard((LEFT, 0, 0), RandomCard());
         state = State.Choosing;
+        ReportCardPlaced();
     }
+
+    // ----- Choosing a card (keys 1..handSize) -----
+
     void HandleHandKeys()
     {
         var kb = Keyboard.current;
         if (kb == null) return;
- 
+
         for (int i = 0; i < handSize; i++)
             if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame)
                 SelectCard(i);
     }
+
+    // ----- State: Placing -----
+
     void HandlePlacing(Mouse mouse)
     {
         if (ghost == null) return;
- 
+
         BuildSlots();                 // which slots are free right now
         bestSlot = FindBestSlot();    // which one is closest to the mouse
         MoveGhost();                  // show the preview card
- 
+
         if (mouse.leftButton.wasPressedThisFrame && CanPlace())
             PlaceSelectedCard();
         else if (mouse.rightButton.wasPressedThisFrame)
             CancelSelection();
     }
+
+    // Slot closest to the mouse (screen space) within snapRadiusPixels, or -1
     int FindBestSlot()
     {
         int best = -1;
         float bestDist = snapRadiusPixels;
- 
+
         for (int i = 0; i < slots.Count; i++)
         {
             Vector3 sp = cam.WorldToScreenPoint(slots[i].pos);
             if (sp.z <= 0) continue;   // behind camera
- 
+
             float d = Vector2.Distance(new Vector2(sp.x, sp.y), mouseScreenPos);
             if (d < bestDist) { bestDist = d; best = i; }
         }
         return best;
     }
+
+    // Where the ghost should be: on the snapped slot, or following the mouse
     void GetGhostTarget(out Vector3 pos, out Quaternion rot)
     {
         if (bestSlot >= 0)
@@ -251,36 +378,43 @@ public class TowerBuilder : MonoBehaviour
             rot = slots[bestSlot].rot;
             return;
         }
- 
+
         var plane = new Plane(Vector3.forward, origin);
         pos = plane.Raycast(mouseRay, out float d) ? mouseRay.GetPoint(d) : mouseRay.GetPoint(10f);
         rot = Quaternion.identity;
     }
+
     void MoveGhost()
     {
         GetGhostTarget(out Vector3 targetPos, out Quaternion targetRot);
- 
+
         float t = 1f - Mathf.Exp(-snapSpeed * Time.deltaTime);
         ghost.transform.position = Vector3.Lerp(ghost.transform.position, targetPos, t);
         ghost.transform.rotation = Quaternion.Slerp(ghost.transform.rotation, targetRot, t);
         ghost.SetGhost(bestSlot >= 0);   // green when snapped, red otherwise
     }
+
+    // Add extra rules here (e.g. require a certain card type...)
     bool CanPlace()
     {
         return bestSlot >= 0 && !mouseOverUI;
     }
+
     void PlaceSelectedCard()
     {
         PlaceCard(slots[bestSlot].key, hand[selected]);
         ClearGhost();
         DealHand();
         state = State.Choosing;
+        ReportCardPlaced();           // may end the turn
     }
+
     void CancelSelection()
     {
         ClearGhost();
         state = State.Choosing;
     }
+
     void ClearGhost()
     {
         if (ghost != null) Destroy(ghost.gameObject);
@@ -288,6 +422,11 @@ public class TowerBuilder : MonoBehaviour
         selected = -1;
     }
 
+    // Tell the TurnManager a card was placed
+    void ReportCardPlaced()
+    {
+        if (turnManager != null) turnManager.RegisterCardPlaced();
+    }
 
     // ---------- Cards ----------
 
@@ -300,7 +439,7 @@ public class TowerBuilder : MonoBehaviour
         cards[key] = c;
     }
 
-    void SelectCard(int index)
+    public void SelectCard(int index)
     {
         if (index < 0 || index >= hand.Length) return;
         if (ghost != null) Destroy(ghost.gameObject);
@@ -314,47 +453,10 @@ public class TowerBuilder : MonoBehaviour
 
     void DealHand()
     {
+        if (cardTypes == null || cardTypes.Length == 0) return;
         hand = new CardData[handSize];
         for (int i = 0; i < handSize; i++) hand[i] = RandomCard();
     }
 
     CardData RandomCard() => cardTypes[Random.Range(0, cardTypes.Length)];
-
-    // ---------- Simple UI (IMGUI, no Canvas needed) ----------
-
-    Rect HandRect => new Rect(10, Screen.height - 70, handSize * 130 + 10, 60);
-
-    bool MouseOverHandUI(Vector2 screenPos)
-    {
-        screenPos.y = Screen.height - screenPos.y;
-        return HandRect.Contains(screenPos);
-    }
-
-    void OnGUI()
-    {
-        if (state == State.WaitingFirstClick)
-        {
-            GUI.Label(new Rect(10, 10, 500, 30), "Click on the ground to place the first card");
-            return;
-        }
-        // snap point markers
-        if (state == State.Placing && Event.current.type == EventType.Repaint)
-        {
-            for (int i = 0; i < slots.Count; i++)
-            {
-                Vector3 sp = cam.WorldToScreenPoint(slots[i].pos);
-                if (sp.z <= 0) continue;
-                GUI.color = i == bestSlot ? Color.green : new Color(1, 1, 1, 0.6f);
-                GUI.DrawTexture(new Rect(sp.x - 6, Screen.height - sp.y - 6, 12, 12), Texture2D.whiteTexture);
-            }
-            GUI.color = Color.white;
-        }
-
-        for (int i = 0; i < hand.Length; i++)
-        {
-            var r = new Rect(15 + i * 130, Screen.height - 65, 120, 50);
-            string label = (i + 1) + ": " + hand[i].cardName + (i == selected ? " *" : "");
-            if (GUI.Button(r, label)) SelectCard(i);
-        }
-    }
 }
