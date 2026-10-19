@@ -457,10 +457,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OrbitCamera
   tower: {fileID: 195017821}
   distance: 8
-  minDistance: 3
-  maxDistance: 30
-  orbitSpeed: 0.2
-  zoomSpeed: 0.01
+  pitch: 20
+  orbitSpeed: 60
+  focusOffset: {x: 0, y: 0, z: 0}
   followSpeed: 4
 --- !u!1 &70966951
 GameObject:
@@ -2028,7 +2027,7 @@ Canvas:
   serializedVersion: 3
   m_RenderMode: 0
   m_Camera: {fileID: 0}
-  m_PlaneDistance: 100
+  m_PlaneDistance: 10
   m_PixelPerfect: 0
   m_ReceivesEvents: 1
   m_OverrideSorting: 0
