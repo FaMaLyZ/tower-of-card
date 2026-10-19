@@ -126,6 +126,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 91bff7c67f9f9f44fbe07b6e2239e289, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Card
+  breakOnImpact: 1
+  breakSpeed: 3
+  logImpactSpeed: 1
 --- !u!54 &-8243265409583701600
 Rigidbody:
   m_ObjectHideFlags: 0

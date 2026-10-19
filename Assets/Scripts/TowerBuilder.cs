@@ -74,7 +74,7 @@ public class TowerBuilder : MonoBehaviour
             switch (state)
             {
                 case State.WaitingFirstClick: return "Click on the ground to place the first card";
-                case State.Placing: return "Click a snap point to place. Right-click: cancel. Middle-drag: orbit. Scroll: zoom.";
+                case State.Placing: return "Click a snap point to place. Right-click: cancel. Orbit camera: A / D.";
                 default: return "Choose your next card (click or press 1-" + handSize + ")";
             }
         }
@@ -110,6 +110,8 @@ public class TowerBuilder : MonoBehaviour
     {
         if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
 
+        Card.Broken += HandleCardBroken;
+
         if (turnManager != null)
         {
             turnManager.OnStartTurn += HandleStartTurn;
@@ -120,6 +122,8 @@ public class TowerBuilder : MonoBehaviour
 
     void OnDestroy()
     {
+        Card.Broken -= HandleCardBroken;
+
         if (turnManager != null)
         {
             turnManager.OnStartTurn -= HandleStartTurn;
@@ -161,6 +165,18 @@ public class TowerBuilder : MonoBehaviour
     {
         if (state == State.Placing) CancelSelection();
         if (physicsOnEndTurn) SetCardsFrozen(false);
+    }
+
+    // A card broke (hit the ground too hard): forget it so its slot becomes free again
+    void HandleCardBroken(Card broken)
+    {
+        (int, int, int)? foundKey = null;
+        foreach (var pair in cards)
+        {
+            if (pair.Value == broken) { foundKey = pair.Key; break; }
+        }
+
+        if (foundKey.HasValue) cards.Remove(foundKey.Value);
     }
 
     // true = freeze all placed cards, false = apply physics to them
