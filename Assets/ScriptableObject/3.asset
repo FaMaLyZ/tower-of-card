@@ -13,4 +13,8 @@ MonoBehaviour:
   m_Name: 3
   m_EditorClassIdentifier: Assembly-CSharp::CardData
   cardName: 3
+  score: 0
+  weight: 0
   tint: {r: 0, g: 0, b: 0, a: 1}
+  cardPrefabs: {fileID: 0}
+  cardModel: {fileID: 0}

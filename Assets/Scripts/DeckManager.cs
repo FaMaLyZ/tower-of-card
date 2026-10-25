@@ -24,6 +24,11 @@ public class DeckManager : MonoBehaviour
     public List<DeckEntry> startingDeck = new List<DeckEntry>();
     public bool shuffleOnStart = true;
 
+    [Header("Card set (quick way to build a standard 52-card deck)")]
+    [Tooltip("Drag many CardData here at once, or use the menu CardTower > 3. Fill Selected DeckManager.")]
+    public CardData[] cardSet;
+    [Min(0)] public int copiesOfEachCard = 1;
+
     [Header("Rules")]
     [Tooltip("When the draw pile is empty, shuffle the discard pile back into it.")]
     public bool reshuffleDiscardWhenEmpty = true;
@@ -56,6 +61,15 @@ public class DeckManager : MonoBehaviour
         {
             if (entry == null || entry.card == null) continue;
             for (int i = 0; i < entry.count; i++) drawPile.Add(entry.card);
+        }
+
+        if (cardSet != null)
+        {
+            foreach (var card in cardSet)
+            {
+                if (card == null) continue;
+                for (int i = 0; i < copiesOfEachCard; i++) drawPile.Add(card);
+            }
         }
 
         if (drawPile.Count == 0)

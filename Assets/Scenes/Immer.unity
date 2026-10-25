@@ -511,6 +511,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TowerBuilder
   cardPrefab: {fileID: 1991265947351241625, guid: 9408ff841473ba14d9d33fa260e3f9e6, type: 3}
+  cardModel:
+    length: 1.5
+    width: 1.07
+    thickness: 0.02
+    autoOrientModel: 1
+    manualEuler: {x: 0, y: 0, z: 0}
+    flipFace: 0
   groundY: 0
   turnManager: {fileID: 1227103243}
   handManager: {fileID: 332459159}
@@ -769,12 +776,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HandManager
   deckManager: {fileID: 1908267859}
   turnManager: {fileID: 1227103243}
-  cardPrefab: {fileID: 1731629405536918647, guid: ac2e9576b73724b4e889810ea4aabf46, type: 3}
+  cardPrefab: {fileID: 3096060776934311622, guid: 32b663fad58c19c4d95a59737ab5bbdd, type: 3}
   handTranform: {fileID: 1967341411}
-  fanSpread: 15
+  fanSpread: 3
   cardSpacing: 0.5
   verticalSpacing: 0
-  deepSpacing: 0.2
+  deepSpacing: 0.01
+  handModelEuler: {x: 0, y: 0, z: 0}
   cardsDrawPerTurn: 8
   maxHandSize: 8
   discardHandAtEndOfTurn: 0
@@ -1899,14 +1907,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 81f5f27c270e34e4ca61ba2a4604c2c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DeckManager
-  startingDeck:
-  - card: {fileID: 11400000, guid: 3335790c5a6f3564cb7da7a72eac1826, type: 2}
-    count: 2
-  - card: {fileID: 11400000, guid: 8e03c75f06387354fb457575b947177d, type: 2}
-    count: 2
-  - card: {fileID: 11400000, guid: f968e7f581239df43990f0343963de61, type: 2}
-    count: 2
+  startingDeck: []
   shuffleOnStart: 1
+  cardSet:
+  - {fileID: 11400000, guid: 2a98859ab0c30b34ebc1b0df3f6c24c1, type: 2}
+  copiesOfEachCard: 16
   reshuffleDiscardWhenEmpty: 0
 --- !u!1 &1912519956
 GameObject:
@@ -2070,7 +2075,7 @@ Transform:
   m_GameObject: {fileID: 1967341410}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -1.52, z: 2.92}
+  m_LocalPosition: {x: 0.591, y: -1.918, z: 3.802}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []

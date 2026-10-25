@@ -9,6 +9,7 @@ using UnityEngine.UI;
 ///  - The player clicks (or presses 1-9) to choose which card in the hand to play.
 ///  - A played card goes to the deck's discard pile.
 ///  - Cards are shown fanned out (layout code from your original HandManager).
+///  - If a CardData has a Hand Model it is shown in the hand; otherwise Card Prefab is used.
 public class HandManager : MonoBehaviour
 {
     [Header("References (auto-found if empty)")]
@@ -16,12 +17,15 @@ public class HandManager : MonoBehaviour
     public TurnManager turnManager;
 
     [Header("Card visuals")]
+    [Tooltip("Used for cards that have no Hand Model.")]
     public GameObject cardPrefab;
     public Transform handTranform;
     public float fanSpread = 5f;
     public float cardSpacing = 5f;
     public float verticalSpacing = 10f;
-    public float deepSpacing = 0.2f;
+    public float deepSpacing = 0.01f;
+    [Tooltip("Extra rotation applied to cards that use a Hand Model (use multiples of 90). Fix sideways / upside-down models here.")]
+    public Vector3 handModelEuler = Vector3.zero;
 
     [Header("Drawing")]
     [Tooltip("How many cards the player draws at the start of each turn.")]
@@ -38,7 +42,15 @@ public class HandManager : MonoBehaviour
     public float selectedScale = 1.1f;      // and gets a bit bigger
 
     public List<GameObject> cardInHand = new List<GameObject>();
-    readonly List<CardData> dataInHand = new List<CardData>();   // same order as cardInHand
+
+    // Same order as cardInHand
+    class HandInfo
+    {
+        public Vector3 baseScale;
+        public Quaternion extraRotation;
+    }
+    readonly List<CardData> dataInHand = new List<CardData>();
+    readonly List<HandInfo> infoInHand = new List<HandInfo>();
 
     // ---------- Public info ----------
     public int Count => cardInHand.Count;
@@ -49,8 +61,6 @@ public class HandManager : MonoBehaviour
     public event Action OnHandChanged;
     public event Action<int> OnCardChosen;      // player clicked a card (index in hand)
 
-    Vector3 baseScale = Vector3.one;
-
     // ---------- Lifecycle ----------
 
     void Awake()
@@ -58,10 +68,10 @@ public class HandManager : MonoBehaviour
         if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
         if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
 
-        if (cardPrefab == null || handTranform == null)
-            Debug.LogError("HandManager: assign Card Prefab and Hand Tranform.", this);
-        else
-            baseScale = cardPrefab.transform.localScale;
+        if (handTranform == null)
+            Debug.LogError("HandManager: assign Hand Tranform.", this);
+        if (cardPrefab == null)
+            Debug.LogWarning("HandManager: no Card Prefab - cards without a Hand Model will not be shown.", this);
 
         if (turnManager != null)
         {
@@ -135,18 +145,28 @@ public class HandManager : MonoBehaviour
     /// Puts a specific card into the hand (e.g. a reward card that skips the deck).
     public void AddCardToHand(CardData data)
     {
-        if (data == null || Count >= maxHandSize) return;
+        if (data == null || Count >= maxHandSize || handTranform == null) return;
 
-        GameObject newCard = Instantiate(cardPrefab, handTranform.position, Quaternion.identity, handTranform);
+        bool useModel = data.handModel != null;
+        GameObject prefab = useModel ? data.handModel : cardPrefab;
+        if (prefab == null) return;
+
+        GameObject newCard = Instantiate(prefab, handTranform.position, Quaternion.identity, handTranform);
 
         var view = newCard.GetComponent<HandCardView>();
         if (view == null) view = newCard.AddComponent<HandCardView>();
         view.hand = this;
 
-        ApplyVisual(newCard, data);
+        if (!useModel) ApplyVisual(newCard, data);   // tint + name for the generic card prefab
+        EnsureClickable(newCard);
 
         cardInHand.Add(newCard);
         dataInHand.Add(data);
+        infoInHand.Add(new HandInfo
+        {
+            baseScale = prefab.transform.localScale,
+            extraRotation = useModel ? Quaternion.Euler(handModelEuler) : Quaternion.identity
+        });
 
         UpdateCardInHand();
         OnHandChanged?.Invoke();
@@ -163,6 +183,20 @@ public class HandManager : MonoBehaviour
 
         var label = card.GetComponentInChildren<TMP_Text>();
         if (label != null) label.text = data.cardName;
+    }
+
+    // A 3D model with no collider can't be clicked - add one that fits the model
+    void EnsureClickable(GameObject card)
+    {
+        if (card.GetComponentInChildren<Graphic>() != null) return;    // UI card
+        if (card.GetComponentInChildren<Collider>() != null) return;   // already has one
+
+        Bounds b = CardModelUtil.GetLocalBounds(card.transform);
+        if (b.size == Vector3.zero) return;
+
+        var box = card.AddComponent<BoxCollider>();
+        box.center = b.center;
+        box.size = b.size;
     }
 
     // ---------- Choosing and playing ----------
@@ -201,6 +235,7 @@ public class HandManager : MonoBehaviour
 
         cardInHand.RemoveAt(index);
         dataInHand.RemoveAt(index);
+        infoInHand.RemoveAt(index);
         if (visual != null) Destroy(visual);
 
         if (deckManager != null) deckManager.Discard(data);
@@ -227,6 +262,7 @@ public class HandManager : MonoBehaviour
 
         cardInHand.Clear();
         dataInHand.Clear();
+        infoInHand.Clear();
         SelectedIndex = -1;
         OnHandChanged?.Invoke();
     }
@@ -246,16 +282,16 @@ public class HandManager : MonoBehaviour
         {
             if (cardInHand[i] == null) continue;
             bool isSelected = i == SelectedIndex;
+            HandInfo info = infoInHand[i];
 
             float rotationAngle = (fanSpread * (i - middle));
-            cardInHand[i].transform.localRotation = Quaternion.Euler(rotationAngle, 90, 0);
+            cardInHand[i].transform.localRotation = Quaternion.Euler(0, 180, rotationAngle) * info.extraRotation;
 
             float horizontalOffset = (cardSpacing * (i - middle));
             float verticalOffset = (verticalSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
-            float deeOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
-            cardInHand[i].transform.localPosition = new Vector3(horizontalOffset, verticalOffset, deeOffset);
-
-            cardInHand[i].transform.localScale = baseScale * (isSelected ? selectedScale : 1f);
+            float deedOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
+            cardInHand[i].transform.localPosition = new Vector3(horizontalOffset, verticalOffset, deedOffset);
+            cardInHand[i].transform.localScale = info.baseScale * (isSelected ? selectedScale : 1f);
         }
     }
 }

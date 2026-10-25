@@ -5,7 +5,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// House-of-cards builder.
-/// Card prefab = Unity Cube with scale (thickness, length, width), e.g. (0.02, 1.5, 1.0).
+/// Card prefab = a root object with Rigidbody + BoxCollider + Card script (scale 1,1,1).
+/// The 3D model of each card comes from its CardData and is fitted automatically.
 ///
 ///   TENT  = a LEFT card + a RIGHT card leaning on each other (/\)
 ///   FLOOR = a flat card laid on top of two neighbouring tents
@@ -16,6 +17,7 @@ public class TowerBuilder : MonoBehaviour
 {
     [Header("Setup")]
     public Card cardPrefab;
+    public CardModelSettings cardModel = new CardModelSettings();
     public float groundY = 0f;
 
     [Header("References (auto-found if empty)")]
@@ -136,8 +138,9 @@ public class TowerBuilder : MonoBehaviour
     {
         cam = Camera.main;
 
-        Vector3 s = cardPrefab.transform.localScale;
-        T = s.x; L = s.y; W = s.z;
+        T = cardModel.thickness;
+        L = cardModel.length;
+        W = cardModel.width;
         sin = Mathf.Sin(tiltAngle * Mathf.Deg2Rad);
         cos = Mathf.Cos(tiltAngle * Mathf.Deg2Rad);
         S = 2f * L * sin;             // distance between neighbouring tents (bases touch)
@@ -475,7 +478,7 @@ public class TowerBuilder : MonoBehaviour
     {
         GetPose(key.Item1, key.Item2, key.Item3, out Vector3 pos, out Quaternion rot);
         Card c = Instantiate(cardPrefab, pos, rot, transform);
-        c.Setup(data);
+        c.Setup(data, cardModel);
         c.SetPlaced();
         cards[key] = c;
     }
@@ -495,7 +498,7 @@ public class TowerBuilder : MonoBehaviour
 
         if (ghost != null) Destroy(ghost.gameObject);
         ghost = Instantiate(cardPrefab, FocusPoint, Quaternion.identity);
-        ghost.Setup(data);
+        ghost.Setup(data, cardModel);
         ghost.SetGhost(false);
         state = State.Placing;
     }
