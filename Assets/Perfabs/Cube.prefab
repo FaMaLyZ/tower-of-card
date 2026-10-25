@@ -14,7 +14,7 @@ GameObject:
   - component: {fileID: 8361766739739762478}
   - component: {fileID: 1991265947351241625}
   - component: {fileID: -8243265409583701600}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: Cube
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -129,6 +129,8 @@ MonoBehaviour:
   breakOnImpact: 1
   breakSpeed: 1.5
   logImpactSpeed: 1
+  socre: 0
+  weight: 0
 --- !u!54 &-8243265409583701600
 Rigidbody:
   m_ObjectHideFlags: 0

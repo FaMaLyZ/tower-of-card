@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 /// House-of-cards builder.
 /// Card prefab = Unity Cube with scale (thickness, length, width), e.g. (0.02, 1.5, 1.0).
@@ -307,8 +308,30 @@ public class TowerBuilder : MonoBehaviour
     void ReadMouse(Mouse mouse)
     {
         mouseScreenPos = mouse.position.ReadValue();
-        mouseOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+        mouseOverUI = IsPointerOverBlockingUI(mouseScreenPos);
         mouseRay = cam.ScreenPointToRay(mouseScreenPos);
+    }
+
+    // True when the mouse is over something that should block placing a card:
+    //  - a UI element (button, panel...)
+    //  - a card in the hand
+    // Ground, tower cards and other 3D objects do NOT block, even if a Physics Raycaster is on the camera.
+    readonly List<RaycastResult> uiHits = new List<RaycastResult>();
+
+    bool IsPointerOverBlockingUI(Vector2 screenPos)
+    {
+        if (EventSystem.current == null) return false;
+
+        var pointer = new PointerEventData(EventSystem.current) { position = screenPos };
+        uiHits.Clear();
+        EventSystem.current.RaycastAll(pointer, uiHits);
+
+        foreach (var hit in uiHits)
+        {
+            if (hit.module is GraphicRaycaster) return true;                          // UI element
+            if (hit.gameObject.GetComponentInParent<HandCardView>() != null) return true;   // hand card
+        }
+        return false;
     }
 
     // ----- State: WaitingFirstClick -----

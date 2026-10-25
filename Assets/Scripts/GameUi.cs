@@ -13,17 +13,6 @@ using UnityEngine.UI;
 public class GameUI : MonoBehaviour
 {
     // One button in the hand (drag your 3 hand buttons in here)
-    [Serializable]
-    public class HandSlotUI
-    {
-        public Button button;
-        public TMP_Text label;
-        [Tooltip("Optional: tinted with the card colour")]
-        public Image background;
-        [Tooltip("Optional: object shown only on the selected card (e.g. a yellow frame)")]
-        public GameObject selectedHighlight;
-    }
-
     [Header("Game references (auto-found if empty)")]
     public TurnManager turnManager;
     public TowerBuilder tower;
@@ -45,11 +34,6 @@ public class GameUI : MonoBehaviour
 
     [Header("Buttons")]
     public Button endTurnButton;
-    public Button nextTurnButton;               // only shown when TurnManager.autoStartNextTurn is off
-
-    [Header("Hand")]
-    public HandSlotUI[] handSlots;
-    public float selectedScale = 1.15f;         // selected card button gets bigger
 
     [Header("Snap markers")]
     [Tooltip("A small inactive Image under the Canvas. It is cloned for every snap point.")]
@@ -105,8 +89,6 @@ public class GameUI : MonoBehaviour
         RefreshDeckInfo();
         RefreshBanner();
         RefreshEndTurnButton();
-        RefreshNextTurnButton();
-        RefreshHand();
     }
 
     void LateUpdate()
@@ -125,22 +107,11 @@ public class GameUI : MonoBehaviour
             if (t != null) t.raycastTarget = false;
 
         if (snapMarkerTemplate != null) snapMarkerTemplate.raycastTarget = false;
-
-        foreach (var slot in handSlots)
-            if (slot != null && slot.label != null) slot.label.raycastTarget = false;
     }
 
     void HookButtons()
     {
         if (endTurnButton != null) endTurnButton.onClick.AddListener(OnEndTurnClicked);
-        if (nextTurnButton != null) nextTurnButton.onClick.AddListener(OnNextTurnClicked);
-
-        for (int i = 0; i < handSlots.Length; i++)
-        {
-            if (handSlots[i] == null || handSlots[i].button == null) continue;
-            int index = i;   // capture for the click handler
-            handSlots[i].button.onClick.AddListener(() => OnHandButtonClicked(index));
-        }
     }
 
     // =====================================================================
@@ -196,43 +167,6 @@ public class GameUI : MonoBehaviour
 
         endTurnButton.gameObject.SetActive(GameRunning);
         endTurnButton.interactable = turnManager != null && turnManager.CanEndTurn;
-    }
-
-    void RefreshNextTurnButton()
-    {
-        if (nextTurnButton == null) return;
-
-        nextTurnButton.gameObject.SetActive(turnManager != null && turnManager.WaitingForNextTurn);
-    }
-
-    void RefreshHand()
-    {
-        bool show = tower != null && tower.Hand != null;
-
-        for (int i = 0; i < handSlots.Length; i++)
-        {
-            var slot = handSlots[i];
-            if (slot == null || slot.button == null) continue;
-
-            bool active = show && i < tower.Hand.Count;
-            slot.button.gameObject.SetActive(active);
-            if (!active) continue;
-
-            CardData data = tower.Hand[i];
-            bool isSelected = i == tower.SelectedIndex;
-
-            slot.button.interactable = tower.CanAct;
-            slot.button.transform.localScale = Vector3.one * (isSelected ? selectedScale : 1f);
-
-            if (slot.label != null)
-            {
-                slot.label.text = string.Format(handLabelFormat, i + 1, data.cardName);
-                slot.label.color = IsBright(data.tint) ? Color.black : Color.white;
-            }
-
-            if (slot.background != null) slot.background.color = data.tint;
-            if (slot.selectedHighlight != null) slot.selectedHighlight.SetActive(isSelected);
-        }
     }
 
     // Markers at every free snap point (green = the one the ghost will snap to)

@@ -12,7 +12,7 @@ GameObject:
   - component: {fileID: 2622179600265461547}
   - component: {fileID: 5288323346618100341}
   - component: {fileID: 2168893240909750374}
-  m_Layer: 0
+  m_Layer: 8
   m_Name: CardINHandTest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
