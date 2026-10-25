@@ -35,6 +35,11 @@ public class GameUI : MonoBehaviour
     public TMP_Text stateText;                  // "Your turn"
     public TMP_Text hintText;                   // help text from TowerBuilder
 
+    [Header("Deck info (optional)")]
+    public DeckManager deckManager;             // auto-found if empty
+    public TMP_Text deckText;                   // "Deck: 12"
+    public TMP_Text discardText;                // "Discard: 3"
+
     [Header("Banner (big center text)")]
     public TMP_Text bannerText;
 
@@ -55,6 +60,8 @@ public class GameUI : MonoBehaviour
     [Header("Text formats  ({0}, {1} are replaced by numbers)")]
     public string turnFormat = "Turn {0}";
     public string cardsFormat = "Cards: {0} / {1}";
+    public string deckFormat = "Deck: {0}";
+    public string discardFormat = "Discard: {0}";
     public string handLabelFormat = "{0}: {1}";      // {0} = key number, {1} = card name
     public string bannerStartFormat = "Turn {0}";
     public string bannerEndFormat = "Turn {0} complete";
@@ -76,6 +83,7 @@ public class GameUI : MonoBehaviour
     {
         if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
         if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
+        if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
         if (canvas == null) canvas = GetComponentInParent<Canvas>();
         if (canvas == null) canvas = FindFirstObjectByType<Canvas>();
 
@@ -94,6 +102,7 @@ public class GameUI : MonoBehaviour
     {
         RefreshTurnInfo();
         RefreshHint();
+        RefreshDeckInfo();
         RefreshBanner();
         RefreshEndTurnButton();
         RefreshNextTurnButton();
@@ -112,7 +121,7 @@ public class GameUI : MonoBehaviour
     // Texts and markers must not block mouse clicks on the game (TowerBuilder ignores clicks over UI)
     void PreventUIFromBlockingClicks()
     {
-        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText })
+        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText, deckText, discardText })
             if (t != null) t.raycastTarget = false;
 
         if (snapMarkerTemplate != null) snapMarkerTemplate.raycastTarget = false;
@@ -154,6 +163,17 @@ public class GameUI : MonoBehaviour
             stateText.text = GetStateLabel();
     }
 
+    void RefreshDeckInfo()
+    {
+        if (deckManager == null) return;
+
+        if (deckText != null)
+            deckText.text = string.Format(deckFormat, deckManager.DrawPileCount);
+
+        if (discardText != null)
+            discardText.text = string.Format(discardFormat, deckManager.DiscardCount);
+    }
+
     void RefreshHint()
     {
         if (hintText != null)
@@ -187,14 +207,14 @@ public class GameUI : MonoBehaviour
 
     void RefreshHand()
     {
-        bool show = tower != null && tower.Hand != null && !tower.IsWaitingFirstClick;
+        bool show = tower != null && tower.Hand != null;
 
         for (int i = 0; i < handSlots.Length; i++)
         {
             var slot = handSlots[i];
             if (slot == null || slot.button == null) continue;
 
-            bool active = show && i < tower.Hand.Length;
+            bool active = show && i < tower.Hand.Count;
             slot.button.gameObject.SetActive(active);
             if (!active) continue;
 

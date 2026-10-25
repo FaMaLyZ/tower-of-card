@@ -15,12 +15,11 @@ public class TowerBuilder : MonoBehaviour
 {
     [Header("Setup")]
     public Card cardPrefab;
-    public CardData[] cardTypes;
-    public int handSize = 3;
     public float groundY = 0f;
 
     [Header("References (auto-found if empty)")]
     public TurnManager turnManager;
+    public HandManager handManager;
 
     [Header("House of cards")]
     [Range(5f, 45f)] public float tiltAngle = 20f;   // how far cards lean from vertical
@@ -52,9 +51,7 @@ public class TowerBuilder : MonoBehaviour
     readonly List<Slot> slots = new List<Slot>();
     int bestSlot = -1;
 
-    CardData[] hand;
     Card ghost;
-    int selected = -1;
     Camera cam;
 
     // Geometry (computed from prefab + tilt)
@@ -73,16 +70,17 @@ public class TowerBuilder : MonoBehaviour
             if (!CanAct) return "";
             switch (state)
             {
-                case State.WaitingFirstClick: return "Click on the ground to place the first card";
+                case State.WaitingFirstClick: return "Pick a card from your hand, then click the ground to start the tower";
                 case State.Placing: return "Click a snap point to place. Right-click: cancel. Orbit camera: A / D.";
-                default: return "Choose your next card (click or press 1-" + handSize + ")";
+                default: return "Choose a card from your hand (click it or press 1-" + HandCount + ")";
             }
         }
     }
 
     // --- Read by GameUI ---
-    public CardData[] Hand => hand;
-    public int SelectedIndex => selected;
+    public IReadOnlyList<CardData> Hand => handManager != null ? handManager.CardsInHandData : null;
+    public int SelectedIndex => handManager != null ? handManager.SelectedIndex : -1;
+    int HandCount => handManager != null ? Mathf.Min(9, handManager.Count) : 0;
     public bool IsWaitingFirstClick => state == State.WaitingFirstClick;
     public bool ShowSlots => state == State.Placing && CanAct;   // show snap markers?
     public int SlotCount => slots.Count;
@@ -109,12 +107,13 @@ public class TowerBuilder : MonoBehaviour
     void Awake()
     {
         if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
+        if (handManager == null) handManager = FindFirstObjectByType<HandManager>();
 
         Card.Broken += HandleCardBroken;
+        if (handManager != null) handManager.OnCardChosen += SelectCard;
 
         if (turnManager != null)
         {
-            turnManager.OnStartTurn += HandleStartTurn;
             turnManager.OnDuringTurn += HandleDuringTurn;
             turnManager.OnEndTurn += HandleEndTurn;
         }
@@ -123,10 +122,10 @@ public class TowerBuilder : MonoBehaviour
     void OnDestroy()
     {
         Card.Broken -= HandleCardBroken;
+        if (handManager != null) handManager.OnCardChosen -= SelectCard;
 
         if (turnManager != null)
         {
-            turnManager.OnStartTurn -= HandleStartTurn;
             turnManager.OnDuringTurn -= HandleDuringTurn;
             turnManager.OnEndTurn -= HandleEndTurn;
         }
@@ -142,17 +141,9 @@ public class TowerBuilder : MonoBehaviour
         cos = Mathf.Cos(tiltAngle * Mathf.Deg2Rad);
         S = 2f * L * sin;             // distance between neighbouring tents (bases touch)
         levelH = L * cos + T;         // height of one level (tent + floor card)
-
-        DealHand();
     }
 
     // ---------- Turn events ----------
-
-    // New turn = fresh hand
-    void HandleStartTurn(int turn)
-    {
-        DealHand();
-    }
 
     // Player can build again = lock every card in place
     void HandleDuringTurn(int turn)
@@ -334,20 +325,28 @@ public class TowerBuilder : MonoBehaviour
     // Sets the tower origin and places the very first card
     void StartTower(Vector3 clickPoint)
     {
+        if (handManager == null || handManager.Count == 0) return;
+
+        // use the card the player picked, or the first card in the hand
+        int index = handManager.SelectedIndex >= 0 ? handManager.SelectedIndex : 0;
+        CardData data = handManager.GetCard(index);
+
         origin = new Vector3(clickPoint.x, groundY, clickPoint.z);
-        PlaceCard((LEFT, 0, 0), RandomCard());
+        PlaceCard((LEFT, 0, 0), data);
+        handManager.PlayCard(index);
+
         state = State.Choosing;
         ReportCardPlaced();
     }
 
-    // ----- Choosing a card (keys 1..handSize) -----
+    // ----- Choosing a card (keys 1..9) -----
 
     void HandleHandKeys()
     {
         var kb = Keyboard.current;
         if (kb == null) return;
 
-        for (int i = 0; i < handSize; i++)
+        for (int i = 0; i < HandCount; i++)
             if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame)
                 SelectCard(i);
     }
@@ -418,16 +417,20 @@ public class TowerBuilder : MonoBehaviour
 
     void PlaceSelectedCard()
     {
-        PlaceCard(slots[bestSlot].key, hand[selected]);
+        CardData data = handManager != null ? handManager.SelectedCard : null;
+        if (data == null) return;
+
+        PlaceCard(slots[bestSlot].key, data);
         ClearGhost();
-        DealHand();
+        handManager.PlaySelectedCard();   // removes it from the hand -> discard pile
         state = State.Choosing;
-        ReportCardPlaced();           // may end the turn
+        ReportCardPlaced();               // may end the turn
     }
 
     void CancelSelection()
     {
         ClearGhost();
+        if (handManager != null) handManager.ClearSelection();
         state = State.Choosing;
     }
 
@@ -435,7 +438,6 @@ public class TowerBuilder : MonoBehaviour
     {
         if (ghost != null) Destroy(ghost.gameObject);
         ghost = null;
-        selected = -1;
     }
 
     // Tell the TurnManager a card was placed
@@ -455,24 +457,23 @@ public class TowerBuilder : MonoBehaviour
         cards[key] = c;
     }
 
+    // Called when the player picks a card in the hand (click or number key)
     public void SelectCard(int index)
     {
-        if (index < 0 || index >= hand.Length) return;
-        if (ghost != null) Destroy(ghost.gameObject);
+        if (!CanAct || handManager == null) return;
 
-        selected = index;
+        CardData data = handManager.GetCard(index);
+        if (data == null) return;
+
+        handManager.SetSelected(index);
+
+        // Before the tower exists the player just picks which card the first click will place
+        if (state == State.WaitingFirstClick) return;
+
+        if (ghost != null) Destroy(ghost.gameObject);
         ghost = Instantiate(cardPrefab, FocusPoint, Quaternion.identity);
-        ghost.Setup(hand[index]);
+        ghost.Setup(data);
         ghost.SetGhost(false);
         state = State.Placing;
     }
-
-    void DealHand()
-    {
-        if (cardTypes == null || cardTypes.Length == 0) return;
-        hand = new CardData[handSize];
-        for (int i = 0; i < handSize; i++) hand[i] = RandomCard();
-    }
-
-    CardData RandomCard() => cardTypes[Random.Range(0, cardTypes.Length)];
 }

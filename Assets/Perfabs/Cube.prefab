@@ -127,7 +127,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Card
   breakOnImpact: 1
-  breakSpeed: 3
+  breakSpeed: 1.5
   logImpactSpeed: 1
 --- !u!54 &-8243265409583701600
 Rigidbody:

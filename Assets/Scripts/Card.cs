@@ -5,12 +5,13 @@ using UnityEngine;
 public class Card : MonoBehaviour
 {
     [Header("Break on hard impact")]
-    [Tooltip("Destroy this card when it hits ANYTHING fast enough.")]
     public bool breakOnImpact = true;
-    [Tooltip("Impact speed (m/s) needed to destroy the card. Lower = more fragile.")]
     public float breakSpeed = 4f;
-    [Tooltip("Print every impact speed to the Console (helps you tune Break Speed).")]
     public bool logImpactSpeed = false;
+
+    [Header("Socre and weight")]
+    public float socre = 0;
+    public float weight = 0;
 
     // Raised just before a card breaks (TowerBuilder listens so it can forget the card)
     public static event Action<Card> Broken;
@@ -30,12 +31,13 @@ public class Card : MonoBehaviour
 
         // thin cards can pass through each other when they fall fast
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
-        rb.mass = UnityEngine.Random.Range(1,11);
     }
 
     public void Setup(CardData data)
     {
         Data = data;
+        socre = data.score;
+        weight = data.weight;
         rend.material.color = data.tint;   // works with URP Lit (_BaseColor)
     }
 
