@@ -10,11 +10,13 @@ public class AudioManager : MonoBehaviour
     public AudioSource sfxSource;
     public AudioSource musicSource;
 
+    [Header("Audio Mixer")]
+    public AudioMixerGroup sfxGroup;
+    public AudioMixerGroup musicGroup;
+    public AudioMixerGroup uiGroup;
+
     [Header("Sound Database")]
     public SoundDatabase soundDatabase;
-
-    [Range(0f, 1f)]
-    public float sfxVolume = 1f;
 
     private void Awake()
     {
@@ -27,5 +29,25 @@ public class AudioManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        sfxSource.outputAudioMixerGroup = sfxGroup;
+        musicSource.outputAudioMixerGroup = musicGroup;
+    }
+
+    // Method 
+    public void PlayOneShotSFX(AudioClip clip, float volume)
+    {
+        if (clip == null) return;
+
+        sfxSource.PlayOneShot(clip, volume);
+    }
+
+    public void PlayLoopMusic(AudioClip clip)
+    {
+        if (clip == null) return;
+
+        musicSource.clip = clip;
+        musicSource.loop = true;
+        musicSource.Play();
     }
 }

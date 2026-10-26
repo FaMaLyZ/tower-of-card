@@ -15,4 +15,4 @@ MonoBehaviour:
   sounds:
   - type: 0
     clip: {fileID: 0}
-    volume: 0
+    volume: 1
