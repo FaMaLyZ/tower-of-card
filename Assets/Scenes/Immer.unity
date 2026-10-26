@@ -913,12 +913,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::HandManager
   deckManager: {fileID: 1908267859}
   turnManager: {fileID: 1227103243}
-  cardPrefab: {fileID: 3096060776934311622, guid: 32b663fad58c19c4d95a59737ab5bbdd, type: 3}
+  cardPrefab: {fileID: 0}
   handTranform: {fileID: 1967341411}
   fanSpread: 3
   cardSpacing: 0.5
   verticalSpacing: 0
-  deepSpacing: 0.01
+  deepSpacing: 0.03
   handModelEuler: {x: 0, y: 0, z: 0}
   cardsDrawPerTurn: 8
   maxHandSize: 8
@@ -2723,6 +2723,7 @@ MonoBehaviour:
   shuffleOnStart: 1
   cardSet:
   - {fileID: 11400000, guid: 2a98859ab0c30b34ebc1b0df3f6c24c1, type: 2}
+  - {fileID: 11400000, guid: 66a6668ac2da5884eb95b72b821cd0d0, type: 2}
   copiesOfEachCard: 16
   reshuffleDiscardWhenEmpty: 0
 --- !u!1 &1912519956
@@ -3024,7 +3025,7 @@ Transform:
   m_GameObject: {fileID: 1967341410}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.591, y: -1.918, z: 3.802}
+  m_LocalPosition: {x: 0.27, y: -1.68, z: 2.94}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
