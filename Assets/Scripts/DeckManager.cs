@@ -2,15 +2,10 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// The deck the player draws from each turn.
+/// The deck the player draws from each turn. The deck is set up in the Inspector and does not change during play.
 ///
 ///   draw pile    -> cards waiting to be drawn
-///   discard pile -> cards that were played (or discarded); reshuffled into the draw pile when it runs out
-///
-/// Add cards to the deck from the Inspector (Starting Deck) or from code:
-///     deckManager.AddCard(someCardData);            // shuffled into the deck
-///     deckManager.AddCard(someCardData, 3);         // three copies
-///     deckManager.AddCard(someCardData, 1, true);   // on top = drawn next
+///   discard pile -> cards that were played; reshuffled into the draw pile when it runs out
 public class DeckManager : MonoBehaviour
 {
     [Serializable]
@@ -76,30 +71,6 @@ public class DeckManager : MonoBehaviour
             Debug.LogWarning("DeckManager: the Starting Deck is empty - add some cards to it.", this);
 
         if (shuffleOnStart) Shuffle();
-        OnDeckChanged?.Invoke();
-    }
-
-    // ---------- Adding cards ----------
-
-    /// Adds copies of a card to the deck.
-    /// putOnTop = false: shuffled in at random positions.   putOnTop = true: drawn next.
-    public void AddCard(CardData card, int count = 1, bool putOnTop = false)
-    {
-        if (card == null) return;
-
-        for (int i = 0; i < count; i++)
-        {
-            if (putOnTop) drawPile.Add(card);
-            else drawPile.Insert(UnityEngine.Random.Range(0, drawPile.Count + 1), card);
-        }
-        OnDeckChanged?.Invoke();
-    }
-
-    /// Adds a card straight to the discard pile.
-    public void AddCardToDiscard(CardData card)
-    {
-        if (card == null) return;
-        discardPile.Add(card);
         OnDeckChanged?.Invoke();
     }
 

@@ -90,6 +90,9 @@ public class TowerBuilder : MonoBehaviour
     public int BestSlotIndex => bestSlot;
     public Vector3 GetSlotPosition(int i) => slots[i].pos;
 
+    // Raised every time a card is placed in the tower (ScoreManager listens)
+    public event System.Action<CardData, Card> CardPlaced;
+
     public Vector3 FocusPoint
     {
         get
@@ -481,6 +484,7 @@ public class TowerBuilder : MonoBehaviour
         c.Setup(data, cardModel);
         c.SetPlaced();
         cards[key] = c;
+        CardPlaced?.Invoke(data, c);
     }
 
     // Called when the player picks a card in the hand (click or number key)

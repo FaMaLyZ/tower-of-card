@@ -20,9 +20,9 @@ public class HandManager : MonoBehaviour
     [Tooltip("Used for cards that have no Hand Model.")]
     public GameObject cardPrefab;
     public Transform handTranform;
-    public float fanSpread = 5f;
+    public float fanSpread = 3f;
     public float cardSpacing = 5f;
-    public float verticalSpacing = 10f;
+    public float verticalSpacing = 0f;
     public float deepSpacing = 0.01f;
     [Tooltip("Extra rotation applied to cards that use a Hand Model (use multiples of 90). Fix sideways / upside-down models here.")]
     public Vector3 handModelEuler = Vector3.zero;
@@ -142,8 +142,8 @@ public class HandManager : MonoBehaviour
         DrawCards(1);
     }
 
-    /// Puts a specific card into the hand (e.g. a reward card that skips the deck).
-    public void AddCardToHand(CardData data)
+    // Creates the card in the hand
+    void AddCardToHand(CardData data)
     {
         if (data == null || Count >= maxHandSize || handTranform == null) return;
 
@@ -290,6 +290,7 @@ public class HandManager : MonoBehaviour
             float horizontalOffset = (cardSpacing * (i - middle));
             float verticalOffset = (verticalSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
             float deedOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
+            cardInHand[i].transform.localPosition = new Vector3(horizontalOffset, verticalOffset, 0);
             cardInHand[i].transform.localPosition = new Vector3(horizontalOffset, verticalOffset, deedOffset);
             cardInHand[i].transform.localScale = info.baseScale * (isSelected ? selectedScale : 1f);
         }
