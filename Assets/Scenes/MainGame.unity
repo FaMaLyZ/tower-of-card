@@ -2695,7 +2695,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurnManager
   cardsPerTurn: 5
-  maxTurns: 0
+  maxTurns: 10
   startTurnDelay: 2
   endTurnDelay: 3
   autoStartNextTurn: 1

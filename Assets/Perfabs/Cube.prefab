@@ -129,6 +129,7 @@ MonoBehaviour:
   breakOnImpact: 1
   breakSpeed: 1.5
   logImpactSpeed: 1
+  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
 --- !u!54 &-8243265409583701600
 Rigidbody:
   m_ObjectHideFlags: 0

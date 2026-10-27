@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
+using UnityEditor.Animations;
 
 /// How a 3D card model is fitted into the game. Lives on TowerBuilder.
 [Serializable]
@@ -38,6 +39,8 @@ public class Card : MonoBehaviour
     [Tooltip("Print every impact speed to the Console (helps you tune Break Speed).")]
     public bool logImpactSpeed = false;
 
+    public AnimatorController cardAnim;
+
     // Raised just before a card breaks (TowerBuilder listens so it can forget the card)
     public static event Action<Card> Broken;
 
@@ -50,12 +53,14 @@ public class Card : MonoBehaviour
     bool hasModel;
     bool isBroken;
 
+
     void Awake()
     {
         box = GetComponent<BoxCollider>();
         rb = GetComponent<Rigidbody>();
         ownRenderer = GetComponent<Renderer>();
         renderers = GetComponentsInChildren<Renderer>(true);
+        cardAnim = Data.cardAnim;
 
         // thin cards can pass through each other when they fall fast
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;

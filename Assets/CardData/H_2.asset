@@ -17,4 +17,6 @@ MonoBehaviour:
   rank: 2
   model: {fileID: 1001826236261161249, guid: a251548c6c4bc6c42a6319eb1443f415, type: 3}
   handModel: {fileID: 1001826236261161249, guid: a251548c6c4bc6c42a6319eb1443f415, type: 3}
+  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
+  mass: 0.1
   tint: {r: 1, g: 1, b: 1, a: 1}
