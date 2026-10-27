@@ -7,9 +7,20 @@ using UnityEngine.EventSystems;
 /// For this to work:
 ///   - UI cards (on a Canvas): the card needs an Image with Raycast Target on.
 ///   - 3D cards: the card needs a Collider, and the Main Camera needs a Physics Raycaster component.
-public class HandCardView : MonoBehaviour, IPointerClickHandler
+public class HandCardView : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
-    public HandManager hand;
+    [HideInInspector] public HandManager hand;
+
+    // Mouse moves onto / off the card (used to show the card's details)
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (hand != null) hand.HoverCard(gameObject);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (hand != null) hand.UnhoverCard(gameObject);
+    }
 
     public void OnPointerClick(PointerEventData eventData)
     {

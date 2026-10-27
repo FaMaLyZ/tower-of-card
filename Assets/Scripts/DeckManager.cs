@@ -2,6 +2,14 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+/// Where a card goes when it is put back into the deck.
+public enum DeckReturn
+{
+    ShuffleIn,   // random position in the draw pile
+    Bottom,      // drawn last
+    Top          // drawn next
+}
+
 /// The deck the player draws from each turn. The deck is set up in the Inspector and does not change during play.
 ///
 ///   draw pile    -> cards waiting to be drawn
@@ -95,6 +103,26 @@ public class DeckManager : MonoBehaviour
     {
         if (card == null) return;
         discardPile.Add(card);
+        OnDeckChanged?.Invoke();
+    }
+
+    /// Puts a card back into the draw pile (used when the player discards).
+    public void ReturnToDeck(CardData card, DeckReturn where = DeckReturn.ShuffleIn)
+    {
+        if (card == null) return;
+
+        switch (where)
+        {
+            case DeckReturn.Top:
+                drawPile.Add(card);                       // end of the list = top of the pile
+                break;
+            case DeckReturn.Bottom:
+                drawPile.Insert(0, card);
+                break;
+            default:
+                drawPile.Insert(UnityEngine.Random.Range(0, drawPile.Count + 1), card);
+                break;
+        }
         OnDeckChanged?.Invoke();
     }
 

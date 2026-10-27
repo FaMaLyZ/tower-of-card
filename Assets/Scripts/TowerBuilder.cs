@@ -90,23 +90,37 @@ public class TowerBuilder : MonoBehaviour
     public int BestSlotIndex => bestSlot;
     public Vector3 GetSlotPosition(int i) => slots[i].pos;
 
+    // The mass a card really gets in the tower (its own mass x the Mass Multiplier)
+    public float GetCardMass(CardData data) => Mathf.Max(0.001f, data.mass * cardModel.massMultiplier);
+
     // Raised every time a card is placed in the tower (ScoreManager listens)
     public event System.Action<CardData, Card> CardPlaced;
 
+    // The point the camera looks at when there is no tower (game start, or after the tower is gone)
+    public Vector3 StartFocusPoint => new Vector3(0, groundY + 1f, 0);
+
+    // Middle of the tower, or the start point when there are no cards
     public Vector3 FocusPoint
     {
         get
         {
-            if (cards.Count == 0) return new Vector3(0, groundY + 1f, 0);
             Vector3 min = Vector3.one * float.MaxValue, max = Vector3.one * float.MinValue;
+            bool any = false;
+
             foreach (var c in cards.Values)
             {
+                if (c == null) continue;            // destroyed card
                 min = Vector3.Min(min, c.transform.position);
                 max = Vector3.Max(max, c.transform.position);
+                any = true;
             }
-            return (min + max) * 0.5f;
+
+            return any ? (min + max) * 0.5f : StartFocusPoint;
         }
     }
+
+    // Raised when the whole tower is gone and the player has to start over (OrbitCamera listens)
+    public event System.Action TowerReset;
 
     // ---------- Lifecycle ----------
 
@@ -163,6 +177,51 @@ public class TowerBuilder : MonoBehaviour
     {
         if (state == State.Placing) CancelSelection();
         if (physicsOnEndTurn) SetCardsFrozen(false);
+    }
+
+    // If every ground-level card is gone (broken or destroyed) there is nothing left to build on.
+    // Without this the game gets stuck: no snap points exist and the "first click" never comes back.
+    void CheckTowerStillExists()
+    {
+        if (state == State.WaitingFirstClick) return;
+
+        // forget cards that were destroyed
+        List<(int, int, int)> dead = null;
+        foreach (var pair in cards)
+        {
+            if (pair.Value != null) continue;
+            if (dead == null) dead = new List<(int, int, int)>();
+            dead.Add(pair.Key);
+        }
+        if (dead != null)
+            foreach (var key in dead) cards.Remove(key);
+
+        if (!HasBaseCard()) ResetTower();
+    }
+
+    // Is there at least one card standing on the ground (a tent card at level 0)?
+    bool HasBaseCard()
+    {
+        foreach (var key in cards.Keys)
+            if (key.Item1 != FLOOR && key.Item2 == 0) return true;
+        return false;
+    }
+
+    // The tower is gone: clear what is left and let the player start a new one with a click on the ground
+    void ResetTower()
+    {
+        foreach (var c in cards.Values)
+            if (c != null) Destroy(c.gameObject);
+
+        cards.Clear();
+        slots.Clear();
+        bestSlot = -1;
+
+        ClearGhost();
+        if (handManager != null) handManager.ClearSelection();
+
+        state = State.WaitingFirstClick;
+        TowerReset?.Invoke();
     }
 
     // A card broke (hit the ground too hard): forget it so its slot becomes free again
@@ -281,6 +340,8 @@ public class TowerBuilder : MonoBehaviour
 
     void Update()
     {
+        CheckTowerStillExists();
+
         var mouse = Mouse.current;
         if (mouse == null) return;
 
@@ -336,6 +397,7 @@ public class TowerBuilder : MonoBehaviour
         {
             if (hit.module is GraphicRaycaster) return true;                          // UI element
             if (hit.gameObject.GetComponentInParent<HandCardView>() != null) return true;   // hand card
+            if (hit.gameObject.GetComponentInParent<DiscardZone>() != null) return true;    // discard zone
         }
         return false;
     }
@@ -384,6 +446,12 @@ public class TowerBuilder : MonoBehaviour
 
     void HandlePlacing(Mouse mouse)
     {
+        // the chosen card is gone (it was discarded...): drop the preview
+        if (handManager == null || handManager.SelectedIndex < 0)
+        {
+            CancelSelection();
+            return;
+        }
         if (ghost == null) return;
 
         BuildSlots();                 // which slots are free right now
@@ -450,6 +518,7 @@ public class TowerBuilder : MonoBehaviour
         if (data == null) return;
 
         PlaceCard(slots[bestSlot].key, data);
+        PlaceCardSound();
         ClearGhost();
         handManager.PlaySelectedCard();   // removes it from the hand -> discard pile
         state = State.Choosing;
@@ -505,5 +574,9 @@ public class TowerBuilder : MonoBehaviour
         ghost.Setup(data, cardModel);
         ghost.SetGhost(false);
         state = State.Placing;
+    }
+    public void PlaceCardSound()
+    {
+        //เสียงวาง card 
     }
 }

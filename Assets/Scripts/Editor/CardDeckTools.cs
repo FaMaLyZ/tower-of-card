@@ -10,6 +10,12 @@ public static class CardDeckTools
     const string RootFolder = "Assets/CardData";
     const string DeckFolder = "Assets/CardData/Standard52";
 
+    // Mass formula used by the tools:  mass = MassBase + rank x MassPerRank   (Ace = 1 ... King = 13)
+    const float MassBase = 0.05f;
+    const float MassPerRank = 0.01f;
+
+    static float MassForRank(int rank) => MassBase + rank * MassPerRank;
+
     static readonly string[] RankNames =
         { "", "Ace", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Jack", "Queen", "King" };
 
@@ -34,6 +40,7 @@ public static class CardDeckTools
                 data.cardName = RankNames[rank] + " of " + suit;
                 data.suit = suit;
                 data.rank = (CardRank)rank;
+                data.mass = MassForRank(rank);
                 data.tint = (suit == CardSuit.Hearts || suit == CardSuit.Diamonds)
                     ? new Color(1f, 0.6f, 0.6f) : new Color(0.75f, 0.75f, 0.85f);
 
@@ -127,6 +134,23 @@ public static class CardDeckTools
         so.ApplyModifiedProperties();
 
         Debug.Log("CardTower: DeckManager Card Set now holds " + cards.Count + " cards.");
+    }
+
+    // ------------------------------------------------------------------
+    //  4. Set every card's mass from its rank
+    // ------------------------------------------------------------------
+    [MenuItem("CardTower/4. Set Card Mass By Rank")]
+    static void SetMassByRank()
+    {
+        var cards = LoadAllCardData();
+        foreach (var card in cards)
+        {
+            card.mass = MassForRank((int)card.rank);
+            EditorUtility.SetDirty(card);
+        }
+
+        AssetDatabase.SaveAssets();
+        Debug.Log("CardTower: set the mass of " + cards.Count + " cards (" + MassBase + " + rank x " + MassPerRank + ").");
     }
 
     // ------------------------------------------------------------------
@@ -225,9 +249,9 @@ public static class CardDeckTools
             case "eight": rank = 8; return true;
             case "nine": rank = 9; return true;
             case "ten": rank = 10; return true;
-            case "jack": rank = 10; return true;
-            case "queen": rank = 10; return true;
-            case "king": rank = 10; return true;
+            case "jack": rank = 11; return true;
+            case "queen": rank = 12; return true;
+            case "king": rank = 13; return true;
         }
 
         if (int.TryParse(t, out int n) && n >= 1 && n <= 14)

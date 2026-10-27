@@ -1,5 +1,7 @@
 using System;
 using UnityEngine;
+using System.Collections.Generic;
+using System.Collections;
 
 /// How a 3D card model is fitted into the game. Lives on TowerBuilder.
 [Serializable]
@@ -9,6 +11,10 @@ public class CardModelSettings
     public float length = 1.5f;        // long side - the card stands on this
     public float width = 1.07f;        // short side (depth of the tower)
     public float thickness = 0.02f;    // physics thickness
+
+    [Header("Physics")]
+    [Tooltip("Multiplies every card's mass (CardData > Mass). Handy for making the whole tower heavier or lighter.")]
+    public float massMultiplier = 1f;
 
     [Header("Model orientation")]
     [Tooltip("Detects how the model was exported (longest side = length, thinnest = thickness).")]
@@ -61,6 +67,8 @@ public class Card : MonoBehaviour
     {
         Data = data;
         hasModel = data.model != null;
+
+        rb.mass = Mathf.Max(0.001f, data.mass * settings.massMultiplier);   // each card has its own mass
 
         if (hasModel) SetupModel(data.model, settings);
         else SetupFallbackBox(data, settings);
@@ -205,6 +213,12 @@ public class Card : MonoBehaviour
         isBroken = true;
 
         Broken?.Invoke(this);
+        StartCoroutine(BreakCoroutine());
+    }
+    IEnumerator BreakCoroutine()
+    {
+        //play anim and sound
+        yield return new WaitForSeconds(1.5f);
         Destroy(gameObject);
     }
 }

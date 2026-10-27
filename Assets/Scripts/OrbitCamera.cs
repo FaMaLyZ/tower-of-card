@@ -15,20 +15,39 @@ public class OrbitCamera : MonoBehaviour
     public Vector3 focusOffset = Vector3.zero;
     public float followSpeed = 4f;          // how fast the focus follows the tower as it grows
 
+    [Header("Reset (when the whole tower is gone)")]
+    public float resetSmoothing = 3f;       // how fast the camera swings back to its start view
+
     float yaw;
+    float startYaw;                         // the view the game started with
+    bool resetting;
     Vector3 focus;
 
     void Start()
     {
         if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
 
-        yaw = transform.eulerAngles.y;
+        yaw = startYaw = transform.eulerAngles.y;
         focus = GetFocusTarget();
+
+        if (tower != null) tower.TowerReset += HandleTowerReset;
+    }
+
+    void OnDestroy()
+    {
+        if (tower != null) tower.TowerReset -= HandleTowerReset;
+    }
+
+    // All cards are gone: swing the camera back to the start view
+    void HandleTowerReset()
+    {
+        resetting = true;
     }
 
     void LateUpdate()
     {
         HandleOrbitInput();
+        UpdateReset();
         UpdateFocus();
         ApplyCameraTransform();
     }
@@ -43,7 +62,22 @@ public class OrbitCamera : MonoBehaviour
         if (kb.aKey.isPressed) h -= 1f;
         if (kb.dKey.isPressed) h += 1f;
 
+        if (h != 0f) resetting = false;         // the player takes control again
         yaw += h * orbitSpeed * Time.deltaTime;
+    }
+
+    // Smoothly turns the camera back to the angle it started with
+    void UpdateReset()
+    {
+        if (!resetting) return;
+
+        yaw = Mathf.LerpAngle(yaw, startYaw, 1f - Mathf.Exp(-resetSmoothing * Time.deltaTime));
+
+        if (Mathf.Abs(Mathf.DeltaAngle(yaw, startYaw)) < 0.05f)
+        {
+            yaw = startYaw;
+            resetting = false;
+        }
     }
 
     Vector3 GetFocusTarget()

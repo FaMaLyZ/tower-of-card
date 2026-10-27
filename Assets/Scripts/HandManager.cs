@@ -20,10 +20,12 @@ public class HandManager : MonoBehaviour
     [Tooltip("Used for cards that have no Hand Model.")]
     public GameObject cardPrefab;
     public Transform handTranform;
-    public float fanSpread = 3f;
+    public float fanSpread = 5f;
     public float cardSpacing = 5f;
-    public float verticalSpacing = 0f;
+    public float verticalSpacing = 10f;
     public float deepSpacing = 0.01f;
+    [Tooltip("Size of every card in the hand. Change it while playing to see the result live.")]
+    public float handCardScale = 1f;
     [Tooltip("Extra rotation applied to cards that use a Hand Model (use multiples of 90). Fix sideways / upside-down models here.")]
     public Vector3 handModelEuler = Vector3.zero;
 
@@ -36,6 +38,14 @@ public class HandManager : MonoBehaviour
     public bool discardHandAtEndOfTurn = false;
     [Tooltip("End the turn automatically when the hand is empty.")]
     public bool autoEndTurnWhenHandEmpty = true;
+
+    [Header("Smoothing")]
+    [Tooltip("How fast cards glide to their place. Higher = snappier, 0 = instant (no smoothing).")]
+    public float moveSpeed = 12f;
+    [Tooltip("Optional: new cards fly in from this object (for example the deck). Empty = the middle of the hand.")]
+    public Transform drawFromPoint;
+    [Tooltip("New cards start at this fraction of their size and grow to full size. 1 = no growing.")]
+    [Range(0f, 1f)] public float spawnScale = 0.5f;
 
     [Header("Selection look")]
     public float selectedLift = 10f;        // chosen card moves up by this much
@@ -56,6 +66,19 @@ public class HandManager : MonoBehaviour
     public int Count => cardInHand.Count;
     public int SelectedIndex { get; private set; } = -1;
     public CardData SelectedCard => GetCard(SelectedIndex);
+
+    // The card under the mouse (-1 = none)
+    public int HoveredIndex { get; private set; } = -1;
+
+    /// The card whose details should be shown: the one under the mouse, otherwise the selected one.
+    public CardData InspectedCard
+    {
+        get
+        {
+            CardData hovered = GetCard(HoveredIndex);
+            return hovered != null ? hovered : SelectedCard;
+        }
+    }
     public IReadOnlyList<CardData> CardsInHandData => dataInHand;
 
     public event Action OnHandChanged;
@@ -168,7 +191,15 @@ public class HandManager : MonoBehaviour
             extraRotation = useModel ? Quaternion.Euler(handModelEuler) : Quaternion.identity
         });
 
-        UpdateCardInHand();
+        // start at the spawn point so the card glides into its place
+        GetHandTarget(cardInHand.Count - 1, out _, out Quaternion rot, out Vector3 scale);
+        Transform t = newCard.transform;
+        t.localPosition = drawFromPoint != null
+            ? handTranform.InverseTransformPoint(drawFromPoint.position)
+            : Vector3.zero;
+        t.localRotation = rot;
+        t.localScale = scale * spawnScale;
+
         OnHandChanged?.Invoke();
     }
 
@@ -209,11 +240,25 @@ public class HandManager : MonoBehaviour
     public void SetSelected(int index)
     {
         SelectedIndex = (index >= 0 && index < Count) ? index : -1;
+        SelectCardSound(); 
     }
 
     public void ClearSelection()
     {
         SelectedIndex = -1;
+        ClearSelectedCardSound();
+    }
+
+    // Called by HandCardView when the mouse moves onto / off a card
+    public void HoverCard(GameObject card)
+    {
+        HoveredIndex = cardInHand.IndexOf(card);
+    }
+
+    public void UnhoverCard(GameObject card)
+    {
+        if (HoveredIndex >= 0 && HoveredIndex < cardInHand.Count && cardInHand[HoveredIndex] == card)
+            HoveredIndex = -1;
     }
 
     // Called by HandCardView when the player clicks a card in the hand
@@ -225,8 +270,8 @@ public class HandManager : MonoBehaviour
         if (index >= 0) OnCardChosen?.Invoke(index);
     }
 
-    /// The card was played: remove it from the hand and discard it.
-    public CardData PlayCard(int index)
+    /// Takes a card out of the hand WITHOUT sending it anywhere (DiscardManager uses this).
+    public CardData RemoveCard(int index)
     {
         if (index < 0 || index >= Count) return null;
 
@@ -238,11 +283,17 @@ public class HandManager : MonoBehaviour
         infoInHand.RemoveAt(index);
         if (visual != null) Destroy(visual);
 
-        if (deckManager != null) deckManager.Discard(data);
-
         SelectedIndex = -1;
-        UpdateCardInHand();
+        HoveredIndex = -1;
         OnHandChanged?.Invoke();
+        return data;
+    }
+
+    /// The card was played: remove it from the hand and put it on the discard pile.
+    public CardData PlayCard(int index)
+    {
+        CardData data = RemoveCard(index);
+        if (data != null && deckManager != null) deckManager.Discard(data);
         return data;
     }
 
@@ -264,35 +315,64 @@ public class HandManager : MonoBehaviour
         dataInHand.Clear();
         infoInHand.Clear();
         SelectedIndex = -1;
+        HoveredIndex = -1;
         OnHandChanged?.Invoke();
     }
 
-    // ---------- Layout (your original fan layout) ----------
+    // ---------- Layout (your original fan layout, now smoothed) ----------
 
+    // Where card number i wants to be
+    void GetHandTarget(int i, out Vector3 position, out Quaternion rotation, out Vector3 scale)
+    {
+        float middle = (cardInHand.Count - 1) / 2f;
+        bool isSelected = i == SelectedIndex;
+        HandInfo info = infoInHand[i];
+
+        float rotationAngle = fanSpread * (i - middle);
+        rotation = Quaternion.Euler(0, 180, rotationAngle) * info.extraRotation;
+
+        float horizontalOffset = cardSpacing * (i - middle);
+        float verticalOffset = verticalSpacing * (i - middle) + (isSelected ? selectedLift : 0f);
+        float deedOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
+        position = new Vector3(horizontalOffset, verticalOffset, deedOffset);
+        scale = info.baseScale * handCardScale * (isSelected ? selectedScale : 1f);
+    }
+
+    // Moves every card a little towards its place each frame
     private void UpdateCardInHand()
     {
         if (cardInHand.Count <= 0)
         {
             return;
         }
-        int cardCount = cardInHand.Count;
-        float middle = (cardCount - 1) / 2f;
 
-        for (int i = 0; i < cardCount; i++)
+        // frame-rate independent smoothing (moveSpeed 0 = jump straight there)
+        float t = moveSpeed <= 0f ? 1f : 1f - Mathf.Exp(-moveSpeed * Time.deltaTime);
+
+        for (int i = 0; i < cardInHand.Count; i++)
         {
             if (cardInHand[i] == null) continue;
-            bool isSelected = i == SelectedIndex;
-            HandInfo info = infoInHand[i];
 
-            float rotationAngle = (fanSpread * (i - middle));
-            cardInHand[i].transform.localRotation = Quaternion.Euler(0, 180, rotationAngle) * info.extraRotation;
+            GetHandTarget(i, out Vector3 position, out Quaternion rotation, out Vector3 scale);
 
-            float horizontalOffset = (cardSpacing * (i - middle));
-            float verticalOffset = (verticalSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
-            float deedOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
-            cardInHand[i].transform.localPosition = new Vector3(horizontalOffset, verticalOffset, 0);
-            cardInHand[i].transform.localPosition = new Vector3(horizontalOffset, verticalOffset, deedOffset);
-            cardInHand[i].transform.localScale = info.baseScale * (isSelected ? selectedScale : 1f);
+            Transform card = cardInHand[i].transform;
+            card.localPosition = Vector3.Lerp(card.localPosition, position, t);
+            card.localRotation = Quaternion.Slerp(card.localRotation, rotation, t);
+            card.localScale = Vector3.Lerp(card.localScale, scale, t);
         }
+    }
+
+    //for fillykung
+    public void DarwSound()
+    {
+        //เสียงจั่ว
+    }
+    public void SelectCardSound()
+    {
+        //เสียงเลือก card 
+    }
+    public void ClearSelectedCardSound()
+    {
+        //เสียงที่หลังจากเราเลือก unเลือก card 
     }
 }

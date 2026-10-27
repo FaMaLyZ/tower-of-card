@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c0acb0ca0f4150459c063862e53ca49, type: 3}
+  m_Name: H_A
+  m_EditorClassIdentifier: Assembly-CSharp::CardData
+  cardName: H_A
+  suit: 2
+  rank: 1
+  model: {fileID: 8388534157275689661, guid: c252220769819304696f1c622fd37d91, type: 3}
+  handModel: {fileID: 8388534157275689661, guid: c252220769819304696f1c622fd37d91, type: 3}
+  tint: {r: 1, g: 1, b: 1, a: 1}

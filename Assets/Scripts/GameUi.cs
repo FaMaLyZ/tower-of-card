@@ -27,6 +27,7 @@ public class GameUI : MonoBehaviour
     [Header("Game references (auto-found if empty)")]
     public TurnManager turnManager;
     public TowerBuilder tower;
+    public HandManager handManager;             // used to find the card to describe
     public Canvas canvas;                       // only needed for snap markers
 
     [Header("Turn info texts")]
@@ -39,6 +40,10 @@ public class GameUI : MonoBehaviour
     public DeckManager deckManager;             // auto-found if empty
     public TMP_Text deckText;                   // "Deck: 12"
     public TMP_Text discardText;                // "Discard: 3"
+
+    [Header("Discards (optional)")]
+    public DiscardManager discardManager;       // auto-found if empty
+    public TMP_Text discardsLeftText;           // "Discards left: 1"
 
     [Header("Score (optional)")]
     public ScoreManager scoreManager;           // auto-found if empty
@@ -66,6 +71,11 @@ public class GameUI : MonoBehaviour
     public Color snapMarkerBestColor = new Color(0.2f, 1f, 0.3f, 1f);
 
     [Header("Text formats  ({0}, {1} are replaced by numbers)")]
+    [Tooltip("Shown in the Hint text for the card under the mouse (or the selected card). {0} = rank, {1} = suit, {2} = mass. Use a new line for separate lines.")]
+    [TextArea(1, 4)]
+    public string cardDetailFormat = "Rank: {0}   Suit: {1}   Mass: {2:0.00}";
+    [Tooltip("When no card is hovered or selected, show the normal help text instead.")]
+    public bool showInstructionsWhenNoCard = true;
     public string turnFormat = "Turn {0}";
     public string cardsFormat = "Cards: {0} / {1}";
     public string deckFormat = "Deck: {0}";
@@ -74,6 +84,7 @@ public class GameUI : MonoBehaviour
     public string multFormat = "Mult: x{0:0.##}";
     public string turnScoreFormat = "Turn score: {0:N0}";
     public string totalScoreFormat = "Score: {0:N0}";
+    public string discardsLeftFormat = "Discards left: {0}";
     public string handLabelFormat = "{0}: {1}";      // {0} = key number, {1} = card name
     public string bannerStartFormat = "Turn {0}";
     public string bannerEndFormat = "Turn {0} complete";
@@ -97,6 +108,8 @@ public class GameUI : MonoBehaviour
         if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
         if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
         if (scoreManager == null) scoreManager = FindFirstObjectByType<ScoreManager>();
+        if (discardManager == null) discardManager = FindFirstObjectByType<DiscardManager>();
+        if (handManager == null) handManager = FindFirstObjectByType<HandManager>();
         if (canvas == null) canvas = GetComponentInParent<Canvas>();
         if (canvas == null) canvas = FindFirstObjectByType<Canvas>();
 
@@ -117,6 +130,7 @@ public class GameUI : MonoBehaviour
         RefreshHint();
         RefreshDeckInfo();
         RefreshScore();
+        RefreshDiscards();
         RefreshBanner();
         RefreshEndTurnButton();
         RefreshNextTurnButton();
@@ -135,7 +149,7 @@ public class GameUI : MonoBehaviour
     // Texts and markers must not block mouse clicks on the game (TowerBuilder ignores clicks over UI)
     void PreventUIFromBlockingClicks()
     {
-        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText })
+        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText, discardsLeftText })
             if (t != null) t.raycastTarget = false;
 
         if (snapMarkerTemplate != null) snapMarkerTemplate.raycastTarget = false;
@@ -219,10 +233,31 @@ public class GameUI : MonoBehaviour
             totalScoreText.text = string.Format(totalScoreFormat, scoreManager.TotalScore);
     }
 
+    void RefreshDiscards()
+    {
+        if (discardsLeftText == null || discardManager == null) return;
+        discardsLeftText.text = string.Format(discardsLeftFormat, discardManager.DiscardsLeft);
+    }
+
+    // The hint text shows the details of the card under the mouse (or the selected card)
     void RefreshHint()
     {
-        if (hintText != null)
-            hintText.text = tower != null ? tower.HintText : "";
+        if (hintText == null) return;
+
+        CardData card = handManager != null ? handManager.InspectedCard : null;
+        if (card != null)
+        {
+            hintText.text = BuildCardDetail(card);
+            return;
+        }
+
+        hintText.text = showInstructionsWhenNoCard && tower != null ? tower.HintText : "";
+    }
+
+    string BuildCardDetail(CardData card)
+    {
+        float mass = tower != null ? tower.GetCardMass(card) : card.mass;
+        return string.Format(cardDetailFormat, card.rank, card.suit, mass);
     }
 
     // Big text while a turn is starting / ended / game over

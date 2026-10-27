@@ -287,13 +287,14 @@ public class ScoreManager : MonoBehaviour
         foreach (ScoreStep step in ctx.steps)
         {
             if (stepDelay > 0f) yield return new WaitForSeconds(stepDelay);
-
+            ScoreCulSound();
             CurrentChips = step.chipsAfter;
             CurrentMult = step.multAfter;
             OnScoreStep?.Invoke(step);
         }
 
         if (stepDelay > 0f) yield return new WaitForSeconds(stepDelay);
+        CompleteScoreCulSound();
         CompleteScoring(ctx);
     }
 
@@ -370,5 +371,13 @@ public class ScoreManager : MonoBehaviour
             new HandTypeScore(PokerHand.FourOfAKind,   60,  7),
             new HandTypeScore(PokerHand.StraightFlush, 100, 8),
         };
+    }
+    public void ScoreCulSound()
+    {
+        //เสียงตอนคำนวนคะแนน
+    }
+    public void CompleteScoreCulSound()
+    {
+        //เสียงตอนคำนวนคะแนนเสร็จแล้ว
     }
 }
