@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections;
 using UnityEditor.Animations;
 
+
 /// How a 3D card model is fitted into the game. Lives on TowerBuilder.
 [Serializable]
 public class CardModelSettings
@@ -39,7 +40,10 @@ public class Card : MonoBehaviour
     [Tooltip("Print every impact speed to the Console (helps you tune Break Speed).")]
     public bool logImpactSpeed = false;
 
-    public AnimatorController cardAnim;
+    [Header("Card Break")]
+    [SerializeField] private Animator animator;
+    [SerializeField] private GameObject cardBreakPre;
+    private readonly int isBreakHash = Animator.StringToHash("Break");
 
     // Raised just before a card breaks (TowerBuilder listens so it can forget the card)
     public static event Action<Card> Broken;
@@ -60,7 +64,6 @@ public class Card : MonoBehaviour
         rb = GetComponent<Rigidbody>();
         ownRenderer = GetComponent<Renderer>();
         renderers = GetComponentsInChildren<Renderer>(true);
-        cardAnim = Data.cardAnim;
 
         // thin cards can pass through each other when they fall fast
         rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
@@ -179,6 +182,7 @@ public class Card : MonoBehaviour
     // Locks position and rotation (used while the player is building)
     public void Freeze()
     {
+        animator.SetInteger("Shake" ,0);
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.constraints = RigidbodyConstraints.FreezeAll;
@@ -189,6 +193,7 @@ public class Card : MonoBehaviour
     {
         rb.constraints = RigidbodyConstraints.None;
         rb.WakeUp();
+        animator.SetInteger("Shake" , UnityEngine.Random.Range(1,4));
     }
 
     // ---------- Breaking ----------
@@ -223,7 +228,9 @@ public class Card : MonoBehaviour
     IEnumerator BreakCoroutine()
     {
         //play anim and sound
-        yield return new WaitForSeconds(1.5f);
+        animator.SetBool(isBreakHash , true);
         Destroy(gameObject);
+        Instantiate(cardBreakPre,transform.position, transform.rotation);
+        yield return new WaitForSeconds(1.5f);
     }
 }

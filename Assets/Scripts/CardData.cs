@@ -24,7 +24,6 @@ public class CardData : ScriptableObject
     public GameObject model;
     [Tooltip("Optional model used for the card in the hand. Empty = HandManager's Card Prefab.")]
     public GameObject handModel;
-    public AnimatorController cardAnim;
 
     [Header("Physics")]
     [Tooltip("Weight of this card in the tower. Each card can have a different mass.")]

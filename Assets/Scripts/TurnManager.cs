@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using System.Collections;
 
 public enum TurnState
 {
@@ -114,9 +115,14 @@ public class TurnManager : MonoBehaviour
 
         if (maxTurns > 0 && TurnNumber >= maxTurns)
         {
-            IsGameOver = true;
+            StartCoroutine(DelayForCalSocre());
             OnGameOver?.Invoke();
         }
+    }
+    IEnumerator DelayForCalSocre()
+    {
+        yield return new WaitForSeconds(3f);    
+        IsGameOver = true;
     }
 
     /// Only needed when autoStartNextTurn is off.
@@ -144,9 +150,9 @@ public class TurnManager : MonoBehaviour
 
         switch (State)
         {
-            case TurnState.StartTurn:  OnStartTurn?.Invoke(TurnNumber);  break;
+            case TurnState.StartTurn: OnStartTurn?.Invoke(TurnNumber); break;
             case TurnState.DuringTurn: OnDuringTurn?.Invoke(TurnNumber); break;
-            case TurnState.EndTurn:    OnEndTurn?.Invoke(TurnNumber);    break;
+            case TurnState.EndTurn: OnEndTurn?.Invoke(TurnNumber); break;
         }
     }
 }

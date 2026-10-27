@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
+using System.Collections;
 
 /// House-of-cards builder.
 /// Card prefab = a root object with Rigidbody + BoxCollider + Card script (scale 1,1,1).
@@ -37,6 +38,8 @@ public class TowerBuilder : MonoBehaviour
     [Header("Snapping")]
     public float snapRadiusPixels = 90f;             // mouse must be this close to a slot (screen pixels)
     public float snapSpeed = 25f;
+
+    public bool isGameOver;
 
     const int LEFT = 0, RIGHT = 1, FLOOR = 2;
 
@@ -341,6 +344,7 @@ public class TowerBuilder : MonoBehaviour
     void Update()
     {
         CheckTowerStillExists();
+        CheckGameOver();
 
         var mouse = Mouse.current;
         if (mouse == null) return;
@@ -574,6 +578,29 @@ public class TowerBuilder : MonoBehaviour
         ghost.Setup(data, cardModel);
         ghost.SetGhost(false);
         state = State.Placing;
+    }
+    public void CheckGameOver()
+    {
+        if (isGameOver || state == State.WaitingFirstClick) return;
+
+        // Refresh available slots based on the current tower state
+        BuildSlots();
+
+        bool noSlotsAvailable = slots.Count == 0;
+        bool noCardsInHand = handManager == null || handManager.Count == 0;
+        var allCardCount = handManager.GetAllCardCount();
+        // Trigger game over if there are no places to build and no cards left to play
+        if (noSlotsAvailable || noCardsInHand)
+        {
+            turnManager.EndTurn();
+            StartCoroutine(DelayForCalSocre());
+            if (state == State.Placing) CancelSelection();
+        }
+    }
+    IEnumerator DelayForCalSocre()
+    {
+        yield return new WaitForSeconds(3f);    
+        isGameOver = true;
     }
     public void PlaceCardSound()
     {

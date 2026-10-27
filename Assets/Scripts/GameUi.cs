@@ -29,6 +29,7 @@ public class GameUI : MonoBehaviour
     public TowerBuilder tower;
     public HandManager handManager;             // used to find the card to describe
     public Canvas canvas;                       // only needed for snap markers
+    public GameObject gameOverPanel;
 
     [Header("Turn info texts")]
     public TMP_Text turnText;                   // "Turn 1"
@@ -76,7 +77,7 @@ public class GameUI : MonoBehaviour
     public string cardDetailFormat = "Rank: {0}   Suit: {1}   Mass: {2:0.00}";
     [Tooltip("When no card is hovered or selected, show the normal help text instead.")]
     public bool showInstructionsWhenNoCard = true;
-    public string turnFormat = "Turn {0}";
+    public string turnFormat = "Turn {0} / {0}";
     public string cardsFormat = "Cards: {0} / {1}";
     public string deckFormat = "Deck: {0}";
     public string discardFormat = "Discard: {0}";
@@ -135,6 +136,10 @@ public class GameUI : MonoBehaviour
         RefreshEndTurnButton();
         RefreshNextTurnButton();
         RefreshHand();
+        if((turnManager != null && turnManager.IsGameOver)|| (tower != null && tower.isGameOver))
+        {
+            setGameoverPanelActive(true);
+        }
     }
 
     void LateUpdate()
@@ -182,7 +187,7 @@ public class GameUI : MonoBehaviour
         if (!GameRunning) return;
 
         if (turnText != null)
-            turnText.text = string.Format(turnFormat, turnManager.TurnNumber);
+            turnText.text = string.Format(turnFormat, turnManager.TurnNumber, turnManager.maxTurns);
 
         if (cardsText != null)
             cardsText.text = string.Format(cardsFormat, turnManager.CardsPlacedThisTurn, turnManager.cardsPerTurn);
@@ -400,6 +405,14 @@ public class GameUI : MonoBehaviour
         markers.Add(rt);
         markerImages.Add(clone.GetComponent<Image>());
     }
-
+    void setGameoverPanelActive(bool active)
+    {
+        if (gameOverPanel != null) gameOverPanel.SetActive(active);
+        GameoverSound();
+    }   
+    void GameoverSound()
+    {
+        //เสียง game over
+    }
     static bool IsBright(Color c) => (0.299f * c.r + 0.587f * c.g + 0.114f * c.b) > 0.6f;
 }

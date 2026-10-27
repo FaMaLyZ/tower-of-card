@@ -51,6 +51,9 @@ public class HandManager : MonoBehaviour
     public float selectedLift = 10f;        // chosen card moves up by this much
     public float selectedScale = 1.1f;      // and gets a bit bigger
 
+    [Header("Check Gameover")]
+    public int allCardLeft = 0;
+
     public List<GameObject> cardInHand = new List<GameObject>();
 
     // Same order as cardInHand
@@ -360,6 +363,15 @@ public class HandManager : MonoBehaviour
             card.localRotation = Quaternion.Slerp(card.localRotation, rotation, t);
             card.localScale = Vector3.Lerp(card.localScale, scale, t);
         }
+    }    
+    public int GetAllCardCount()
+    {
+        return countAllCardLeft();
+    }
+    public int countAllCardLeft()
+    {
+        allCardLeft = deckManager.DrawPileCount + cardInHand.Count;
+        return allCardLeft;
     }
 
     //for fillykung

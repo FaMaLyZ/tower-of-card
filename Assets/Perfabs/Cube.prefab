@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8361766739739762478}
   - component: {fileID: 1991265947351241625}
   - component: {fileID: -8243265409583701600}
+  - component: {fileID: 2681474143225613560}
   m_Layer: 8
   m_Name: Cube
   m_TagString: Untagged
@@ -129,7 +130,8 @@ MonoBehaviour:
   breakOnImpact: 1
   breakSpeed: 1.5
   logImpactSpeed: 1
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
+  animator: {fileID: 2681474143225613560}
+  cardBreakPre: {fileID: 665993270974208318, guid: 21a3c0eaf39d21f4989080c1e242d6aa, type: 3}
 --- !u!54 &-8243265409583701600
 Rigidbody:
   m_ObjectHideFlags: 0
@@ -157,3 +159,25 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 0
   m_CollisionDetection: 0
+--- !u!95 &2681474143225613560
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1164459000530960219}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
