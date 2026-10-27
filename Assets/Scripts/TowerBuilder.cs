@@ -604,6 +604,6 @@ public class TowerBuilder : MonoBehaviour
     }
     public void PlaceCardSound()
     {
-        //เสียงวาง card 
+        AudioManager.Instance.PlayOneShotSFX(SoundType.PlayCard);
     }
 }

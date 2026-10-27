@@ -13,6 +13,33 @@ MonoBehaviour:
   m_Name: GameSounds
   m_EditorClassIdentifier: Assembly-CSharp::SoundDatabase
   sounds:
-  - type: 0
-    clip: {fileID: 0}
+  - type: 1
+    clip: {fileID: 8300000, guid: 1e3eed476ca236040b315301ded9f4a2, type: 3}
+    volume: 1
+  - type: 2
+    clip: {fileID: 8300000, guid: d1dc6194dfc59eb4c8faa6ec1d71d52f, type: 3}
+    volume: 1
+  - type: 3
+    clip: {fileID: 8300000, guid: ef56708f13eb16e47acb505a6252ed93, type: 3}
+    volume: 0.8
+  - type: 4
+    clip: {fileID: 8300000, guid: f7a1b05d62fab77478cca00de45d8c9f, type: 3}
+    volume: 1
+  - type: 5
+    clip: {fileID: 8300000, guid: 567286467774aca4daeb935b2e9e21a5, type: 3}
+    volume: 1
+  - type: 6
+    clip: {fileID: 8300000, guid: 649637ef2da5ecc45ae31d3f2cfe1baf, type: 3}
+    volume: 1
+  - type: 7
+    clip: {fileID: 8300000, guid: 452d8120e8db19a48a820f1b7f2a9b63, type: 3}
+    volume: 1
+  - type: 8
+    clip: {fileID: 8300000, guid: 3ca195197489f11498289334f7528356, type: 3}
+    volume: 1
+  - type: 9
+    clip: {fileID: 8300000, guid: b49bdef3ba5a7f64ca91c33bbd501c20, type: 3}
+    volume: 1
+  - type: 10
+    clip: {fileID: 8300000, guid: 43a1148050e60bc4680db47fd98fe9b7, type: 3}
     volume: 1

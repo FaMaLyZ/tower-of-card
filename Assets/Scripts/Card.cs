@@ -229,6 +229,7 @@ public class Card : MonoBehaviour
     {
         //play anim and sound
         animator.SetBool(isBreakHash , true);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.CardBreak);
         Destroy(gameObject);
         Instantiate(cardBreakPre,transform.position, transform.rotation);
         yield return new WaitForSeconds(1.5f);

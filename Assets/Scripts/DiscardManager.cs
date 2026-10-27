@@ -104,6 +104,6 @@ public class DiscardManager : MonoBehaviour
     }
     public void DiscardSound()
     {
-        //เสียงทิ้ง card 
+        AudioManager.Instance.PlayOneShotSFX(SoundType.UnselectCard);
     }
 }

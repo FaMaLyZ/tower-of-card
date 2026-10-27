@@ -30,6 +30,7 @@ public class GameUI : MonoBehaviour
     public HandManager handManager;             // used to find the card to describe
     public Canvas canvas;                       // only needed for snap markers
     public GameObject gameOverPanel;
+    public bool isGameOverPanelActive = false;
 
     [Header("Turn info texts")]
     public TMP_Text turnText;                   // "Turn 1"
@@ -56,7 +57,7 @@ public class GameUI : MonoBehaviour
 
     [Header("Banner (big center text)")]
     public TMP_Text bannerText;
-
+   
     [Header("Buttons")]
     public Button endTurnButton;
     public Button nextTurnButton;               // only shown when TurnManager.autoStartNextTurn is off
@@ -138,7 +139,11 @@ public class GameUI : MonoBehaviour
         RefreshHand();
         if((turnManager != null && turnManager.IsGameOver)|| (tower != null && tower.isGameOver))
         {
-            setGameoverPanelActive(true);
+            if (!isGameOverPanelActive)
+            {
+                setGameoverPanelActive(true);
+                isGameOverPanelActive = true;
+            }
         }
     }
 
@@ -356,16 +361,19 @@ public class GameUI : MonoBehaviour
     public void OnEndTurnClicked()
     {
         if (turnManager != null) turnManager.EndTurn();
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void OnNextTurnClicked()
     {
         if (turnManager != null) turnManager.StartNextTurn();
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void OnHandButtonClicked(int index)
     {
         if (tower != null) tower.SelectCard(index);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     // =====================================================================
@@ -408,11 +416,18 @@ public class GameUI : MonoBehaviour
     void setGameoverPanelActive(bool active)
     {
         if (gameOverPanel != null) gameOverPanel.SetActive(active);
-        GameoverSound();
+
+        if (active)
+        {
+            AudioManager.Instance.StopLoopMusic();
+            GameoverSound();
+        }
     }   
     void GameoverSound()
     {
         //เสียง game over
+        AudioManager.Instance.PlayOneShotSFX(SoundType.SFX_EndGame);
     }
+
     static bool IsBright(Color c) => (0.299f * c.r + 0.587f * c.g + 0.114f * c.b) > 0.6f;
 }

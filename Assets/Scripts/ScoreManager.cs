@@ -374,10 +374,11 @@ public class ScoreManager : MonoBehaviour
     }
     public void ScoreCulSound()
     {
-        //เสียงตอนคำนวนคะแนน
+
     }
     public void CompleteScoreCulSound()
     {
         //เสียงตอนคำนวนคะแนนเสร็จแล้ว
+        AudioManager.Instance.PlayOneShotSFX(SoundType.CalculateScore);
     }
 }
