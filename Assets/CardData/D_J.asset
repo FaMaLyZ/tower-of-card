@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: D_J
   suit: 1
   rank: 11
-  model: {fileID: 8085962093684062571, guid: 085f28343b67dc3439725d9e4d888de0, type: 3}
+  model: {fileID: 6955242943521815745, guid: 8bc37649732e8644ba43d8ab8be35135, type: 3}
   handModel: {fileID: 8085962093684062571, guid: 085f28343b67dc3439725d9e4d888de0, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.16
   tint: {r: 1, g: 1, b: 1, a: 1}

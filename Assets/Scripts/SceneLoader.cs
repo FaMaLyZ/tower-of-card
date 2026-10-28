@@ -5,18 +5,18 @@ public class SceneLoader : MonoBehaviour
 {
     public void LoadMainGameplay()
     {
-        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
+        AudioManager.UISFX(SoundType.UI_Button);
         SceneManager.LoadScene("MainGame");
     }
 
     public void LoadMainMenu()
     {
-        AudioManager.Instance.StopSFX();
+        AudioManager.SFXStop();
         SceneManager.LoadScene("MainMenu");
     }
     public void ExitGame()
     {
-        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
+        AudioManager.UISFX(SoundType.UI_Button);
         Application.Quit();
     }
 }

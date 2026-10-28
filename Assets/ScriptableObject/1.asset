@@ -13,8 +13,9 @@ MonoBehaviour:
   m_Name: 1
   m_EditorClassIdentifier: Assembly-CSharp::CardData
   cardName: 1
-  score: 10
-  weight: 10
+  suit: 0
+  rank: 1
+  model: {fileID: 0}
+  handModel: {fileID: 0}
+  mass: 0.060000002
   tint: {r: 0.9150943, g: 0.11654504, b: 0.11654504, a: 1}
-  cardPrefabs: {fileID: 0}
-  cardModel: {fileID: 0}

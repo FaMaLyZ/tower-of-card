@@ -73,9 +73,9 @@ public class GameUI : MonoBehaviour
     public Color snapMarkerBestColor = new Color(0.2f, 1f, 0.3f, 1f);
 
     [Header("Text formats  ({0}, {1} are replaced by numbers)")]
-    [Tooltip("Shown in the Hint text for the card under the mouse (or the selected card). {0} = rank, {1} = suit, {2} = mass. Use a new line for separate lines.")]
+    [Tooltip("Shown in the Hint text for the card under the mouse (or the selected card). {0} = rank, {1} = suit, {2} = weight (Ace 1, 2-10 face value, J/Q/K 10). Use a new line for separate lines.")]
     [TextArea(1, 4)]
-    public string cardDetailFormat = "Rank: {0}   Suit: {1}   Mass: {2:0.00}";
+    public string cardDetailFormat = "Rank: {0}   Suit: {1}   Weight: {2}";
     [Tooltip("When no card is hovered or selected, show the normal help text instead.")]
     public bool showInstructionsWhenNoCard = true;
     public string turnFormat = "Turn {0} / {0}";
@@ -266,8 +266,7 @@ public class GameUI : MonoBehaviour
 
     string BuildCardDetail(CardData card)
     {
-        float mass = tower != null ? tower.GetCardMass(card) : card.mass;
-        return string.Format(cardDetailFormat, card.rank, card.suit, mass);
+        return string.Format(cardDetailFormat, card.rank, card.suit, card.Weight);
     }
 
     // Big text while a turn is starting / ended / game over
@@ -361,19 +360,19 @@ public class GameUI : MonoBehaviour
     public void OnEndTurnClicked()
     {
         if (turnManager != null) turnManager.EndTurn();
-        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
+        AudioManager.UISFX(SoundType.UI_Button);
     }
 
     public void OnNextTurnClicked()
     {
         if (turnManager != null) turnManager.StartNextTurn();
-        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
+        AudioManager.UISFX(SoundType.UI_Button);
     }
 
     public void OnHandButtonClicked(int index)
     {
         if (tower != null) tower.SelectCard(index);
-        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
+        AudioManager.UISFX(SoundType.UI_Button);
     }
 
     // =====================================================================
@@ -419,14 +418,14 @@ public class GameUI : MonoBehaviour
 
         if (active)
         {
-            AudioManager.Instance.StopLoopMusic();
+            AudioManager.MusicStop();
             GameoverSound();
         }
     }   
     void GameoverSound()
     {
         //เสียง game over
-        AudioManager.Instance.PlayOneShotSFX(SoundType.SFX_EndGame);
+        AudioManager.SFX(SoundType.SFX_EndGame);
     }
 
     static bool IsBright(Color c) => (0.299f * c.r + 0.587f * c.g + 0.114f * c.b) > 0.6f;

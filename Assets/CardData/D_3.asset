@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: D_3
   suit: 1
   rank: 3
-  model: {fileID: 7353721443544549763, guid: beaacaf744f216c41b78160be29e6519, type: 3}
+  model: {fileID: 7610912029699884211, guid: 8c3413d8f168fac44b06afef1672081e, type: 3}
   handModel: {fileID: 7353721443544549763, guid: beaacaf744f216c41b78160be29e6519, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.08
   tint: {r: 1, g: 1, b: 1, a: 1}

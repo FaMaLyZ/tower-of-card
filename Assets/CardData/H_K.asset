@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: H_K
   suit: 2
   rank: 13
-  model: {fileID: 826323781373484023, guid: 94098671ae456394b9257c0883be3967, type: 3}
+  model: {fileID: 9092048259372114847, guid: 5ee5c10f72598d942b28a6c2f6bd6d15, type: 3}
   handModel: {fileID: 826323781373484023, guid: 94098671ae456394b9257c0883be3967, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.17999999
   tint: {r: 1, g: 1, b: 1, a: 1}

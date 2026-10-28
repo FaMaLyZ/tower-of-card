@@ -20,6 +20,8 @@ public class TowerBuilder : MonoBehaviour
     public Card cardPrefab;
     public CardModelSettings cardModel = new CardModelSettings();
     public float groundY = 0f;
+    [Tooltip("The first card of a tower can only be placed on something in this layer (the table). Keeps players from starting a tower off the table.")]
+    public LayerMask tableLayerMask = 1 << 7;   // "Table" layer
 
     [Header("References (auto-found if empty)")]
     public TurnManager turnManager;
@@ -28,6 +30,12 @@ public class TowerBuilder : MonoBehaviour
     [Header("House of cards")]
     [Range(5f, 45f)] public float tiltAngle = 20f;   // how far cards lean from vertical
     public int maxBaseTents = 4;                     // tents on the bottom row (4 = 4 levels high)
+
+    [Header("Fallen cards")]
+    [Tooltip("A placed card counts as fallen once it has slipped this far from the slot it was placed in (world units). Cards settle about 0.05, so keep this well above that.")]
+    public float fallenDistance = 0.35f;
+    [Tooltip("...or once it has tipped this many degrees away from how it was placed. Cards settle about 7 degrees.")]
+    public float fallenAngle = 35f;
 
     [Header("Physics")]
     [Tooltip("When the turn ends, unfreeze all cards so gravity and collisions apply.")]
@@ -173,6 +181,33 @@ public class TowerBuilder : MonoBehaviour
     void HandleDuringTurn(int turn)
     {
         if (freezeWhenTurnBegins) SetCardsFrozen(true);
+        BreakFallenCards();
+    }
+
+    // A card knocked out of its slot by the end-of-turn physics stays registered under that slot's
+    // key, so the spot looks empty but refuses new cards for the rest of the game. Once the dust has
+    // settled, break anything that is no longer where it was placed - Card.Break raises Broken, and
+    // HandleCardBroken then drops the key so the slot opens up again.
+    void BreakFallenCards()
+    {
+        if (state == State.WaitingFirstClick) return;
+
+        List<Card> fallen = null;
+        foreach (var pair in cards)
+        {
+            Card c = pair.Value;
+            if (c == null) continue;
+
+            GetPose(pair.Key.Item1, pair.Key.Item2, pair.Key.Item3, out Vector3 pos, out Quaternion rot);
+            if (Vector3.Distance(c.transform.position, pos) <= fallenDistance &&
+                Quaternion.Angle(c.transform.rotation, rot) <= fallenAngle) continue;
+
+            if (fallen == null) fallen = new List<Card>();
+            fallen.Add(c);
+        }
+
+        if (fallen == null) return;
+        foreach (Card c in fallen) c.Break();   // modifies "cards", so never break while iterating it
     }
 
     // Turn over = drop the card the player was holding, then let physics act on the tower
@@ -260,7 +295,11 @@ public class TowerBuilder : MonoBehaviour
         {
             case LEFT:
                 pos = new Vector3(cx - 0.5f * L * sin, by + 0.5f * L * cos, origin.z);
-                rot = Quaternion.Euler(0, 0, -tiltAngle);
+                // Both halves of a tent lean in the same plane, so without this the left card turns
+                // its back to the camera while the right one shows its face. Spinning it 180 degrees
+                // about its own long axis (applied before the lean) shows the face without changing
+                // how it leans or where it sits.
+                rot = Quaternion.Euler(0, 0, -tiltAngle) * Quaternion.Euler(0, 180f, 0);
                 break;
             case RIGHT:
                 pos = new Vector3(cx + 0.5f * L * sin, by + 0.5f * L * cos, origin.z);
@@ -412,9 +451,9 @@ public class TowerBuilder : MonoBehaviour
     {
         if (!mouse.leftButton.wasPressedThisFrame || mouseOverUI) return;
 
-        var ground = new Plane(Vector3.up, new Vector3(0, groundY, 0));
-        if (ground.Raycast(mouseRay, out float d))
-            StartTower(mouseRay.GetPoint(d));
+        // Only start a tower where the click actually lands on the table, not anywhere on the infinite ground plane.
+        if (Physics.Raycast(mouseRay, out RaycastHit hit, 1000f, tableLayerMask))
+            StartTower(hit.point);
     }
 
     // Sets the tower origin and places the very first card
@@ -604,6 +643,6 @@ public class TowerBuilder : MonoBehaviour
     }
     public void PlaceCardSound()
     {
-        AudioManager.Instance.PlayOneShotSFX(SoundType.PlayCard);
+        AudioManager.SFX(SoundType.PlayCard);
     }
 }

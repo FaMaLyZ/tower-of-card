@@ -377,14 +377,14 @@ public class HandManager : MonoBehaviour
     //for fillykung
     public void DarwSound()
     {
-        AudioManager.Instance.PlayOneShotSFX(SoundType.DrawCard);
+        AudioManager.SFX(SoundType.DrawCard);
     }
     public void SelectCardSound()
     {
-        AudioManager.Instance.PlayOneShotSFX(SoundType.SelectCard);
+        AudioManager.SFX(SoundType.SelectCard);
     }
     public void ClearSelectedCardSound()
     {
-        AudioManager.Instance.PlayOneShotSFX(SoundType.UnselectCard);
+        AudioManager.SFX(SoundType.UnselectCard);
     }
 }

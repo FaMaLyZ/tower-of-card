@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: S_9
   suit: 3
   rank: 9
-  model: {fileID: 4784536016570381650, guid: 788e464daf93cb546b621ccd584cf1b9, type: 3}
+  model: {fileID: 2175129683666937435, guid: 6ef5fd4497debcf4f815a40d7ccf7c34, type: 3}
   handModel: {fileID: 4784536016570381650, guid: 788e464daf93cb546b621ccd584cf1b9, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.14
   tint: {r: 1, g: 1, b: 1, a: 1}

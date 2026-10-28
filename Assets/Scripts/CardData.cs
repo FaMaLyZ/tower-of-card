@@ -1,4 +1,3 @@
-using UnityEditor.Animations;
 using UnityEngine;
 
 public enum CardSuit { Clubs, Diamonds, Hearts, Spades }
@@ -18,6 +17,11 @@ public class CardData : ScriptableObject
     public string cardName = "Card";
     public CardSuit suit;
     public CardRank rank = CardRank.Ace;
+
+    // What the player is shown as this card's weight: Ace 1, 2-10 face value, J/Q/K 10.
+    // Deliberately separate from "mass" below - that one is the physics number, kept small so the
+    // tower stays stable, and it would read as meaningless to a player.
+    public int Weight => rank == CardRank.Ace ? 1 : Mathf.Min((int)rank, 10);
 
     [Header("3D models")]
     [Tooltip("Model used for the card in the tower. Empty = a plain coloured box.")]

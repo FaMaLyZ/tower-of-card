@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: D_7
   suit: 1
   rank: 7
-  model: {fileID: 3446435030210166973, guid: 3a2bb948d26fea9419fde27311830b9b, type: 3}
+  model: {fileID: 2465189045160016247, guid: 7d45947aed5555a4eb2180dce5778e57, type: 3}
   handModel: {fileID: 3446435030210166973, guid: 3a2bb948d26fea9419fde27311830b9b, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.12
   tint: {r: 1, g: 1, b: 1, a: 1}

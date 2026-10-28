@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: D_8
   suit: 1
   rank: 8
-  model: {fileID: 3332356442506230312, guid: 92e5fbd88e010d640aac6a15b576d9d8, type: 3}
+  model: {fileID: 2623345897630245343, guid: 37020dc7631a681409e8bdb424d452f8, type: 3}
   handModel: {fileID: 3332356442506230312, guid: 92e5fbd88e010d640aac6a15b576d9d8, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.13
   tint: {r: 1, g: 1, b: 1, a: 1}

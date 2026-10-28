@@ -15,8 +15,7 @@ MonoBehaviour:
   cardName: C_4
   suit: 0
   rank: 4
-  model: {fileID: 4385941155220564401, guid: 17b767d1cd6479f4faf07b0d5797d5c4, type: 3}
+  model: {fileID: 3522132650478259435, guid: d5ef0913696977145a985f4168c4f948, type: 3}
   handModel: {fileID: 4385941155220564401, guid: 17b767d1cd6479f4faf07b0d5797d5c4, type: 3}
-  cardAnim: {fileID: 9100000, guid: b08580163f01c434e957447bfd070600, type: 2}
-  mass: 0.1
+  mass: 0.09
   tint: {r: 1, g: 1, b: 1, a: 1}

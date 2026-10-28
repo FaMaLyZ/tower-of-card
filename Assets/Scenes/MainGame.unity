@@ -659,10 +659,15 @@ MonoBehaviour:
     manualEuler: {x: 0, y: 0, z: 0}
     flipFace: 0
   groundY: 0.25
+  tableLayerMask:
+    serializedVersion: 2
+    m_Bits: 128
   turnManager: {fileID: 1227103243}
   handManager: {fileID: 332459159}
   tiltAngle: 27
   maxBaseTents: 4
+  fallenDistance: 0.35
+  fallenAngle: 35
   physicsOnEndTurn: 1
   freezeWhenTurnBegins: 1
   snapRadiusPixels: 90
@@ -2843,6 +2848,7 @@ MonoBehaviour:
   handManager: {fileID: 332459159}
   canvas: {fileID: 989166574}
   gameOverPanel: {fileID: 2133716170}
+  isGameOverPanelActive: 0
   turnText: {fileID: 1912519958}
   cardsText: {fileID: 40612158}
   stateText: {fileID: 1559507554}
@@ -2866,7 +2872,7 @@ MonoBehaviour:
   snapMarkerTemplate: {fileID: 301170680}
   snapMarkerColor: {r: 0, g: 0, b: 0, a: 0.6}
   snapMarkerBestColor: {r: 0.2, g: 1, b: 0.3, a: 1}
-  cardDetailFormat: 'Rank: {0}   Suit: {1}   Mass: {2:0.00}'
+  cardDetailFormat: 'Rank: {0}   Suit: {1}   Weight: {2}'
   showInstructionsWhenNoCard: 1
   turnFormat: Turn {0} / {1}
   cardsFormat: 'Cards: {0} / {1}'

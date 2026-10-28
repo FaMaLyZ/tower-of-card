@@ -2,7 +2,6 @@ using System;
 using UnityEngine;
 using System.Collections.Generic;
 using System.Collections;
-using UnityEditor.Animations;
 
 
 /// How a 3D card model is fitted into the game. Lives on TowerBuilder.
@@ -40,6 +39,10 @@ public class Card : MonoBehaviour
     [Tooltip("Print every impact speed to the Console (helps you tune Break Speed).")]
     public bool logImpactSpeed = false;
 
+    [Header("Shake")]
+    [Tooltip("Scales the end-of-turn shake. 1 = exactly what the clips author (lv1 ~1%, lv2 ~1.3%, lv3 ~3% of card length). Visual only - the collider never moves.")]
+    [Range(0f, 3f)] public float shakeAmount = 1f;
+
     [Header("Card Break")]
     [SerializeField] private Animator animator;
     [SerializeField] private GameObject cardBreakPre;
@@ -52,6 +55,8 @@ public class Card : MonoBehaviour
 
     BoxCollider box;
     Rigidbody rb;
+    Transform shakeBone;
+    Vector3 shakeBoneRest;
     Renderer ownRenderer;       // the root's own mesh (e.g. the prefab's cube) - fallback look
     Renderer[] renderers;
     bool hasModel;
@@ -115,6 +120,8 @@ public class Card : MonoBehaviour
         foreach (var c in m.GetComponentsInChildren<Collider>(true)) c.enabled = false;
         foreach (var r in m.GetComponentsInChildren<Rigidbody>(true)) Destroy(r);
 
+        MoveAnimatorTo(m);
+
         Bounds b = CardModelUtil.GetLocalBounds(m.transform);
         if (b.size == Vector3.zero) return;                     // model has no mesh
 
@@ -131,6 +138,42 @@ public class Card : MonoBehaviour
         m.transform.localRotation = fit;
         m.transform.localScale = Vector3.one * scale;
         m.transform.localPosition = -(fit * (b.center * scale));   // put the model's centre at the card's centre
+    }
+
+    // The shake and shatter clips animate a child called "Bone", addressed relative to the
+    // Animator's own GameObject. The model only arrives at runtime as a child of this card, so
+    // unless the Animator moves onto it those paths resolve to nothing and the card never moves.
+    void MoveAnimatorTo(GameObject model)
+    {
+        Transform bone = model.transform.Find("Bone");
+        if (animator == null || bone == null) return;
+
+        RuntimeAnimatorController controller = animator.runtimeAnimatorController;
+        if (animator.gameObject == gameObject) Destroy(animator);
+
+        animator = model.AddComponent<Animator>();
+        animator.runtimeAnimatorController = controller;
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+
+        shakeBone = bone;
+        shakeBoneRest = bone.localPosition;
+    }
+
+    // Keeps the shake a visual tell only, so a shaking card never leaves the spot it was placed.
+    //
+    // The clips were authored against the source FBX, whose bone rests at a different Z than these
+    // card prefabs, and they write that Z as a constant rather than animating it. Played raw, the
+    // card snaps sideways by ~14% of its length the moment a shake starts and snaps back on idle.
+    // Only X and Y carry real movement, so hold this card's own rest Z and pass the wobble through.
+    void LateUpdate()
+    {
+        if (shakeBone == null) return;
+
+        Vector3 p = shakeBone.localPosition;
+        shakeBone.localPosition = new Vector3(
+            shakeBoneRest.x + (p.x - shakeBoneRest.x) * shakeAmount,
+            shakeBoneRest.y + (p.y - shakeBoneRest.y) * shakeAmount,
+            shakeBoneRest.z);
     }
 
     // ---------- Visual / physics states ----------
@@ -186,6 +229,7 @@ public class Card : MonoBehaviour
         rb.linearVelocity = Vector3.zero;
         rb.angularVelocity = Vector3.zero;
         rb.constraints = RigidbodyConstraints.FreezeAll;
+        peakSpeedSinceRest = 0f;
     }
 
     // Releases the card so gravity and collisions move it (used when the turn ends)
@@ -211,6 +255,26 @@ public class Card : MonoBehaviour
         if (impactSpeed >= breakSpeed) Break();
     }
 
+    // A toppling card can settle through a string of small contacts that never show up as one
+    // fast OnCollisionEnter (so it ends up resting on the ground instead of breaking). Track the
+    // fastest it moved since it last came to rest, and break it once it stops if that peak was a hard fall.
+    float peakSpeedSinceRest;
+    const float RestSpeed = 0.05f;
+
+    void FixedUpdate()
+    {
+        if (!breakOnImpact || isBroken || IsFrozenOrGhost()) return;
+
+        float speed = rb.linearVelocity.magnitude;
+        peakSpeedSinceRest = Mathf.Max(peakSpeedSinceRest, speed);
+
+        if (speed < RestSpeed)
+        {
+            if (peakSpeedSinceRest >= breakSpeed) Break();
+            peakSpeedSinceRest = 0f;
+        }
+    }
+
     bool IsFrozenOrGhost()
     {
         return rb.isKinematic || rb.constraints == RigidbodyConstraints.FreezeAll;
@@ -229,7 +293,7 @@ public class Card : MonoBehaviour
     {
         //play anim and sound
         animator.SetBool(isBreakHash , true);
-        AudioManager.Instance.PlayOneShotSFX(SoundType.CardBreak);
+        AudioManager.SFX(SoundType.CardBreak);
         Destroy(gameObject);
         Instantiate(cardBreakPre,transform.position, transform.rotation);
         yield return new WaitForSeconds(1.5f);
