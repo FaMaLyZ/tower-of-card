@@ -158,7 +158,7 @@ public class HandManager : MonoBehaviour
         dataInHand.Add(card.Data);
         MoveToSpawnPoint(view.transform, cardsInHand.Count - 1);
 
-        OnHandChanged?.Invoke();
+        AnnounceHandChanged();
     }
 
     GameObject PickHandPrefab(CardData data)
@@ -257,6 +257,7 @@ public class HandManager : MonoBehaviour
     {
         selectedCardId = GetCardId(index);
         SelectCardSound();
+        AnnounceSelectionChanged();
     }
 
     public void ClearSelection()
@@ -264,6 +265,45 @@ public class HandManager : MonoBehaviour
         if (SelectedIndex < 0) return;          // nothing was selected: no change, no sound
         selectedCardId = NoCard;
         ClearSelectedCardSound();
+        AnnounceSelectionChanged();
+    }
+
+    // Used when a card leaves the hand: no sound, and listeners are told only if something was selected
+    void ForgetSelectionAndHover()
+    {
+        bool hadSelection = selectedCardId != NoCard;
+        selectedCardId = NoCard;
+        hoveredCardId = NoCard;
+        if (hadSelection) AnnounceSelectionChanged();
+    }
+
+    // ---------- Announcements (told AFTER the change is done) ----------
+
+    void AnnounceHandChanged()
+    {
+        OnHandChanged?.Invoke();
+        GameEvents.RaiseHandChanged(GetCardIdsInOrder());
+    }
+
+    void AnnounceSelectionChanged()
+    {
+        GameEvents.RaiseSelectionChanged(GetSelectedCardIds());
+    }
+
+    /// The card IDs in the hand, left to right.
+    public List<int> GetCardIdsInOrder()
+    {
+        var ids = new List<int>(cardsInHand.Count);
+        foreach (HandCardView view in cardsInHand) ids.Add(view.CardId);
+        return ids;
+    }
+
+    /// The selected card IDs. One at most for now; A2 turns on picking up to five.
+    public List<int> GetSelectedCardIds()
+    {
+        var ids = new List<int>();
+        if (SelectedIndex >= 0) ids.Add(selectedCardId);
+        return ids;
     }
 
     // Called by HandCardView when the mouse moves onto / off a card
@@ -297,9 +337,8 @@ public class HandManager : MonoBehaviour
         dataInHand.RemoveAt(index);
         if (view != null) Destroy(view.gameObject);
 
-        selectedCardId = NoCard;
-        hoveredCardId = NoCard;
-        OnHandChanged?.Invoke();
+        ForgetSelectionAndHover();
+        AnnounceHandChanged();
         return card;
     }
 
@@ -335,9 +374,8 @@ public class HandManager : MonoBehaviour
 
         cardsInHand.Clear();
         dataInHand.Clear();
-        selectedCardId = NoCard;
-        hoveredCardId = NoCard;
-        OnHandChanged?.Invoke();
+        ForgetSelectionAndHover();
+        AnnounceHandChanged();
     }
 
     // ---------- Layout (your original fan layout, now smoothed) ----------
