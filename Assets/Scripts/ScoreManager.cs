@@ -82,7 +82,7 @@ public class ScoreContext
 //  ScoreManager
 // =====================================================================
 
-/// Balatro-style scoring, calculated at the END of every turn.
+/// Balatro-style scoring. The conductor asks for it when building ends.
 ///
 ///   1. The cards you placed this turn are your "played hand".
 ///   2. The poker hand they make decides the base  chips x mult  (e.g. Pair = 10 x 2).
@@ -94,7 +94,6 @@ public class ScoreContext
 public class ScoreManager : MonoBehaviour
 {
     [Header("References (auto-found if empty)")]
-    public TurnManager turnManager;
     public TowerBuilder tower;
 
     [Header("Hand values")]
@@ -105,7 +104,7 @@ public class ScoreManager : MonoBehaviour
     public int maxScoringCards = 5;
 
     [Header("Reveal animation")]
-    [Tooltip("Seconds between steps. 0 = instant. Keep (steps x delay) shorter than TurnManager's End Turn Delay.")]
+    [Tooltip("Seconds between steps. 0 = instant. If the next hand starts first, the result is shown at once.")]
     public float stepDelay = 0.35f;
 
     // ---------- Events (subscribe from other scripts / UI) ----------
@@ -136,40 +135,28 @@ public class ScoreManager : MonoBehaviour
 
     void Awake()
     {
-        if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
         if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
-
-        if (turnManager != null)
-        {
-            turnManager.OnStartTurn += HandleStartTurn;
-            turnManager.OnEndTurn += HandleEndTurn;
-        }
-        if (tower != null) tower.CardPlaced += HandleCardPlaced;
+        if (tower != null) tower.CardPlaced += RememberPlacedCard;
     }
 
     void OnDestroy()
     {
-        if (turnManager != null)
-        {
-            turnManager.OnStartTurn -= HandleStartTurn;
-            turnManager.OnEndTurn -= HandleEndTurn;
-        }
-        if (tower != null) tower.CardPlaced -= HandleCardPlaced;
+        if (tower != null) tower.CardPlaced -= RememberPlacedCard;
     }
 
     // =====================================================================
-    //  Turn events
+    //  Jobs the conductor asks for
     // =====================================================================
 
-    // Remember every card placed this turn
-    void HandleCardPlaced(CardData data, Card card)
+    // Remember every card placed this hand
+    void RememberPlacedCard(CardData data, Card card)
     {
         playedData.Add(data);
         playedCards.Add(card);
     }
 
-    // New turn: finish any running reveal, then start with a clean slate
-    void HandleStartTurn(int turn)
+    /// New hand: finish any running reveal, then start with a clean slate.
+    public void ClearLastHand()
     {
         if (IsScoring) FinishNow();
 
@@ -178,8 +165,8 @@ public class ScoreManager : MonoBehaviour
         ClearDisplay();
     }
 
-    // End of turn: score the played hand
-    void HandleEndTurn(int turn)
+    /// Building is over: score the cards that were placed this hand.
+    public void ScorePlayedCards()
     {
         if (playedData.Count == 0) return;
 
@@ -345,6 +332,13 @@ public class ScoreManager : MonoBehaviour
 
     public void ResetScore()
     {
+        if (sequence != null) StopCoroutine(sequence);
+        sequence = null;
+        IsScoring = false;
+        LastContext = null;
+        playedData.Clear();
+        playedCards.Clear();
+
         TotalScore = 0;
         ClearDisplay();
         OnTotalScoreChanged?.Invoke(TotalScore);

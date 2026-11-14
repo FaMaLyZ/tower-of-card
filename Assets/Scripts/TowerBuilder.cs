@@ -13,7 +13,7 @@ using System.Collections;
 ///   FLOOR = a flat card laid on top of two neighbouring tents
 ///   Next level = tents standing on the floor cards, and so on up the pyramid.
 ///
-/// Turns are handled by TurnManager; the HUD (hand buttons, snap markers, text) is controlled by GameUI.
+/// The conductor (GameFlowController) says when placing is allowed; the HUD is controlled by GameUI.
 public class TowerBuilder : MonoBehaviour
 {
     [Header("Setup")]
@@ -24,7 +24,7 @@ public class TowerBuilder : MonoBehaviour
     public LayerMask tableLayerMask = 1 << 7;   // "Table" layer
 
     [Header("References (auto-found if empty)")]
-    public TurnManager turnManager;
+    public GameFlowController flow;
     public HandManager handManager;
 
     [Header("House of cards")]
@@ -38,9 +38,9 @@ public class TowerBuilder : MonoBehaviour
     public float fallenAngle = 35f;
 
     [Header("Physics")]
-    [Tooltip("When the turn ends, unfreeze all cards so gravity and collisions apply.")]
+    [Tooltip("During the shake, unfreeze all cards so gravity and collisions apply.")]
     public bool physicsOnEndTurn = true;
-    [Tooltip("When the next turn begins playing, freeze all cards again where they are.")]
+    [Tooltip("When building starts again, freeze all cards where they are.")]
     public bool freezeWhenTurnBegins = true;
 
     [Header("Snapping")]
@@ -74,8 +74,13 @@ public class TowerBuilder : MonoBehaviour
 
     // ---------- Public info (used by GameUI / OrbitCamera) ----------
 
-    // True when the turn system allows placing cards (or there is no TurnManager)
-    public bool CanAct => turnManager == null || turnManager.CanPlaceCard;
+    // True while the conductor has placement switched on and this hand still has cards to place
+    public bool CanAct => CanPlaceMoreCards;
+    public bool CanPlaceMoreCards => placementEnabled && CardsPlacedThisHand < placementLimit;
+    public int CardsPlacedThisHand { get; private set; }
+
+    bool placementEnabled;
+    int placementLimit;
 
     public string HintText
     {
@@ -137,29 +142,15 @@ public class TowerBuilder : MonoBehaviour
 
     void Awake()
     {
-        if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
+        if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
         if (handManager == null) handManager = FindFirstObjectByType<HandManager>();
 
         Card.Broken += HandleCardBroken;
-        if (handManager != null) handManager.OnCardChosen += SelectCard;
-
-        if (turnManager != null)
-        {
-            turnManager.OnDuringTurn += HandleDuringTurn;
-            turnManager.OnEndTurn += HandleEndTurn;
-        }
     }
 
     void OnDestroy()
     {
         Card.Broken -= HandleCardBroken;
-        if (handManager != null) handManager.OnCardChosen -= SelectCard;
-
-        if (turnManager != null)
-        {
-            turnManager.OnDuringTurn -= HandleDuringTurn;
-            turnManager.OnEndTurn -= HandleEndTurn;
-        }
     }
 
     void Start()
@@ -175,13 +166,53 @@ public class TowerBuilder : MonoBehaviour
         levelH = L * cos + T;         // height of one level (tent + floor card)
     }
 
-    // ---------- Turn events ----------
+    // ---------- Jobs the conductor asks for ----------
 
-    // Player can build again = lock every card in place
-    void HandleDuringTurn(int turn)
+    /// Building starts: lock every card in place and allow up to maxCards placements.
+    public void EnablePlacement(int maxCards)
     {
+        CardsPlacedThisHand = 0;
+        placementLimit = maxCards;
+        placementEnabled = true;
+
         if (freezeWhenTurnBegins) SetCardsFrozen(true);
         BreakFallenCards();
+    }
+
+    /// Building is over: drop the card the player was holding.
+    public void DisablePlacement()
+    {
+        placementEnabled = false;
+        if (state == State.Placing) CancelSelection();
+    }
+
+    /// The shake: let gravity and collisions act on the tower.
+    public void ReleasePhysics()
+    {
+        if (physicsOnEndTurn) SetCardsFrozen(false);
+    }
+
+    /// The shake is over: lock every card where it is now.
+    public void FreezeTower()
+    {
+        SetCardsFrozen(true);
+    }
+
+    /// Removes every card and lets the player start a new tower with a click on the table.
+    public void SweepTower()
+    {
+        ResetTower();
+    }
+
+    /// Debug cheat: unfreeze the tower and shove every card sideways.
+    public void PushTowerOver(float pushSpeed)
+    {
+        foreach (var c in cards.Values)
+        {
+            if (c == null) continue;
+            c.Unfreeze();
+            c.GetComponent<Rigidbody>().AddForce(Vector3.right * pushSpeed, ForceMode.VelocityChange);
+        }
     }
 
     // A card knocked out of its slot by the end-of-turn physics stays registered under that slot's
@@ -208,13 +239,6 @@ public class TowerBuilder : MonoBehaviour
 
         if (fallen == null) return;
         foreach (Card c in fallen) c.Break();   // modifies "cards", so never break while iterating it
-    }
-
-    // Turn over = drop the card the player was holding, then let physics act on the tower
-    void HandleEndTurn(int turn)
-    {
-        if (state == State.Placing) CancelSelection();
-        if (physicsOnEndTurn) SetCardsFrozen(false);
     }
 
     // If every ground-level card is gone (broken or destroyed) there is nothing left to build on.
@@ -279,6 +303,7 @@ public class TowerBuilder : MonoBehaviour
     {
         foreach (var c in cards.Values)
         {
+            if (c == null) continue;            // destroyed card
             if (frozen) c.Freeze();
             else c.Unfreeze();
         }
@@ -390,7 +415,7 @@ public class TowerBuilder : MonoBehaviour
 
         ReadMouse(mouse);
 
-        // Turn system says "not now" (start/end of turn, game over)
+        // The conductor says "not now" (drawing, scoring, shaking, run over)
         if (!CanAct)
         {
             if (state == State.Placing) CancelSelection();
@@ -565,7 +590,7 @@ public class TowerBuilder : MonoBehaviour
         ClearGhost();
         handManager.PlaySelectedCard();   // removes it from the hand -> discard pile
         state = State.Choosing;
-        ReportCardPlaced();               // may end the turn
+        ReportCardPlaced();               // the conductor ends the hand at the limit
     }
 
     void CancelSelection()
@@ -581,10 +606,10 @@ public class TowerBuilder : MonoBehaviour
         ghost = null;
     }
 
-    // Tell the TurnManager a card was placed
+    // Counted here; the conductor reads CanPlaceMoreCards to know when the hand is done
     void ReportCardPlaced()
     {
-        if (turnManager != null) turnManager.RegisterCardPlaced();
+        CardsPlacedThisHand++;
     }
 
     // ---------- Cards ----------
@@ -599,7 +624,7 @@ public class TowerBuilder : MonoBehaviour
         CardPlaced?.Invoke(data, c);
     }
 
-    // Called when the player picks a card in the hand (click or number key)
+    // Called by the conductor (hand card click, HUD button) and by the number keys
     public void SelectCard(int index)
     {
         if (!CanAct || handManager == null) return;
@@ -631,7 +656,7 @@ public class TowerBuilder : MonoBehaviour
         // Trigger game over if there are no places to build and no cards left to play
         if (noSlotsAvailable || noCardsInHand)
         {
-            turnManager.EndTurn();
+            if (flow != null) flow.RequestEndHand();
             StartCoroutine(DelayForCalSocre());
             if (state == State.Placing) CancelSelection();
         }

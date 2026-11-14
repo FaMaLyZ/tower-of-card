@@ -25,7 +25,7 @@ public class GameUI : MonoBehaviour
     }
 
     [Header("Game references (auto-found if empty)")]
-    public TurnManager turnManager;
+    public GameFlowController flow;
     public TowerBuilder tower;
     public HandManager handManager;             // used to find the card to describe
     public Canvas canvas;                       // only needed for snap markers
@@ -60,7 +60,7 @@ public class GameUI : MonoBehaviour
    
     [Header("Buttons")]
     public Button endTurnButton;
-    public Button nextTurnButton;               // only shown when TurnManager.autoStartNextTurn is off
+    public Button nextTurnButton;               // no longer used (the next hand always starts by itself); kept hidden
 
     [Header("Hand")]
     public HandSlotUI[] handSlots;
@@ -106,7 +106,7 @@ public class GameUI : MonoBehaviour
 
     void Awake()
     {
-        if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
+        if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
         if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
         if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
         if (scoreManager == null) scoreManager = FindFirstObjectByType<ScoreManager>();
@@ -137,7 +137,7 @@ public class GameUI : MonoBehaviour
         RefreshEndTurnButton();
         RefreshNextTurnButton();
         RefreshHand();
-        if((turnManager != null && turnManager.IsGameOver)|| (tower != null && tower.isGameOver))
+        if ((flow != null && flow.IsRunOver) || (tower != null && tower.isGameOver))
         {
             if (!isGameOverPanelActive)
             {
@@ -171,7 +171,6 @@ public class GameUI : MonoBehaviour
     void HookButtons()
     {
         if (endTurnButton != null) endTurnButton.onClick.AddListener(OnEndTurnClicked);
-        if (nextTurnButton != null) nextTurnButton.onClick.AddListener(OnNextTurnClicked);
 
         for (int i = 0; i < handSlots.Length; i++)
         {
@@ -185,17 +184,17 @@ public class GameUI : MonoBehaviour
     //  REFRESH (every frame) - one method per UI element
     // =====================================================================
 
-    bool GameRunning => turnManager != null && turnManager.GameStarted;
+    bool GameRunning => flow != null && flow.Phase != GamePhase.None;
 
     void RefreshTurnInfo()
     {
         if (!GameRunning) return;
 
         if (turnText != null)
-            turnText.text = string.Format(turnFormat, turnManager.TurnNumber, turnManager.maxTurns);
+            turnText.text = string.Format(turnFormat, flow.HandNumber, flow.HandsPerRun);
 
         if (cardsText != null)
-            cardsText.text = string.Format(cardsFormat, turnManager.CardsPlacedThisTurn, turnManager.cardsPerTurn);
+            cardsText.text = string.Format(cardsFormat, flow.CardsPlacedThisHand, flow.CardsPerHand);
 
         if (stateText != null)
             stateText.text = GetStateLabel();
@@ -284,14 +283,14 @@ public class GameUI : MonoBehaviour
         if (endTurnButton == null) return;
 
         endTurnButton.gameObject.SetActive(GameRunning);
-        endTurnButton.interactable = turnManager != null && turnManager.CanEndTurn;
+        endTurnButton.interactable = flow != null && flow.IsBuilding;
     }
 
     void RefreshNextTurnButton()
     {
         if (nextTurnButton == null) return;
 
-        nextTurnButton.gameObject.SetActive(turnManager != null && turnManager.WaitingForNextTurn);
+        nextTurnButton.gameObject.SetActive(false);
     }
 
     void RefreshHand()
@@ -359,19 +358,13 @@ public class GameUI : MonoBehaviour
 
     public void OnEndTurnClicked()
     {
-        if (turnManager != null) turnManager.EndTurn();
-        AudioManager.UISFX(SoundType.UI_Button);
-    }
-
-    public void OnNextTurnClicked()
-    {
-        if (turnManager != null) turnManager.StartNextTurn();
+        if (flow != null) flow.RequestEndHand();
         AudioManager.UISFX(SoundType.UI_Button);
     }
 
     public void OnHandButtonClicked(int index)
     {
-        if (tower != null) tower.SelectCard(index);
+        if (flow != null) flow.RequestSelectCard(index);
         AudioManager.UISFX(SoundType.UI_Button);
     }
 
@@ -381,13 +374,12 @@ public class GameUI : MonoBehaviour
 
     string GetStateLabel()
     {
-        if (turnManager.IsGameOver) return gameOverLabel;
-
-        switch (turnManager.State)
+        switch (flow.Phase)
         {
-            case TurnState.StartTurn:  return startingLabel;
-            case TurnState.DuringTurn: return yourTurnLabel;
-            default:                   return turnEndedLabel;
+            case GamePhase.RunEnd: return gameOverLabel;
+            case GamePhase.Draw:   return startingLabel;
+            case GamePhase.Build:  return yourTurnLabel;
+            default:               return turnEndedLabel;
         }
     }
 
@@ -395,10 +387,13 @@ public class GameUI : MonoBehaviour
     {
         if (!GameRunning) return "";
 
-        if (turnManager.IsGameOver && turnManager.State == TurnState.EndTurn) return gameOverLabel;
-        if (turnManager.State == TurnState.StartTurn) return string.Format(bannerStartFormat, turnManager.TurnNumber);
-        if (turnManager.State == TurnState.EndTurn) return string.Format(bannerEndFormat, turnManager.TurnNumber);
-        return "";   // DuringTurn: no banner
+        switch (flow.Phase)
+        {
+            case GamePhase.RunEnd: return gameOverLabel;
+            case GamePhase.Draw:   return string.Format(bannerStartFormat, flow.HandNumber);
+            case GamePhase.Build:  return "";
+            default:               return string.Format(bannerEndFormat, flow.HandNumber);
+        }
     }
 
     void CreateMarker()

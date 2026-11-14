@@ -662,7 +662,7 @@ MonoBehaviour:
   tableLayerMask:
     serializedVersion: 2
     m_Bits: 128
-  turnManager: {fileID: 1227103243}
+  flow: {fileID: 0}
   handManager: {fileID: 332459159}
   tiltAngle: 27
   maxBaseTents: 4
@@ -1149,7 +1149,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HandManager
   deckManager: {fileID: 1908267859}
-  turnManager: {fileID: 1227103243}
+  flow: {fileID: 0}
   cardPrefab: {fileID: 1164459000530960219, guid: 9408ff841473ba14d9d33fa260e3f9e6, type: 3}
   handTranform: {fileID: 1967341411}
   fanSpread: 3.5
@@ -1438,6 +1438,56 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 433897256}
   m_CullTransparentMesh: 1
+--- !u!1 &466649123
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 466649125}
+  - component: {fileID: 466649124}
+  m_Layer: 0
+  m_Name: GameFlow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &466649124
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 466649123}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bd25758dcccfbac42905d8ab124ba6d7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameFlowController
+  config: {fileID: 11400000, guid: 5b36710a70424f342b59afcf15ddac0f, type: 2}
+  hand: {fileID: 332459159}
+  deck: {fileID: 1908267859}
+  swap: {fileID: 1894643685}
+  tower: {fileID: 195017821}
+  score: {fileID: 1007714718}
+--- !u!4 &466649125
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 466649123}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!4 &468320002 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1663304813099856995, guid: 7c2ba47b2cbaad2438ba0c890462adec, type: 3}
@@ -1490,6 +1540,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DiscardZone
   discardManager: {fileID: 1894643685}
+  flow: {fileID: 0}
   hoverScale: 1.1
 --- !u!1 &745742808
 GameObject:
@@ -2167,7 +2218,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5514e1e2c68dde84489b2b59ab02fa9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScoreManager
-  turnManager: {fileID: 1227103243}
   tower: {fileID: 195017821}
   handTypes:
   - hand: 0
@@ -2701,12 +2751,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4c68e4cad67dc414b914d43ce5319cd4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurnManager
-  cardsPerTurn: 5
-  maxTurns: 10
-  startTurnDelay: 2
-  endTurnDelay: 3
-  autoStartNextTurn: 1
-  beginOnStart: 1
 --- !u!4 &1227103244
 Transform:
   m_ObjectHideFlags: 0
@@ -2843,7 +2887,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9843ac92a4de1374b9ef33017c97b210, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameUI
-  turnManager: {fileID: 1227103243}
+  flow: {fileID: 0}
   tower: {fileID: 195017821}
   handManager: {fileID: 332459159}
   canvas: {fileID: 989166574}
@@ -3945,7 +3989,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d503a2c19eacf545b5a1d364421fd3c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DiscardManager
-  turnManager: {fileID: 1227103243}
   handManager: {fileID: 332459159}
   deckManager: {fileID: 1908267859}
   discardsPerTurn: 3
@@ -4675,3 +4718,4 @@ SceneRoots:
   - {fileID: 989166575}
   - {fileID: 1400221178}
   - {fileID: 1506003894}
+  - {fileID: 466649125}

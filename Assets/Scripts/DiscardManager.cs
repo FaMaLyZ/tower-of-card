@@ -11,7 +11,6 @@ using UnityEngine;
 public class DiscardManager : MonoBehaviour
 {
     [Header("References (auto-found if empty)")]
-    public TurnManager turnManager;
     public HandManager handManager;
     public DeckManager deckManager;
 
@@ -30,12 +29,11 @@ public class DiscardManager : MonoBehaviour
     public int DiscardsUsed { get; private set; }
     public int DiscardsLeft => Mathf.Max(0, discardsPerTurn - DiscardsUsed);
 
-    /// True when a discard would work right now.
+    /// True when the rules allow a discard (the conductor checks the phase).
     public bool CanDiscard =>
         handManager != null && deckManager != null &&
         handManager.SelectedIndex >= 0 &&
-        DiscardsLeft > 0 &&
-        (turnManager == null || turnManager.CanPlaceCard);
+        DiscardsLeft > 0;
 
     // (discarded card, card drawn in its place - null if nothing could be drawn)
     public event Action<CardData, CardData> OnDiscarded;
@@ -46,20 +44,12 @@ public class DiscardManager : MonoBehaviour
 
     void Awake()
     {
-        if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
         if (handManager == null) handManager = FindFirstObjectByType<HandManager>();
         if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
-
-        if (turnManager != null) turnManager.OnStartTurn += HandleStartTurn;
     }
 
-    void OnDestroy()
-    {
-        if (turnManager != null) turnManager.OnStartTurn -= HandleStartTurn;
-    }
-
-    // New turn = discards are available again
-    void HandleStartTurn(int turn)
+    /// New hand = discards are available again. (Called by the conductor.)
+    public void ResetSwaps()
     {
         DiscardsUsed = 0;
     }
@@ -68,7 +58,7 @@ public class DiscardManager : MonoBehaviour
     //  Discarding
     // =====================================================================
 
-    /// Discards the selected card. Returns true if it worked. (Called by DiscardZone.)
+    /// Discards the selected card. Returns true if it worked. (Called by the conductor.)
     public bool TryDiscardSelected()
     {
         if (!CanDiscard) return false;

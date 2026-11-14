@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// The player's hand.
-///  - At the start of every turn it draws "Cards Draw Per Turn" cards from the DeckManager.
+///  - When the conductor starts a hand it draws "Cards Draw Per Turn" cards from the DeckManager.
 ///  - The player clicks (or presses 1-9) to choose which card in the hand to play.
 ///  - A played card goes to the deck's discard pile.
 ///  - Cards are shown fanned out (layout code from your original HandManager).
@@ -14,7 +14,7 @@ public class HandManager : MonoBehaviour
 {
     [Header("References (auto-found if empty)")]
     public DeckManager deckManager;
-    public TurnManager turnManager;
+    public GameFlowController flow;
 
     [Header("Card visuals")]
     [Tooltip("Used for cards that have no Hand Model.")]
@@ -34,9 +34,9 @@ public class HandManager : MonoBehaviour
     public int cardsDrawPerTurn = 5;
     [Tooltip("The hand never holds more cards than this.")]
     public int maxHandSize = 10;
-    [Tooltip("On = unplayed cards go to the discard pile when the turn ends. Off = they stay in your hand.")]
+    [Tooltip("No longer used: unplayed cards always stay in the hand. Kept so the scene value is not lost.")]
     public bool discardHandAtEndOfTurn = false;
-    [Tooltip("End the turn automatically when the hand is empty.")]
+    [Tooltip("No longer used: the conductor ends the hand when the hand is empty. Kept so the scene value is not lost.")]
     public bool autoEndTurnWhenHandEmpty = true;
 
     [Header("Smoothing")]
@@ -85,65 +85,32 @@ public class HandManager : MonoBehaviour
     public IReadOnlyList<CardData> CardsInHandData => dataInHand;
 
     public event Action OnHandChanged;
-    public event Action<int> OnCardChosen;      // player clicked a card (index in hand)
 
     // ---------- Lifecycle ----------
 
     void Awake()
     {
         if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
-        if (turnManager == null) turnManager = FindFirstObjectByType<TurnManager>();
+        if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
 
         if (handTranform == null)
             Debug.LogError("HandManager: assign Hand Tranform.", this);
         if (cardPrefab == null)
             Debug.LogWarning("HandManager: no Card Prefab - cards without a Hand Model will not be shown.", this);
-
-        if (turnManager != null)
-        {
-            turnManager.OnStartTurn += HandleStartTurn;
-            turnManager.OnEndTurn += HandleEndTurn;
-        }
-    }
-
-    void OnDestroy()
-    {
-        if (turnManager != null)
-        {
-            turnManager.OnStartTurn -= HandleStartTurn;
-            turnManager.OnEndTurn -= HandleEndTurn;
-        }
     }
 
     void Update()
     {
         UpdateCardInHand();
-        CheckAutoEndTurn();
-    }
-
-    // ---------- Turn events ----------
-
-    // Start of every turn: draw cards
-    void HandleStartTurn(int turn)
-    {
-        DrawCards(cardsDrawPerTurn);
-    }
-
-    // End of turn: optionally throw the hand away
-    void HandleEndTurn(int turn)
-    {
-        ClearSelection();
-        if (discardHandAtEndOfTurn) DiscardHand();
-    }
-
-    // Nothing left to play = nothing left to do this turn
-    void CheckAutoEndTurn()
-    {
-        if (!autoEndTurnWhenHandEmpty || turnManager == null) return;
-        if (turnManager.CanEndTurn && Count == 0) turnManager.EndTurn();
     }
 
     // ---------- Drawing ----------
+
+    /// Start of a hand: draw "Cards Draw Per Turn" cards (the hand never goes above Max Hand Size).
+    public int DrawCardsForNewHand()
+    {
+        return DrawCards(cardsDrawPerTurn);
+    }
 
     /// Draws up to "amount" cards from the deck. Returns how many were drawn.
     public int DrawCards(int amount)
@@ -248,6 +215,7 @@ public class HandManager : MonoBehaviour
 
     public void ClearSelection()
     {
+        if (SelectedIndex < 0) return;          // nothing was selected: no change, no sound
         SelectedIndex = -1;
         ClearSelectedCardSound();
     }
@@ -264,13 +232,12 @@ public class HandManager : MonoBehaviour
             HoveredIndex = -1;
     }
 
-    // Called by HandCardView when the player clicks a card in the hand
+    // Called by HandCardView when the player clicks a card in the hand.
+    // The click is a command: the conductor decides if it counts in the current phase.
     public void ClickCard(GameObject card)
     {
-        if (turnManager != null && !turnManager.CanPlaceCard) return;
-
         int index = cardInHand.IndexOf(card);
-        if (index >= 0) OnCardChosen?.Invoke(index);
+        if (index >= 0 && flow != null) flow.RequestSelectCard(index);
     }
 
     /// Takes a card out of the hand WITHOUT sending it anywhere (DiscardManager uses this).
@@ -309,10 +276,16 @@ public class HandManager : MonoBehaviour
     public void DiscardHand()
     {
         for (int i = 0; i < cardInHand.Count; i++)
-        {
-            if (cardInHand[i] != null) Destroy(cardInHand[i]);
             if (deckManager != null) deckManager.Discard(dataInHand[i]);
-        }
+
+        EmptyHand();
+    }
+
+    /// Removes every card from the hand WITHOUT sending it anywhere (a restart resets the deck itself).
+    public void EmptyHand()
+    {
+        foreach (GameObject visual in cardInHand)
+            if (visual != null) Destroy(visual);
 
         cardInHand.Clear();
         dataInHand.Clear();
