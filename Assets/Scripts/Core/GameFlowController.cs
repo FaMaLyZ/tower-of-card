@@ -220,6 +220,7 @@ public class GameFlowController : MonoBehaviour
         tower.ReleasePhysics();
         yield return new WaitForSeconds(config.oldLoopShakeSeconds);
         tower.FreezeTower();
+        tower.BreakFallenCards();                           // resolved now, never at the next draw
     }
 
     /// Lets the last score finish counting before the game-over screen. Never waits forever (rule 13).

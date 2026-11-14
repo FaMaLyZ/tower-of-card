@@ -137,7 +137,7 @@ public class GameUI : MonoBehaviour
         RefreshEndTurnButton();
         RefreshNextTurnButton();
         RefreshHand();
-        if ((flow != null && flow.IsRunOver) || (tower != null && tower.isGameOver))
+        if (flow != null && flow.IsRunOver)
         {
             if (!isGameOverPanelActive)
             {

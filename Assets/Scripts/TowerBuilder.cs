@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using System.Collections;
 
 /// House-of-cards builder.
 /// Card prefab = a root object with Rigidbody + BoxCollider + Card script (scale 1,1,1).
@@ -17,14 +16,13 @@ using System.Collections;
 public class TowerBuilder : MonoBehaviour
 {
     [Header("Setup")]
-    public Card cardPrefab;
+    [RequiredField] public Card cardPrefab;
     public CardModelSettings cardModel = new CardModelSettings();
     public float groundY = 0f;
     [Tooltip("The first card of a tower can only be placed on something in this layer (the table). Keeps players from starting a tower off the table.")]
     public LayerMask tableLayerMask = 1 << 7;   // "Table" layer
 
     [Header("References (auto-found if empty)")]
-    public GameFlowController flow;
     public HandManager handManager;
 
     [Header("House of cards")]
@@ -46,8 +44,6 @@ public class TowerBuilder : MonoBehaviour
     [Header("Snapping")]
     public float snapRadiusPixels = 90f;             // mouse must be this close to a slot (screen pixels)
     public float snapSpeed = 25f;
-
-    public bool isGameOver;
 
     const int LEFT = 0, RIGHT = 1, FLOOR = 2;
 
@@ -142,7 +138,6 @@ public class TowerBuilder : MonoBehaviour
 
     void Awake()
     {
-        if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
         if (handManager == null) handManager = FindFirstObjectByType<HandManager>();
 
         Card.Broken += HandleCardBroken;
@@ -176,7 +171,6 @@ public class TowerBuilder : MonoBehaviour
         placementEnabled = true;
 
         if (freezeWhenTurnBegins) SetCardsFrozen(true);
-        BreakFallenCards();
     }
 
     /// Building is over: drop the card the player was holding.
@@ -215,11 +209,13 @@ public class TowerBuilder : MonoBehaviour
         }
     }
 
-    // A card knocked out of its slot by the end-of-turn physics stays registered under that slot's
-    // key, so the spot looks empty but refuses new cards for the rest of the game. Once the dust has
-    // settled, break anything that is no longer where it was placed - Card.Break raises Broken, and
-    // HandleCardBroken then drops the key so the slot opens up again.
-    void BreakFallenCards()
+    /// Called by the conductor at the END of the shake, never later (Master Plan section 0).
+    ///
+    /// A card knocked out of its slot by the shake stays registered under that slot's key, so the
+    /// spot looks empty but refuses new cards. Break anything that is no longer where it was
+    /// placed - Card.Break raises Broken, and HandleCardBroken then drops the key so the slot
+    /// opens up again.
+    public void BreakFallenCards()
     {
         if (state == State.WaitingFirstClick) return;
 
@@ -408,7 +404,6 @@ public class TowerBuilder : MonoBehaviour
     void Update()
     {
         CheckTowerStillExists();
-        CheckGameOver();
 
         var mouse = Mouse.current;
         if (mouse == null) return;
@@ -642,29 +637,6 @@ public class TowerBuilder : MonoBehaviour
         ghost.Setup(data, cardModel);
         ghost.SetGhost(false);
         state = State.Placing;
-    }
-    public void CheckGameOver()
-    {
-        if (isGameOver || state == State.WaitingFirstClick) return;
-
-        // Refresh available slots based on the current tower state
-        BuildSlots();
-
-        bool noSlotsAvailable = slots.Count == 0;
-        bool noCardsInHand = handManager == null || handManager.Count == 0;
-        var allCardCount = handManager.GetAllCardCount();
-        // Trigger game over if there are no places to build and no cards left to play
-        if (noSlotsAvailable || noCardsInHand)
-        {
-            if (flow != null) flow.RequestEndHand();
-            StartCoroutine(DelayForCalSocre());
-            if (state == State.Placing) CancelSelection();
-        }
-    }
-    IEnumerator DelayForCalSocre()
-    {
-        yield return new WaitForSeconds(3f);    
-        isGameOver = true;
     }
     public void PlaceCardSound()
     {
