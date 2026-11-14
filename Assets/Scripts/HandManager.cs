@@ -67,13 +67,15 @@ public class HandManager : MonoBehaviour
     readonly List<CardData> dataInHand = new List<CardData>();
 
     // Selection and hover remember the card ID, never the hand position
-    int selectedCardId = NoCard;
+    // In the order the player picked them. The old loop keeps one at most; A2 allows up to five.
+    readonly List<int> selectedCardIds = new List<int>();
     int hoveredCardId = NoCard;
 
     // ---------- Public info ----------
     public int Count => cardsInHand.Count;
-    public int SelectedCardId => selectedCardId;
-    public int SelectedIndex => FindIndexOfCard(selectedCardId);
+    /// The card picked most recently (-1 = nothing selected).
+    public int SelectedCardId => selectedCardIds.Count > 0 ? selectedCardIds[selectedCardIds.Count - 1] : NoCard;
+    public int SelectedIndex => FindIndexOfCard(SelectedCardId);
     public CardData SelectedCard => GetCard(SelectedIndex);
 
     // The card under the mouse (-1 = none)
@@ -255,24 +257,52 @@ public class HandManager : MonoBehaviour
 
     public void SetSelected(int index)
     {
-        selectedCardId = GetCardId(index);
+        selectedCardIds.Clear();
+        int cardId = GetCardId(index);
+        if (cardId != NoCard) selectedCardIds.Add(cardId);
         SelectCardSound();
         AnnounceSelectionChanged();
     }
 
     public void ClearSelection()
     {
-        if (SelectedIndex < 0) return;          // nothing was selected: no change, no sound
-        selectedCardId = NoCard;
+        if (selectedCardIds.Count == 0) return; // nothing was selected: no change, no sound
+        selectedCardIds.Clear();
         ClearSelectedCardSound();
         AnnounceSelectionChanged();
+    }
+
+    /// Multi-select (A2 switches this on): adds the card to the selection, or takes it out if it is already in.
+    /// Returns false when nothing changed: the card is not in the hand, or the selection is already full.
+    public bool ToggleSelected(int cardId, int maxSelected)
+    {
+        if (FindIndexOfCard(cardId) < 0) return false;
+
+        if (selectedCardIds.Remove(cardId))
+        {
+            ClearSelectedCardSound();
+        }
+        else
+        {
+            if (selectedCardIds.Count >= maxSelected) return false;
+            selectedCardIds.Add(cardId);
+            SelectCardSound();
+        }
+
+        AnnounceSelectionChanged();
+        return true;
+    }
+
+    public bool IsSelected(int cardId)
+    {
+        return selectedCardIds.Contains(cardId);
     }
 
     // Used when a card leaves the hand: no sound, and listeners are told only if something was selected
     void ForgetSelectionAndHover()
     {
-        bool hadSelection = selectedCardId != NoCard;
-        selectedCardId = NoCard;
+        bool hadSelection = selectedCardIds.Count > 0;
+        selectedCardIds.Clear();
         hoveredCardId = NoCard;
         if (hadSelection) AnnounceSelectionChanged();
     }
@@ -298,12 +328,10 @@ public class HandManager : MonoBehaviour
         return ids;
     }
 
-    /// The selected card IDs. One at most for now; A2 turns on picking up to five.
+    /// A copy of the selected card IDs, in the order they were picked.
     public List<int> GetSelectedCardIds()
     {
-        var ids = new List<int>();
-        if (SelectedIndex >= 0) ids.Add(selectedCardId);
-        return ids;
+        return new List<int>(selectedCardIds);
     }
 
     // Called by HandCardView when the mouse moves onto / off a card
@@ -383,7 +411,7 @@ public class HandManager : MonoBehaviour
     void GetHandTarget(int i, out Vector3 position, out Quaternion rotation, out Vector3 scale)
     {
         float middle = (cardsInHand.Count - 1) / 2f;
-        bool isSelected = cardsInHand[i].CardId == selectedCardId;
+        bool isSelected = IsSelected(cardsInHand[i].CardId);
 
         float rotationAngle = fanSpread * (i - middle);
         rotation = Quaternion.Euler(0, 180, rotationAngle);
