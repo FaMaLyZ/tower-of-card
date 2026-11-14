@@ -106,7 +106,17 @@ public class GameFlowController : MonoBehaviour
     //  Commands (input calls these; a click in the wrong phase is ignored)
     // =====================================================================
 
-    /// A hand card was clicked, or its HUD button was pressed.
+    /// A hand card was clicked. The card is named by its ID, so the hand order does not matter.
+    public void RequestSelectCardById(int cardId)
+    {
+        if (!IsBuilding) return;
+
+        int handIndex = hand.FindIndexOfCard(cardId);
+        if (handIndex < 0) return;              // that card is no longer in the hand
+        tower.SelectCard(handIndex);
+    }
+
+    /// A HUD card button was pressed (these are numbered by hand position).
     public void RequestSelectCard(int handIndex)
     {
         if (!IsBuilding) return;

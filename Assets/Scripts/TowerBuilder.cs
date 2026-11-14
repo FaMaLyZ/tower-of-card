@@ -486,7 +486,7 @@ public class TowerBuilder : MonoBehaviour
         CardData data = handManager.GetCard(index);
 
         origin = new Vector3(clickPoint.x, groundY, clickPoint.z);
-        PlaceCard((LEFT, 0, 0), data);
+        PlaceCard((LEFT, 0, 0), data, handManager.GetCardId(index));
         handManager.PlayCard(index);
 
         state = State.Choosing;
@@ -580,7 +580,7 @@ public class TowerBuilder : MonoBehaviour
         CardData data = handManager != null ? handManager.SelectedCard : null;
         if (data == null) return;
 
-        PlaceCard(slots[bestSlot].key, data);
+        PlaceCard(slots[bestSlot].key, data, handManager.SelectedCardId);
         PlaceCardSound();
         ClearGhost();
         handManager.PlaySelectedCard();   // removes it from the hand -> discard pile
@@ -609,10 +609,12 @@ public class TowerBuilder : MonoBehaviour
 
     // ---------- Cards ----------
 
-    void PlaceCard((int, int, int) key, CardData data)
+    void PlaceCard((int, int, int) key, CardData data, int cardId)
     {
         GetPose(key.Item1, key.Item2, key.Item3, out Vector3 pos, out Quaternion rot);
         Card c = Instantiate(cardPrefab, pos, rot, transform);
+        c.name = $"TowerCard #{cardId} ({data.cardName})";
+        c.CardId = cardId;
         c.Setup(data, cardModel);
         c.SetPlaced();
         cards[key] = c;

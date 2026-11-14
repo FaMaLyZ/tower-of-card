@@ -321,8 +321,7 @@ public class HandManager : MonoBehaviour
     // The click is a command: the conductor decides if it counts in the current phase.
     public void ClickCard(HandCardView card)
     {
-        int index = cardsInHand.IndexOf(card);
-        if (index >= 0 && flow != null) flow.RequestSelectCard(index);
+        if (card != null && flow != null) flow.RequestSelectCardById(card.CardId);
     }
 
     /// Takes a card out of the hand WITHOUT sending it anywhere (DiscardManager uses this).

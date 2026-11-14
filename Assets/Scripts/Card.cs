@@ -53,6 +53,9 @@ public class Card : MonoBehaviour
 
     public CardData Data { get; private set; }
 
+    /// Which card of the deck this is (-1 = not a real card, for example the placement ghost).
+    public int CardId { get; set; } = -1;
+
     BoxCollider box;
     Rigidbody rb;
     Transform shakeBone;
