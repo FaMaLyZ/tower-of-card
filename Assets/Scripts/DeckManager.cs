@@ -37,8 +37,11 @@ public class DeckManager : MonoBehaviour
     public bool reshuffleDiscardWhenEmpty = true;
 
     // The END of the list is the TOP of the pile (cheapest to remove from)
-    readonly List<CardData> drawPile = new List<CardData>();
-    readonly List<CardData> discardPile = new List<CardData>();
+    readonly List<CardInstance> drawPile = new List<CardInstance>();
+    readonly List<CardInstance> discardPile = new List<CardInstance>();
+
+    // Card IDs start again at 0 every time the deck is reset
+    int nextCardId;
 
     // Raised whenever the deck or discard pile changes (UI can listen)
     public event Action OnDeckChanged;
@@ -54,16 +57,18 @@ public class DeckManager : MonoBehaviour
         ResetDeck();
     }
 
-    // Rebuilds the deck from the Starting Deck list (also usable for a restart)
+    // Rebuilds the deck from the Starting Deck list (also usable for a restart).
+    // Every card gets a fresh ID, so empty the hand and the tower BEFORE calling this.
     public void ResetDeck()
     {
         drawPile.Clear();
         discardPile.Clear();
+        nextCardId = 0;
 
         foreach (var entry in startingDeck)
         {
             if (entry == null || entry.card == null) continue;
-            for (int i = 0; i < entry.count; i++) drawPile.Add(entry.card);
+            for (int i = 0; i < entry.count; i++) AddNewCardToDrawPile(entry.card);
         }
 
         if (cardSet != null)
@@ -71,7 +76,7 @@ public class DeckManager : MonoBehaviour
             foreach (var card in cardSet)
             {
                 if (card == null) continue;
-                for (int i = 0; i < copiesOfEachCard; i++) drawPile.Add(card);
+                for (int i = 0; i < copiesOfEachCard; i++) AddNewCardToDrawPile(card);
             }
         }
 
@@ -82,24 +87,30 @@ public class DeckManager : MonoBehaviour
         OnDeckChanged?.Invoke();
     }
 
+    void AddNewCardToDrawPile(CardData data)
+    {
+        drawPile.Add(new CardInstance(nextCardId, data));
+        nextCardId++;
+    }
+
     // ---------- Drawing ----------
 
     /// Draws the top card. Returns null if there is nothing left to draw.
-    public CardData Draw()
+    public CardInstance Draw()
     {
         if (drawPile.Count == 0 && reshuffleDiscardWhenEmpty && discardPile.Count > 0)
             RefillFromDiscard();
 
         if (drawPile.Count == 0) return null;
 
-        CardData card = drawPile[drawPile.Count - 1];
+        CardInstance card = drawPile[drawPile.Count - 1];
         drawPile.RemoveAt(drawPile.Count - 1);
         OnDeckChanged?.Invoke();
         return card;
     }
 
     /// Puts a used card on the discard pile.
-    public void Discard(CardData card)
+    public void Discard(CardInstance card)
     {
         if (card == null) return;
         discardPile.Add(card);
@@ -107,7 +118,7 @@ public class DeckManager : MonoBehaviour
     }
 
     /// Puts a card back into the draw pile (used when the player discards).
-    public void ReturnToDeck(CardData card, DeckReturn where = DeckReturn.ShuffleIn)
+    public void ReturnToDeck(CardInstance card, DeckReturn where = DeckReturn.ShuffleIn)
     {
         if (card == null) return;
 

@@ -64,7 +64,7 @@ public class DiscardManager : MonoBehaviour
         if (!CanDiscard) return false;
 
         // take the card out of the hand (does NOT go to the discard pile)
-        CardData discarded = handManager.RemoveCard(handManager.SelectedIndex);
+        CardInstance discarded = handManager.RemoveCard(handManager.SelectedIndex);
         if (discarded == null) return false;
 
         int countAfterRemoval = handManager.Count;
@@ -89,7 +89,7 @@ public class DiscardManager : MonoBehaviour
 
         DiscardsUsed++;
         DiscardSound();
-        OnDiscarded?.Invoke(discarded, drawn);
+        OnDiscarded?.Invoke(discarded.Data, drawn);
         return true;
     }
     public void DiscardSound()

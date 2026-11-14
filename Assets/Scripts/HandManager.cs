@@ -10,6 +10,12 @@ using UnityEngine.UI;
 ///  - A played card goes to the deck's discard pile.
 ///  - Cards are shown fanned out (layout code from your original HandManager).
 ///  - If a CardData has a Hand Model it is shown in the hand; otherwise Card Prefab is used.
+///
+/// B0 hand contract:
+///  - Every hand card is a ROOT object (HandCardView + click collider) with a "Visual" child (the model).
+///    This script moves the root only. Effects may move the Visual only.
+///  - Cards are told apart by card ID, not by hand position. Selection and hover remember the ID,
+///    so they stay on the same card when the hand changes.
 public class HandManager : MonoBehaviour
 {
     [Header("References (auto-found if empty)")]
@@ -54,24 +60,24 @@ public class HandManager : MonoBehaviour
     [Header("Check Gameover")]
     public int allCardLeft = 0;
 
-    public List<GameObject> cardInHand = new List<GameObject>();
+    const int NoCard = -1;
 
-    // Same order as cardInHand
-    class HandInfo
-    {
-        public Vector3 baseScale;
-        public Quaternion extraRotation;
-    }
+    // The hand, left to right. dataInHand is always in the same order as cardsInHand.
+    readonly List<HandCardView> cardsInHand = new List<HandCardView>();
     readonly List<CardData> dataInHand = new List<CardData>();
-    readonly List<HandInfo> infoInHand = new List<HandInfo>();
+
+    // Selection and hover remember the card ID, never the hand position
+    int selectedCardId = NoCard;
+    int hoveredCardId = NoCard;
 
     // ---------- Public info ----------
-    public int Count => cardInHand.Count;
-    public int SelectedIndex { get; private set; } = -1;
+    public int Count => cardsInHand.Count;
+    public int SelectedCardId => selectedCardId;
+    public int SelectedIndex => FindIndexOfCard(selectedCardId);
     public CardData SelectedCard => GetCard(SelectedIndex);
 
     // The card under the mouse (-1 = none)
-    public int HoveredIndex { get; private set; } = -1;
+    public int HoveredIndex => FindIndexOfCard(hoveredCardId);
 
     /// The card whose details should be shown: the one under the mouse, otherwise the selected one.
     public CardData InspectedCard
@@ -120,10 +126,10 @@ public class HandManager : MonoBehaviour
         int drawn = 0;
         for (int i = 0; i < amount && Count < maxHandSize; i++)
         {
-            CardData data = deckManager.Draw();
-            if (data == null) break;            // deck is completely empty
+            CardInstance card = deckManager.Draw();
+            if (card == null) break;            // deck is completely empty
 
-            AddCardToHand(data);
+            AddCardToHand(card);
             drawn++;
         }
         return drawn;
@@ -135,42 +141,65 @@ public class HandManager : MonoBehaviour
         DrawCards(1);
     }
 
-    // Creates the card in the hand
-    void AddCardToHand(CardData data)
+    // Creates the card in the hand: a root we move, with the model as its "Visual" child
+    void AddCardToHand(CardInstance card)
     {
-        if (data == null || Count >= maxHandSize || handTranform == null) return;
+        if (card == null || card.Data == null || Count >= maxHandSize || handTranform == null) return;
 
-        bool useModel = data.handModel != null;
-        GameObject prefab = useModel ? data.handModel : cardPrefab;
+        GameObject prefab = PickHandPrefab(card.Data);
         if (prefab == null) return;
 
-        GameObject newCard = Instantiate(prefab, handTranform.position, Quaternion.identity, handTranform);
+        HandCardView view = CreateCardRoot(card, prefab.layer);
+        Transform visual = CreateCardVisual(view.transform, prefab, card.Data);
+        view.Setup(this, card, visual);
+        EnsureClickable(view.gameObject);       // measured now, while the root is still at full size
 
-        var view = newCard.GetComponent<HandCardView>();
-        if (view == null) view = newCard.AddComponent<HandCardView>();
-        view.hand = this;
-
-        if (!useModel) ApplyVisual(newCard, data);   // tint + name for the generic card prefab
-        EnsureClickable(newCard);
-
-        cardInHand.Add(newCard);
-        dataInHand.Add(data);
-        infoInHand.Add(new HandInfo
-        {
-            baseScale = prefab.transform.localScale,
-            extraRotation = useModel ? Quaternion.Euler(handModelEuler) : Quaternion.identity
-        });
-
-        // start at the spawn point so the card glides into its place
-        GetHandTarget(cardInHand.Count - 1, out _, out Quaternion rot, out Vector3 scale);
-        Transform t = newCard.transform;
-        t.localPosition = drawFromPoint != null
-            ? handTranform.InverseTransformPoint(drawFromPoint.position)
-            : Vector3.zero;
-        t.localRotation = rot;
-        t.localScale = scale * spawnScale;
+        cardsInHand.Add(view);
+        dataInHand.Add(card.Data);
+        MoveToSpawnPoint(view.transform, cardsInHand.Count - 1);
 
         OnHandChanged?.Invoke();
+    }
+
+    GameObject PickHandPrefab(CardData data)
+    {
+        return data.handModel != null ? data.handModel : cardPrefab;
+    }
+
+    // The root: an empty object that holds the card's place in the hand and takes the clicks
+    HandCardView CreateCardRoot(CardInstance card, int layer)
+    {
+        var root = new GameObject($"HandCard #{card.Id} ({card.Data.cardName})");
+        root.layer = layer;                     // same layer as the model, so the camera's raycaster still sees it
+        root.transform.SetParent(handTranform, false);
+        return root.AddComponent<HandCardView>();
+    }
+
+    // The Visual: the model the player sees. It sits exactly on the root until an effect moves it.
+    Transform CreateCardVisual(Transform root, GameObject prefab, CardData data)
+    {
+        bool useModel = data.handModel != null;
+
+        GameObject visual = Instantiate(prefab, root);
+        visual.name = "Visual";
+        visual.transform.localPosition = Vector3.zero;
+        visual.transform.localRotation = useModel ? Quaternion.Euler(handModelEuler) : Quaternion.identity;
+        visual.transform.localScale = prefab.transform.localScale;
+
+        if (!useModel) ApplyVisual(visual, data);   // tint + name for the generic card prefab
+        return visual.transform;
+    }
+
+    // Start at the spawn point so the card glides into its place
+    void MoveToSpawnPoint(Transform root, int index)
+    {
+        GetHandTarget(index, out _, out Quaternion rotation, out Vector3 scale);
+
+        root.localPosition = drawFromPoint != null
+            ? handTranform.InverseTransformPoint(drawFromPoint.position)
+            : Vector3.zero;
+        root.localRotation = rotation;
+        root.localScale = scale * spawnScale;
     }
 
     // Colours the card and writes its name (works for UI cards and 3D cards)
@@ -186,7 +215,8 @@ public class HandManager : MonoBehaviour
         if (label != null) label.text = data.cardName;
     }
 
-    // A 3D model with no collider can't be clicked - add one that fits the model
+    // A 3D model with no collider can't be clicked - add one to the ROOT that fits the model.
+    // The collider is on the root on purpose: effects move the Visual, the click target stays put.
     void EnsureClickable(GameObject card)
     {
         if (card.GetComponentInChildren<Graphic>() != null) return;    // UI card
@@ -207,64 +237,80 @@ public class HandManager : MonoBehaviour
         return index >= 0 && index < dataInHand.Count ? dataInHand[index] : null;
     }
 
+    /// The ID of the card at this hand position (-1 = no card there).
+    public int GetCardId(int index)
+    {
+        return index >= 0 && index < cardsInHand.Count ? cardsInHand[index].CardId : NoCard;
+    }
+
+    /// Where this card is in the hand right now (-1 = not in the hand).
+    public int FindIndexOfCard(int cardId)
+    {
+        if (cardId == NoCard) return -1;
+
+        for (int i = 0; i < cardsInHand.Count; i++)
+            if (cardsInHand[i].CardId == cardId) return i;
+        return -1;
+    }
+
     public void SetSelected(int index)
     {
-        SelectedIndex = (index >= 0 && index < Count) ? index : -1;
-        SelectCardSound(); 
+        selectedCardId = GetCardId(index);
+        SelectCardSound();
     }
 
     public void ClearSelection()
     {
         if (SelectedIndex < 0) return;          // nothing was selected: no change, no sound
-        SelectedIndex = -1;
+        selectedCardId = NoCard;
         ClearSelectedCardSound();
     }
 
     // Called by HandCardView when the mouse moves onto / off a card
-    public void HoverCard(GameObject card)
+    public void HoverCard(HandCardView card)
     {
-        HoveredIndex = cardInHand.IndexOf(card);
+        hoveredCardId = card != null ? card.CardId : NoCard;
     }
 
-    public void UnhoverCard(GameObject card)
+    public void UnhoverCard(HandCardView card)
     {
-        if (HoveredIndex >= 0 && HoveredIndex < cardInHand.Count && cardInHand[HoveredIndex] == card)
-            HoveredIndex = -1;
+        if (card != null && card.CardId == hoveredCardId) hoveredCardId = NoCard;
     }
 
     // Called by HandCardView when the player clicks a card in the hand.
     // The click is a command: the conductor decides if it counts in the current phase.
-    public void ClickCard(GameObject card)
+    public void ClickCard(HandCardView card)
     {
-        int index = cardInHand.IndexOf(card);
+        int index = cardsInHand.IndexOf(card);
         if (index >= 0 && flow != null) flow.RequestSelectCard(index);
     }
 
     /// Takes a card out of the hand WITHOUT sending it anywhere (DiscardManager uses this).
-    public CardData RemoveCard(int index)
+    public CardInstance RemoveCard(int index)
     {
         if (index < 0 || index >= Count) return null;
 
-        CardData data = dataInHand[index];
-        GameObject visual = cardInHand[index];
+        HandCardView view = cardsInHand[index];
+        CardInstance card = view != null ? view.Card : null;
 
-        cardInHand.RemoveAt(index);
+        cardsInHand.RemoveAt(index);
         dataInHand.RemoveAt(index);
-        infoInHand.RemoveAt(index);
-        if (visual != null) Destroy(visual);
+        if (view != null) Destroy(view.gameObject);
 
-        SelectedIndex = -1;
-        HoveredIndex = -1;
+        selectedCardId = NoCard;
+        hoveredCardId = NoCard;
         OnHandChanged?.Invoke();
-        return data;
+        return card;
     }
 
     /// The card was played: remove it from the hand and put it on the discard pile.
     public CardData PlayCard(int index)
     {
-        CardData data = RemoveCard(index);
-        if (data != null && deckManager != null) deckManager.Discard(data);
-        return data;
+        CardInstance card = RemoveCard(index);
+        if (card == null) return null;
+
+        if (deckManager != null) deckManager.Discard(card);
+        return card.Data;
     }
 
     public CardData PlaySelectedCard()
@@ -275,8 +321,8 @@ public class HandManager : MonoBehaviour
     /// Sends every card in the hand to the discard pile.
     public void DiscardHand()
     {
-        for (int i = 0; i < cardInHand.Count; i++)
-            if (deckManager != null) deckManager.Discard(dataInHand[i]);
+        foreach (HandCardView view in cardsInHand)
+            if (deckManager != null && view != null) deckManager.Discard(view.Card);
 
         EmptyHand();
     }
@@ -284,40 +330,38 @@ public class HandManager : MonoBehaviour
     /// Removes every card from the hand WITHOUT sending it anywhere (a restart resets the deck itself).
     public void EmptyHand()
     {
-        foreach (GameObject visual in cardInHand)
-            if (visual != null) Destroy(visual);
+        foreach (HandCardView view in cardsInHand)
+            if (view != null) Destroy(view.gameObject);
 
-        cardInHand.Clear();
+        cardsInHand.Clear();
         dataInHand.Clear();
-        infoInHand.Clear();
-        SelectedIndex = -1;
-        HoveredIndex = -1;
+        selectedCardId = NoCard;
+        hoveredCardId = NoCard;
         OnHandChanged?.Invoke();
     }
 
     // ---------- Layout (your original fan layout, now smoothed) ----------
 
-    // Where card number i wants to be
+    // Where the ROOT of card number i wants to be (the Visual child just rides along)
     void GetHandTarget(int i, out Vector3 position, out Quaternion rotation, out Vector3 scale)
     {
-        float middle = (cardInHand.Count - 1) / 2f;
-        bool isSelected = i == SelectedIndex;
-        HandInfo info = infoInHand[i];
+        float middle = (cardsInHand.Count - 1) / 2f;
+        bool isSelected = cardsInHand[i].CardId == selectedCardId;
 
         float rotationAngle = fanSpread * (i - middle);
-        rotation = Quaternion.Euler(0, 180, rotationAngle) * info.extraRotation;
+        rotation = Quaternion.Euler(0, 180, rotationAngle);
 
         float horizontalOffset = cardSpacing * (i - middle);
         float verticalOffset = verticalSpacing * (i - middle) + (isSelected ? selectedLift : 0f);
         float deedOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
         position = new Vector3(horizontalOffset, verticalOffset, deedOffset);
-        scale = info.baseScale * handCardScale * (isSelected ? selectedScale : 1f);
+        scale = Vector3.one * handCardScale * (isSelected ? selectedScale : 1f);
     }
 
     // Moves every card a little towards its place each frame
     private void UpdateCardInHand()
     {
-        if (cardInHand.Count <= 0)
+        if (cardsInHand.Count <= 0)
         {
             return;
         }
@@ -325,13 +369,13 @@ public class HandManager : MonoBehaviour
         // frame-rate independent smoothing (moveSpeed 0 = jump straight there)
         float t = moveSpeed <= 0f ? 1f : 1f - Mathf.Exp(-moveSpeed * Time.deltaTime);
 
-        for (int i = 0; i < cardInHand.Count; i++)
+        for (int i = 0; i < cardsInHand.Count; i++)
         {
-            if (cardInHand[i] == null) continue;
+            if (cardsInHand[i] == null) continue;
 
             GetHandTarget(i, out Vector3 position, out Quaternion rotation, out Vector3 scale);
 
-            Transform card = cardInHand[i].transform;
+            Transform card = cardsInHand[i].transform;
             card.localPosition = Vector3.Lerp(card.localPosition, position, t);
             card.localRotation = Quaternion.Slerp(card.localRotation, rotation, t);
             card.localScale = Vector3.Lerp(card.localScale, scale, t);
@@ -343,7 +387,7 @@ public class HandManager : MonoBehaviour
     }
     public int countAllCardLeft()
     {
-        allCardLeft = deckManager.DrawPileCount + cardInHand.Count;
+        allCardLeft = deckManager.DrawPileCount + cardsInHand.Count;
         return allCardLeft;
     }
 
