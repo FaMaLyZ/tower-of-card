@@ -570,8 +570,8 @@ The first playtest (P1) answers one question: *is Bank vs Ride interesting?* Bui
 
 | Step | Build | ✔ Done when |
 |---|---|---|
-| **A0. Baseline** | Branch `prototype-loop`; commit the working build. Add `GameEvents`, `GameConfig`, `PresentationGate`, empty `DebugCheats`, and the EditMode test assembly. | The game plays exactly as before. |
-| **A1. Conductor** | `GameFlowController` running today's steps. Commands go through it. Delete `TurnManager` and both game-over checks; rewire scene references first. | No false game over. Play Again leaves exactly one conductor. A debug key restarts a full tower (until A3). |
+| **A0. Baseline** ✅ *done, tag `good-A0`* | Branch `prototype-loop`; commit the working build. Add `GameEvents`, `GameConfig`, `PresentationGate`, empty `DebugCheats`, and the EditMode test assembly. | The game plays exactly as before. |
+| **A1. Conductor** | Three commits, each playable (see [6.3](#63-existing-scripts) for why `TurnManager` is not deleted here).<br>**A1a:** add `GameFlowController`; switch `TowerBuilder`, `HandManager`, `ScoreManager`, `DiscardManager` and `GameUi` over to it. `TurnManager` becomes an empty, switched-off shell.<br>**A1b:** delete `CheckGameOver` and the next-turn break timing, so only the conductor decides game over.<br>**A1c:** play-test, run the scene checker, tell teammates. | No false game over. Play Again leaves exactly one conductor. A debug key restarts a full tower (until A3). The scene checker reports no Missing Script and no empty required field. |
 | **B0. Hand contract** | One person: root + `Visual` child, card IDs, selection, basic layout and input. | The hand works with no juice. A2 and Track B both build on this. |
 | **A2. Commit** | Select 1–5 → live hand name → Play Hand → `CanFit` → place only those cards → Undo. | A commit that needs newly opened slots is accepted. An impossible commit spends nothing. Every accepted build can be finished. |
 | **A3. Bank / Ride** | `PotManager` + tests. `ResolveShake` ([§3.3](#33-the-shake-has-a-time-limit)). Full-tower rule, Bank, last-hand auto-bank. A light `BlindManager`: one fixed target, four hands, a Safe Points counter. `BankRideView` as a new script. | Normal hand, breaks, collapse, last hand and full tower all work with plain buttons. The worked example in §1.3 passes as a test. |
@@ -584,7 +584,7 @@ The first playtest (P1) answers one question: *is Bank vs Ride interesting?* Bui
 
 | Script | What happens to it |
 |---|---|
-| `TurnManager.cs` | Replaced by the conductor. Never leave both running. |
+| `TurnManager.cs` | Replaced by the conductor in A1a, but the **file stays as an empty, switched-off shell until A6**. `MainGame`, `Filly` and `Immer` each hold a `TurnManager` component, so deleting the file early leaves a Missing Script in teammates' scenes. The shell does nothing, so both are never running. |
 | `TowerBuilder.cs` (647 lines) | Remove `CheckGameOver` and the next-turn break timing. Add `CanFit`, `HasLegalPlacement`, `ResolveShake`, `SweepTower`. Split out `TowerSlots` and `TowerPlacementInput` **when A2/A3 need it**, not only in A6. |
 | `ScoreManager.cs` | Keep the scoring. It no longer owns the total. Any reveal animation moves to juice (C2). |
 | `HandManager.cs` / `HandCardView.cs` | Card IDs, multi-select, `Visual` child (B0). |
@@ -628,6 +628,16 @@ A0 ─ A1 ─ B0 ─ A2 ─ A3 ─ 🎯P1 ─ A4 ─ 🎯P2 ─ A6
             └─ B1 ─ B2 ─ B3 ─ B4 ─ B5
                            └─ C1 … C5      └─ C6 … C8
 ```
+
+### 6.6 Safety net and schedule
+
+**Git.** Work on `prototype-loop`; `main` stays at the last played build. Commit once per step (three for A1). After a step passes its check, tag it `good-A0`, `good-A1`, and so on, and push the tag. `good-baseline` is the last build before the rewrite: `git checkout good-baseline` gets it back. Merge to `main` only after P1 and again after P2. Move or rename scripts inside Unity so the `.meta` file follows. Only one person edits `MainGame.unity` at a time.
+
+**Scene checker (build in A1).** An Editor menu tool that scans the open scene for Missing Scripts and empty required fields. Run it after every step. On start the conductor also checks every worker it needs and logs an error that names the missing one.
+
+**Rules code lives in `Assets/Scripts/Rules/`** (assembly `TowerOfCards.Rules`) so EditMode tests can reach it. That code cannot use old scripts such as `CardData` directly; it works on plain numbers. Everything that touches scenes stays in the default assembly.
+
+**10-day target.** Days 1–4: A0–A3. Day 5: P1, fix what it shows. Days 6–8: A4 plus the cheapest high-impact juice (C2, C3, B1). Day 9: a short P2 and tuning. Day 10: bug fixing only. Boss twists are cut; most of Track B and C and the A6 clean-up are the first things to drop if time runs out. Play-test the same day as each step.
 
 ---
 
@@ -724,7 +734,7 @@ One script, `DebugCheats`, inside `#if UNITY_EDITOR || DEVELOPMENT_BUILD`. Cheat
 
 ## 10. Change log
 
-**Revision 4 (2026-11-14).** Boss twists cut to fit a 10-day schedule. The Boss stays as the third blind of each Ante with the largest target: it cannot be skipped, a win repairs one crack, and the final one clears the run. Removed: the four twists, `IBossTwist`, step A5. Twists can come back after the prototype.
+**Revision 4 (2026-11-14).** Boss twists cut to fit a 10-day schedule. The Boss stays as the third blind of each Ante with the largest target: it cannot be skipped, a win repairs one crack, and the final one clears the run. Removed: the four twists, `IBossTwist`, step A5. Twists can come back after the prototype. Also added: the safe A1 split, `TurnManager` kept as a shell until A6, the scene checker, the Rules assembly and the git and schedule notes in §6.6.
 
 **Revision 3 (2026-11-14).** Merged the two revision-2 drafts.
 
