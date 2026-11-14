@@ -19,7 +19,7 @@ public class HandManager : MonoBehaviour
     [Header("Card visuals")]
     [Tooltip("Used for cards that have no Hand Model.")]
     public GameObject cardPrefab;
-    public Transform handTranform;
+    [RequiredField] public Transform handTranform;
     public float fanSpread = 5f;
     public float cardSpacing = 5f;
     public float verticalSpacing = 10f;
