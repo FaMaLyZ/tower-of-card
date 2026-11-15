@@ -110,6 +110,7 @@ public class GameUI : MonoBehaviour
     public string lastShakeFormat = "\nLast shake: {0} broken (-{1}% each)";
     public string collapsedLabel = "\nThe tower collapsed: the Pot is lost";
     public string bankOrRideStateLabel = "Bank the Pot, or Ride to keep building";
+    public string continueOrLeaveStateLabel = "Target reached! Continue, or Leave Table for a bonus";
     public string doneSwappingLabel = "Done Swapping";
     public string playHandLabel = "Play Hand";
     public string swapStateFormat = "Swap: pick up to {0} cards, then click the deck";
@@ -456,6 +457,7 @@ public class GameUI : MonoBehaviour
             case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
             case GamePhase.Build:  return string.Format(buildStateFormat, flow.Commit.UnplacedCount);
             case GamePhase.BankOrRide: return bankOrRideStateLabel;
+            case GamePhase.ContinueOrLeave: return continueOrLeaveStateLabel;
             default:               return turnEndedLabel;
         }
     }
@@ -484,7 +486,8 @@ public class GameUI : MonoBehaviour
             case GamePhase.Swap:
             case GamePhase.Commit:
             case GamePhase.Build:
-            case GamePhase.BankOrRide: return "";
+            case GamePhase.BankOrRide:
+            case GamePhase.ContinueOrLeave: return "";
             default:               return string.Format(bannerEndFormat, flow.HandNumber);
         }
     }

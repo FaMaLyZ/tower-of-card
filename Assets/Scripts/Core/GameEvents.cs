@@ -69,6 +69,11 @@ public static class GameEvents
 
     public static void RaisePotBanked(long payout, long safePoints) => PotBanked?.Invoke(payout, safePoints);
 
+    /// The player took Leave Table. Carries the bonus paid and the blind score after it.
+    public static event Action<long, long> TableLeft;
+
+    public static void RaiseTableLeft(long bonus, long blindScore) => TableLeft?.Invoke(bonus, blindScore);
+
     /// A blind started. Carries its target.
     public static event Action<long> BlindStarted;
 
@@ -96,6 +101,7 @@ public static class GameEvents
         ShakeResolved = null;
         PotChanged = null;
         PotBanked = null;
+        TableLeft = null;
         BlindStarted = null;
         BlindWon = null;
         BlindFailed = null;

@@ -22,6 +22,8 @@ public class BlindEndView : MonoBehaviour
     public string resultFormat = "{0}\n{1:N0} / {2:N0}";
     public string wonLabel = "BLIND WON";
     public string failedLabel = "BLIND FAILED";
+    [Tooltip("Added after the result when the player took Leave Table. {0} = the bonus")]
+    public string leaveBonusFormat = "\nLeft the table: +{0:N0} bonus";
 
     [Header("Fade In Settings")]
     public CanvasGroup canvasGroup;
@@ -51,7 +53,9 @@ public class BlindEndView : MonoBehaviour
         if (resultText == null || flow == null || !flow.IsBlindOver) return;
 
         string label = flow.LastBlindResult == BlindResult.Won ? wonLabel : failedLabel;
-        resultText.text = string.Format(resultFormat, label, flow.SafePoints, flow.Target);
+        string text = string.Format(resultFormat, label, flow.SafePoints, flow.Target);
+        if (flow.LeftTable) text += string.Format(leaveBonusFormat, flow.LeaveBonusPaid);
+        resultText.text = text;
     }
 
     void StartFadeIn()

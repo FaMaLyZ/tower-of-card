@@ -10,7 +10,8 @@ using UnityEngine;
 /// Each hand's score goes into the Pot; the shake cuts it or empties it.
 /// If the tower survives, the player Banks (Pot becomes Safe Points, tower cleared) or Rides.
 /// A3c: the game is one blind with a fixed target and a few hands. The last hand banks by itself.
-/// The blind menu, Antes, Glass and Leave Table arrive in A4.
+/// A4a: a Bank that reaches the target with hands left offers Continue / Leave Table.
+/// The blind menu, Antes and Glass arrive in A4b / A4c.
 public class GameFlowController : MonoBehaviour
 {
     [Header("Settings")]
@@ -61,6 +62,19 @@ public class GameFlowController : MonoBehaviour
 
     enum BankOrRideChoice { None, Bank, Ride }
     BankOrRideChoice bankOrRideChoice;
+
+    // The Continue / Leave Table choice (only after a Bank that reached the target with hands left)
+    public bool IsChoosingContinueOrLeave => Phase == GamePhase.ContinueOrLeave && continueOrLeaveChoice == ContinueOrLeaveChoice.None;
+
+    /// What Leave Table would pay now. The view shows it; it never redoes the maths.
+    public long LeaveBonusQuote => blind.GetLeaveTableBonus();
+
+    /// True if the blind just ended through Leave Table (the end screen can say so).
+    public bool LeftTable => blind.HasLeftTable;
+    public long LeaveBonusPaid => blind.LeaveBonusPaid;
+
+    enum ContinueOrLeaveChoice { None, Continue, Leave }
+    ContinueOrLeaveChoice continueOrLeaveChoice;
 
     // Which commands count right now (the HUD uses these to grey out buttons)
     public bool IsSwapping => Phase == GamePhase.Swap && !doneSwappingRequested;
@@ -121,7 +135,8 @@ public class GameFlowController : MonoBehaviour
         pot = new PotManager(breakPercent, heightPercent);
         int handsPerBlind = config != null ? config.handsPerBlind : 4;
         int targetGrowthPercent = config != null ? config.targetGrowthPercent : 150;
-        blind = new BlindManager(handsPerBlind, targetGrowthPercent);
+        int leaveBonusPercent = config != null ? config.leaveBonusPercent : 10;
+        blind = new BlindManager(handsPerBlind, targetGrowthPercent, leaveBonusPercent);
     }
 
     void WarnIfSecondConductorExists()
@@ -262,6 +277,20 @@ public class GameFlowController : MonoBehaviour
         bankOrRideChoice = BankOrRideChoice.Ride;
     }
 
+    /// The Continue button: keep playing this blind. No bonus.
+    public void RequestContinue()
+    {
+        if (!IsChoosingContinueOrLeave) return;             // wrong phase or a double-click: ignore
+        continueOrLeaveChoice = ContinueOrLeaveChoice.Continue;
+    }
+
+    /// The Leave Table button: take the unused-hand bonus and win the blind now.
+    public void RequestLeaveTable()
+    {
+        if (!IsChoosingContinueOrLeave) return;             // wrong phase or a double-click: ignore
+        continueOrLeaveChoice = ContinueOrLeaveChoice.Leave;
+    }
+
     /// Debug key F2: put extra chips in the Pot.
     public void RequestCheatAddPotChips(long chips)
     {
@@ -323,7 +352,7 @@ public class GameFlowController : MonoBehaviour
     IEnumerator PlayBlind()
     {
         StartBlind();
-        while (blind.HandsLeft > 0)
+        while (blind.HandsLeft > 0 && !blind.HasLeftTable)
         {
             yield return PlayOneHand();
             if (NothingLeftToPlay()) break;                 // jump: deck and hand are both empty
@@ -367,7 +396,10 @@ public class GameFlowController : MonoBehaviour
         if (blind.HandsLeft == 0) { BankThePot(); yield break; }   // jump: the last hand banks by itself
 
         yield return BankOrRidePhase();                     // Ride is disabled if the tower is full
-        if (bankOrRideChoice == BankOrRideChoice.Bank) BankThePot();
+        if (bankOrRideChoice == BankOrRideChoice.Ride) yield break;
+
+        BankThePot();
+        if (blind.CanLeaveTable()) yield return ContinueOrLeavePhase();   // target met, hands left
     }
 
     IEnumerator DrawPhase()
@@ -484,6 +516,26 @@ public class GameFlowController : MonoBehaviour
         Debug.Log($"[Flow] banked {payout} (pot was {oldChips}), safe points {blind.BlindScore}");
         AnnouncePotChanged(oldChips, PotChangeReason.Banked);
         GameEvents.RaisePotBanked(payout, blind.BlindScore);
+    }
+
+    /// Ends when the player presses Continue or Leave Table. Leave pays the bonus once;
+    /// PlayBlind then sees HasLeftTable and ends the blind as a win.
+    IEnumerator ContinueOrLeavePhase()
+    {
+        SetPhase(GamePhase.ContinueOrLeave);
+        continueOrLeaveChoice = ContinueOrLeaveChoice.None;
+
+        while (continueOrLeaveChoice == ContinueOrLeaveChoice.None)
+            yield return null;
+
+        if (continueOrLeaveChoice == ContinueOrLeaveChoice.Leave) LeaveTheTable();
+    }
+
+    void LeaveTheTable()
+    {
+        long bonus = blind.LeaveTable();
+        Debug.Log($"[Flow] left the table: bonus {bonus}, safe points {blind.BlindScore}");
+        GameEvents.RaiseTableLeft(bonus, blind.BlindScore);
     }
 
     void ClearThePot()
