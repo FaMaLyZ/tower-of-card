@@ -36,7 +36,7 @@ public static class GameEvents
     public static void RaiseHandChanged(IReadOnlyList<int> cardIdsInOrder) => HandChanged?.Invoke(cardIdsInOrder);
 
     /// The selected cards changed. Carries the selected card IDs (empty = nothing selected).
-    /// A2 adds the live hand preview to this event.
+    /// The live hand name for these cards is CommitManager.Preview (the conductor refreshes it).
     public static event Action<IReadOnlyList<int>> SelectionChanged;
 
     public static void RaiseSelectionChanged(IReadOnlyList<int> selectedCardIds) => SelectionChanged?.Invoke(selectedCardIds);

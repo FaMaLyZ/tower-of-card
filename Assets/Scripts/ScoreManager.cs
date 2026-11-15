@@ -84,7 +84,7 @@ public class ScoreContext
 
 /// Balatro-style scoring. The conductor asks for it when building ends.
 ///
-///   1. The cards you placed this turn are your "played hand".
+///   1. The cards you committed this hand are your "played hand".
 ///   2. The poker hand they make decides the base  chips x mult  (e.g. Pair = 10 x 2).
 ///   3. Every scoring card adds its chip value (2-10 = face value, J/Q/K = 10, Ace = 11).
 ///   4. Other scripts may add bonuses (+chips, +mult, x mult) - like Balatro jokers.
@@ -123,10 +123,6 @@ public class ScoreManager : MonoBehaviour
     public bool HasResult { get; private set; }             // a hand is being / has been shown this turn
     public ScoreContext LastContext { get; private set; }
 
-    // cards placed during the current turn (in placing order)
-    readonly List<CardData> playedData = new List<CardData>();
-    readonly List<Card> playedCards = new List<Card>();
-
     Coroutine sequence;
 
     // =====================================================================
@@ -136,45 +132,38 @@ public class ScoreManager : MonoBehaviour
     void Awake()
     {
         if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
-        if (tower != null) tower.CardPlaced += RememberPlacedCard;
-    }
-
-    void OnDestroy()
-    {
-        if (tower != null) tower.CardPlaced -= RememberPlacedCard;
     }
 
     // =====================================================================
     //  Jobs the conductor asks for
     // =====================================================================
 
-    // Remember every card placed this hand
-    void RememberPlacedCard(CardData data, Card card)
-    {
-        playedData.Add(data);
-        playedCards.Add(card);
-    }
-
     /// New hand: finish any running reveal, then start with a clean slate.
     public void ClearLastHand()
     {
         if (IsScoring) FinishNow();
-
-        playedData.Clear();
-        playedCards.Clear();
         ClearDisplay();
     }
 
-    /// Building is over: score the cards that were placed this hand.
-    public void ScorePlayedCards()
+    /// Building is over: score exactly the committed cards, once. Returns null if there is nothing to score.
+    public ScoreContext ScoreHand(IReadOnlyList<CardInstance> committedCards)
     {
-        if (playedData.Count == 0) return;
+        if (committedCards == null || committedCards.Count == 0) return null;
 
-        ScoreContext ctx = BuildScore(new List<CardData>(playedData), new List<Card>(playedCards));
-        if (ctx == null) return;
+        var data = new List<CardData>(committedCards.Count);
+        var objects = new List<Card>(committedCards.Count);
+        foreach (CardInstance card in committedCards)
+        {
+            data.Add(card.Data);
+            objects.Add(tower != null ? tower.FindTowerCard(card.Id) : null);
+        }
+
+        ScoreContext ctx = BuildScore(data, objects);
+        if (ctx == null) return null;
 
         LastContext = ctx;
         sequence = StartCoroutine(RevealSequence(ctx));
+        return ctx;
     }
 
     // =====================================================================
@@ -336,8 +325,6 @@ public class ScoreManager : MonoBehaviour
         sequence = null;
         IsScoring = false;
         LastContext = null;
-        playedData.Clear();
-        playedCards.Clear();
 
         TotalScore = 0;
         ClearDisplay();

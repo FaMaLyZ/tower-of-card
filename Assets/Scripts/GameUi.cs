@@ -34,8 +34,8 @@ public class GameUI : MonoBehaviour
 
     [Header("Turn info texts")]
     public TMP_Text turnText;                   // "Turn 1"
-    public TMP_Text cardsText;                  // "Cards: 2 / 5"
-    public TMP_Text stateText;                  // "Your turn"
+    public TMP_Text cardsText;                  // "Cards: 2 / 5" (placed / committed)
+    public TMP_Text stateText;                  // what to do now, or why Play Hand is refused
     public TMP_Text hintText;                   // help text from TowerBuilder
 
     [Header("Deck info (optional)")]
@@ -49,7 +49,7 @@ public class GameUI : MonoBehaviour
 
     [Header("Score (optional)")]
     public ScoreManager scoreManager;           // auto-found if empty
-    public TMP_Text handNameText;               // "Pair"
+    public TMP_Text handNameText;               // "Pair" (live while selecting, then the scored hand)
     public TMP_Text chipsText;                  // "Chips: 25"
     public TMP_Text multText;                   // "Mult: x2"
     public TMP_Text turnScoreText;              // "Turn score: 50"
@@ -59,7 +59,10 @@ public class GameUI : MonoBehaviour
     public TMP_Text bannerText;
    
     [Header("Buttons")]
+    [Tooltip("The main button. Its label changes with the phase: Done Swapping, then Play Hand.")]
     public Button endTurnButton;
+    [Tooltip("Optional: takes back the last card placed this hand (right-click does the same).")]
+    public Button undoButton;
     public Button nextTurnButton;               // no longer used (the next hand always starts by itself); kept hidden
 
     [Header("Hand")]
@@ -94,11 +97,17 @@ public class GameUI : MonoBehaviour
     public string yourTurnLabel = "Your turn";
     public string startingLabel = "Get ready...";
     public string turnEndedLabel = "Turn ended";
+    public string doneSwappingLabel = "Done Swapping";
+    public string playHandLabel = "Play Hand";
+    public string swapStateFormat = "Swap: pick up to {0} cards, then click the deck";
+    public string commitStateLabel = "Press Play Hand";
+    public string buildStateFormat = "Place your cards: {0} left";
 
     // ---------- Runtime ----------
     Camera cam;
     readonly List<RectTransform> markers = new List<RectTransform>();
     readonly List<Image> markerImages = new List<Image>();
+    TMP_Text mainButtonLabel;
 
     // =====================================================================
     //  LIFECYCLE
@@ -134,7 +143,8 @@ public class GameUI : MonoBehaviour
         RefreshScore();
         RefreshDiscards();
         RefreshBanner();
-        RefreshEndTurnButton();
+        RefreshMainButton();
+        RefreshUndoButton();
         RefreshNextTurnButton();
         RefreshHand();
         if (flow != null && flow.IsRunOver)
@@ -170,7 +180,12 @@ public class GameUI : MonoBehaviour
 
     void HookButtons()
     {
-        if (endTurnButton != null) endTurnButton.onClick.AddListener(OnEndTurnClicked);
+        if (endTurnButton != null)
+        {
+            endTurnButton.onClick.AddListener(OnEndTurnClicked);
+            mainButtonLabel = endTurnButton.GetComponentInChildren<TMP_Text>(true);
+        }
+        if (undoButton != null) undoButton.onClick.AddListener(OnUndoClicked);
 
         for (int i = 0; i < handSlots.Length; i++)
         {
@@ -194,7 +209,7 @@ public class GameUI : MonoBehaviour
             turnText.text = string.Format(turnFormat, flow.HandNumber, flow.HandsPerRun);
 
         if (cardsText != null)
-            cardsText.text = string.Format(cardsFormat, flow.CardsPlacedThisHand, flow.CardsPerHand);
+            cardsText.text = string.Format(cardsFormat, flow.CardsPlacedThisHand, flow.Commit.CommittedCards.Count);
 
         if (stateText != null)
             stateText.text = GetStateLabel();
@@ -220,8 +235,9 @@ public class GameUI : MonoBehaviour
 
         if (handNameText != null)
         {
-            handNameText.gameObject.SetActive(showHand);
-            handNameText.text = scoreManager.HandName;
+            string handName = showHand ? scoreManager.HandName : GetCommitHandName();
+            handNameText.gameObject.SetActive(handName != "");
+            handNameText.text = handName;
         }
         if (chipsText != null)
         {
@@ -278,12 +294,25 @@ public class GameUI : MonoBehaviour
         bannerText.gameObject.SetActive(!string.IsNullOrEmpty(text));
     }
 
-    void RefreshEndTurnButton()
+    // One button, two jobs: "Done Swapping" in the Swap phase, "Play Hand" in the Commit phase
+    void RefreshMainButton()
     {
         if (endTurnButton == null) return;
 
         endTurnButton.gameObject.SetActive(GameRunning);
-        endTurnButton.interactable = flow != null && flow.IsBuilding;
+        if (!GameRunning) return;
+
+        bool swapping = flow.Phase == GamePhase.Swap;
+        endTurnButton.interactable = swapping ? flow.IsSwapping : flow.CanPlayHand;
+        if (mainButtonLabel != null) mainButtonLabel.text = swapping ? doneSwappingLabel : playHandLabel;
+    }
+
+    void RefreshUndoButton()
+    {
+        if (undoButton == null) return;
+
+        undoButton.gameObject.SetActive(GameRunning && flow.Phase == GamePhase.Build);
+        undoButton.interactable = GameRunning && flow.CanUndo;
     }
 
     void RefreshNextTurnButton()
@@ -295,21 +324,21 @@ public class GameUI : MonoBehaviour
 
     void RefreshHand()
     {
-        bool show = tower != null && tower.Hand != null;
+        bool show = handManager != null;
 
         for (int i = 0; i < handSlots.Length; i++)
         {
             var slot = handSlots[i];
             if (slot == null || slot.button == null) continue;
 
-            bool active = show && i < tower.Hand.Count;
+            bool active = show && i < handManager.Count;
             slot.button.gameObject.SetActive(active);
             if (!active) continue;
 
-            CardData data = tower.Hand[i];
-            bool isSelected = i == tower.SelectedIndex;
+            CardData data = handManager.GetCard(i);
+            bool isSelected = handManager.IsSelected(handManager.GetCardId(i));
 
-            slot.button.interactable = tower.CanAct;
+            slot.button.interactable = flow != null && flow.CanClickHandCards;
             slot.button.transform.localScale = Vector3.one * (isSelected ? selectedScale : 1f);
 
             if (slot.label != null)
@@ -356,9 +385,20 @@ public class GameUI : MonoBehaviour
     //  BUTTON ACTIONS (public, so you can also wire them in the Inspector)
     // =====================================================================
 
+    /// The main button (the old End Turn button). The conductor ignores a click in the wrong phase.
     public void OnEndTurnClicked()
     {
-        if (flow != null) flow.RequestEndHand();
+        if (flow != null)
+        {
+            if (flow.Phase == GamePhase.Swap) flow.RequestDoneSwapping();
+            else flow.RequestPlayHand();
+        }
+        AudioManager.UISFX(SoundType.UI_Button);
+    }
+
+    public void OnUndoClicked()
+    {
+        if (flow != null) flow.RequestUndo();
         AudioManager.UISFX(SoundType.UI_Button);
     }
 
@@ -378,9 +418,19 @@ public class GameUI : MonoBehaviour
         {
             case GamePhase.RunEnd: return gameOverLabel;
             case GamePhase.Draw:   return startingLabel;
-            case GamePhase.Build:  return yourTurnLabel;
+            case GamePhase.Swap:   return string.Format(swapStateFormat, discardManager != null ? discardManager.DiscardsLeft : 0);
+            case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
+            case GamePhase.Build:  return string.Format(buildStateFormat, flow.Commit.UnplacedCount);
             default:               return turnEndedLabel;
         }
+    }
+
+    // The hand the selected (or committed) cards make, while there is no scored result to show yet
+    string GetCommitHandName()
+    {
+        if (!GameRunning || flow.Commit.Preview == null) return "";
+        if (flow.Phase != GamePhase.Commit && flow.Phase != GamePhase.Build) return "";
+        return flow.Commit.Preview.displayName;
     }
 
     string GetBannerText()
@@ -391,6 +441,8 @@ public class GameUI : MonoBehaviour
         {
             case GamePhase.RunEnd: return gameOverLabel;
             case GamePhase.Draw:   return string.Format(bannerStartFormat, flow.HandNumber);
+            case GamePhase.Swap:
+            case GamePhase.Commit:
             case GamePhase.Build:  return "";
             default:               return string.Format(bannerEndFormat, flow.HandNumber);
         }

@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// The player's hand.
-///  - When the conductor starts a hand it draws "Cards Draw Per Turn" cards from the DeckManager.
-///  - The player clicks (or presses 1-9) to choose which card in the hand to play.
-///  - A played card goes to the deck's discard pile.
+///  - When the conductor starts a hand it fills the hand from the DeckManager.
+///  - The player clicks a card (or presses 1-9). The click is a command: the conductor decides what
+///    it means in the current phase (pick a card to swap, add it to the commit, pick it up to place).
+///  - Several cards can be selected at once (the commit). Selected cards are shown lifted.
 ///  - Cards are shown fanned out (layout code from your original HandManager).
 ///  - If a CardData has a Hand Model it is shown in the hand; otherwise Card Prefab is used.
 ///
@@ -36,7 +38,7 @@ public class HandManager : MonoBehaviour
     public Vector3 handModelEuler = Vector3.zero;
 
     [Header("Drawing")]
-    [Tooltip("How many cards the player draws at the start of each turn.")]
+    [Tooltip("No longer used: the hand is filled up to GameConfig > Hand Size. Kept so the scene value is not lost.")]
     public int cardsDrawPerTurn = 5;
     [Tooltip("The hand never holds more cards than this.")]
     public int maxHandSize = 10;
@@ -67,7 +69,7 @@ public class HandManager : MonoBehaviour
     readonly List<CardData> dataInHand = new List<CardData>();
 
     // Selection and hover remember the card ID, never the hand position
-    // In the order the player picked them. The old loop keeps one at most; A2 allows up to five.
+    // In the order the player picked them (one card when swapping, up to five for a commit).
     readonly List<int> selectedCardIds = new List<int>();
     int hoveredCardId = NoCard;
 
@@ -109,15 +111,28 @@ public class HandManager : MonoBehaviour
 
     void Update()
     {
+        HandleNumberKeys();
         UpdateCardInHand();
+    }
+
+    // Keys 1-9 do the same as clicking that card in the hand
+    void HandleNumberKeys()
+    {
+        Keyboard keyboard = Keyboard.current;
+        if (keyboard == null || flow == null) return;
+
+        int keyCount = Mathf.Min(9, Count);
+        for (int i = 0; i < keyCount; i++)
+            if (keyboard[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame)
+                flow.RequestSelectCard(i);
     }
 
     // ---------- Drawing ----------
 
-    /// Start of a hand: draw "Cards Draw Per Turn" cards (the hand never goes above Max Hand Size).
-    public int DrawCardsForNewHand()
+    /// Start of a hand: draw until the hand holds "handSize" cards (it never goes above Max Hand Size).
+    public int DrawCardsUntilHandHas(int handSize)
     {
-        return DrawCards(cardsDrawPerTurn);
+        return DrawCards(handSize - Count);
     }
 
     /// Draws up to "amount" cards from the deck. Returns how many were drawn.
@@ -272,7 +287,7 @@ public class HandManager : MonoBehaviour
         AnnounceSelectionChanged();
     }
 
-    /// Multi-select (A2 switches this on): adds the card to the selection, or takes it out if it is already in.
+    /// Multi-select (the commit): adds the card to the selection, or takes it out if it is already in.
     /// Returns false when nothing changed: the card is not in the hand, or the selection is already full.
     public bool ToggleSelected(int cardId, int maxSelected)
     {
@@ -298,7 +313,26 @@ public class HandManager : MonoBehaviour
         return selectedCardIds.Contains(cardId);
     }
 
-    // Used when a card leaves the hand: no sound, and listeners are told only if something was selected
+    /// The selected cards, in the order they were picked.
+    public List<CardInstance> GetSelectedCards()
+    {
+        var cards = new List<CardInstance>(selectedCardIds.Count);
+        foreach (int cardId in selectedCardIds)
+        {
+            int index = FindIndexOfCard(cardId);
+            if (index >= 0) cards.Add(cardsInHand[index].Card);
+        }
+        return cards;
+    }
+
+    // Used when ONE card leaves the hand: the other cards stay selected. No sound.
+    void ForgetCard(int cardId)
+    {
+        if (hoveredCardId == cardId) hoveredCardId = NoCard;
+        if (selectedCardIds.Remove(cardId)) AnnounceSelectionChanged();
+    }
+
+    // Used when the whole hand is emptied: no sound, and listeners are told only if something was selected
     void ForgetSelectionAndHover()
     {
         bool hadSelection = selectedCardIds.Count > 0;
@@ -352,7 +386,8 @@ public class HandManager : MonoBehaviour
         if (card != null && flow != null) flow.RequestSelectCardById(card.CardId);
     }
 
-    /// Takes a card out of the hand WITHOUT sending it anywhere (DiscardManager uses this).
+    /// Takes a card out of the hand WITHOUT sending it anywhere. The caller decides where it goes
+    /// (back to the deck for a swap, into the tower for a placement).
     public CardInstance RemoveCard(int index)
     {
         if (index < 0 || index >= Count) return null;
@@ -364,24 +399,26 @@ public class HandManager : MonoBehaviour
         dataInHand.RemoveAt(index);
         if (view != null) Destroy(view.gameObject);
 
-        ForgetSelectionAndHover();
+        if (card != null) ForgetCard(card.Id);
         AnnounceHandChanged();
         return card;
     }
 
-    /// The card was played: remove it from the hand and put it on the discard pile.
-    public CardData PlayCard(int index)
+    public CardInstance RemoveCardById(int cardId)
     {
-        CardInstance card = RemoveCard(index);
-        if (card == null) return null;
-
-        if (deckManager != null) deckManager.Discard(card);
-        return card.Data;
+        return RemoveCard(FindIndexOfCard(cardId));
     }
 
-    public CardData PlaySelectedCard()
+    /// Undo: a card that was placed in the tower comes back to the hand, selected again.
+    public void ReturnCardToHand(CardInstance card)
     {
-        return PlayCard(SelectedIndex);
+        if (card == null || FindIndexOfCard(card.Id) >= 0) return;
+
+        AddCardToHand(card);
+        if (FindIndexOfCard(card.Id) < 0) return;       // the hand could not show it
+
+        selectedCardIds.Add(card.Id);
+        AnnounceSelectionChanged();
     }
 
     /// Sends every card in the hand to the discard pile.

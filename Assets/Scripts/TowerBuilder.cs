@@ -12,7 +12,9 @@ using UnityEngine.UI;
 ///   FLOOR = a flat card laid on top of two neighbouring tents
 ///   Next level = tents standing on the floor cards, and so on up the pyramid.
 ///
-/// The conductor (GameFlowController) says when placing is allowed; the HUD is controlled by GameUI.
+/// The conductor (GameFlowController) says when placing is allowed and which card is held.
+/// A click on the table or on a snap point is a command: it goes to the conductor, which asks
+/// this script to do the placing. The slot rules live in TowerSlots; the HUD is controlled by GameUI.
 public class TowerBuilder : MonoBehaviour
 {
     [Header("Setup")]
@@ -23,7 +25,7 @@ public class TowerBuilder : MonoBehaviour
     public LayerMask tableLayerMask = 1 << 7;   // "Table" layer
 
     [Header("References (auto-found if empty)")]
-    public HandManager handManager;
+    public GameFlowController flow;
 
     [Header("House of cards")]
     [Range(5f, 45f)] public float tiltAngle = 20f;   // how far cards lean from vertical
@@ -45,7 +47,7 @@ public class TowerBuilder : MonoBehaviour
     public float snapRadiusPixels = 90f;             // mouse must be this close to a slot (screen pixels)
     public float snapSpeed = 25f;
 
-    const int LEFT = 0, RIGHT = 1, FLOOR = 2;
+    const int LEFT = TowerSlots.Left, RIGHT = TowerSlots.Right, FLOOR = TowerSlots.Floor;
 
     struct Slot
     {
@@ -54,13 +56,23 @@ public class TowerBuilder : MonoBehaviour
         public Quaternion rot;
     }
 
+    // One card placed during the current hand (Undo takes these back, newest first)
+    struct Placement
+    {
+        public (int, int, int) key;
+        public CardInstance card;
+    }
+
     enum State { WaitingFirstClick, Choosing, Placing }
     State state = State.WaitingFirstClick;
 
     readonly Dictionary<(int, int, int), Card> cards = new Dictionary<(int, int, int), Card>();
     readonly List<Slot> slots = new List<Slot>();
+    readonly List<Placement> placementsThisHand = new List<Placement>();
     int bestSlot = -1;
 
+    CardInstance heldCard;            // the committed card the player picked up to place
+    Vector3? clickedTablePoint;       // where the table was clicked (only while that click is being handled)
     Card ghost;
     Camera cam;
 
@@ -70,13 +82,12 @@ public class TowerBuilder : MonoBehaviour
 
     // ---------- Public info (used by GameUI / OrbitCamera) ----------
 
-    // True while the conductor has placement switched on and this hand still has cards to place
-    public bool CanAct => CanPlaceMoreCards;
-    public bool CanPlaceMoreCards => placementEnabled && CardsPlacedThisHand < placementLimit;
-    public int CardsPlacedThisHand { get; private set; }
+    // True while the conductor has placement switched on (the Build phase)
+    public bool CanAct => placementEnabled;
+    public int CardsPlacedThisHand => placementsThisHand.Count;
+    public bool IsHoldingCard => heldCard != null;
 
     bool placementEnabled;
-    int placementLimit;
 
     public string HintText
     {
@@ -85,17 +96,14 @@ public class TowerBuilder : MonoBehaviour
             if (!CanAct) return "";
             switch (state)
             {
-                case State.WaitingFirstClick: return "Pick a card from your hand, then click the ground to start the tower";
-                case State.Placing: return "Click a snap point to place. Right-click: cancel. Orbit camera: A / D.";
-                default: return "Choose a card from your hand (click it or press 1-" + HandCount + ")";
+                case State.WaitingFirstClick: return "Click the table to start the tower";
+                case State.Placing: return "Click a snap point to place. Right-click: put the card back. Orbit camera: A / D.";
+                default: return "Pick one of your raised cards to place it. Right-click: undo the last card.";
             }
         }
     }
 
     // --- Read by GameUI ---
-    public IReadOnlyList<CardData> Hand => handManager != null ? handManager.CardsInHandData : null;
-    public int SelectedIndex => handManager != null ? handManager.SelectedIndex : -1;
-    int HandCount => handManager != null ? Mathf.Min(9, handManager.Count) : 0;
     public bool IsWaitingFirstClick => state == State.WaitingFirstClick;
     public bool ShowSlots => state == State.Placing && CanAct;   // show snap markers?
     public int SlotCount => slots.Count;
@@ -104,9 +112,6 @@ public class TowerBuilder : MonoBehaviour
 
     // The mass a card really gets in the tower (its own mass x the Mass Multiplier)
     public float GetCardMass(CardData data) => Mathf.Max(0.001f, data.mass * cardModel.massMultiplier);
-
-    // Raised every time a card is placed in the tower (ScoreManager listens)
-    public event System.Action<CardData, Card> CardPlaced;
 
     // The point the camera looks at when there is no tower (game start, or after the tower is gone)
     public Vector3 StartFocusPoint => new Vector3(0, groundY + 1f, 0);
@@ -138,7 +143,7 @@ public class TowerBuilder : MonoBehaviour
 
     void Awake()
     {
-        if (handManager == null) handManager = FindFirstObjectByType<HandManager>();
+        if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
 
         Card.Broken += HandleCardBroken;
     }
@@ -163,11 +168,10 @@ public class TowerBuilder : MonoBehaviour
 
     // ---------- Jobs the conductor asks for ----------
 
-    /// Building starts: lock every card in place and allow up to maxCards placements.
-    public void EnablePlacement(int maxCards)
+    /// Building starts: lock every card in place and start a fresh list of this hand's placements.
+    public void EnablePlacement()
     {
-        CardsPlacedThisHand = 0;
-        placementLimit = maxCards;
+        placementsThisHand.Clear();
         placementEnabled = true;
 
         if (freezeWhenTurnBegins) SetCardsFrozen(true);
@@ -177,7 +181,98 @@ public class TowerBuilder : MonoBehaviour
     public void DisablePlacement()
     {
         placementEnabled = false;
-        if (state == State.Placing) CancelSelection();
+        DropHeldCard();
+    }
+
+    /// Can this many cards all be placed, in some order? Logic only, nothing is moved (Master Plan 3.2).
+    public bool CanFit(int cardCount)
+    {
+        return ReadSlotRules().CanFit(cardCount);
+    }
+
+    /// Is there at least one spot where a card may go?
+    public bool HasLegalPlacement()
+    {
+        return ReadSlotRules().HasOpenSlot();
+    }
+
+    TowerSlots ReadSlotRules()
+    {
+        return new TowerSlots(cards.Keys, maxBaseTents);
+    }
+
+    /// The player picked up a committed card: show it as the preview that follows the mouse.
+    public void HoldCard(CardInstance card)
+    {
+        if (!CanAct || card == null) return;
+
+        heldCard = card;
+        AudioManager.SFX(SoundType.SelectCard);
+
+        // Before the tower exists there are no snap points: the next click on the table places the card
+        if (state == State.WaitingFirstClick) return;
+
+        ShowGhost(card.Data);
+        state = State.Placing;
+    }
+
+    /// Places the held card where the player just clicked (the table for the first card, otherwise
+    /// the snapped slot). Returns the card that was placed, or null if nothing happened.
+    public CardInstance PlaceHeldCard()
+    {
+        if (!CanAct || heldCard == null) return null;
+        if (!TryFindClickedSlot(out (int, int, int) key)) return null;
+
+        CardInstance placed = heldCard;
+        PlaceCard(key, placed);
+        PlaceCardSound();
+        heldCard = null;
+        ClearGhost();
+        state = State.Choosing;
+        return placed;
+    }
+
+    // Which slot did the click choose? The first card of a tower goes where the table was clicked.
+    bool TryFindClickedSlot(out (int, int, int) key)
+    {
+        key = (LEFT, 0, 0);
+
+        if (state == State.WaitingFirstClick)
+        {
+            if (!clickedTablePoint.HasValue) return false;
+            origin = new Vector3(clickedTablePoint.Value.x, groundY, clickedTablePoint.Value.z);
+            return true;
+        }
+
+        if (state != State.Placing || !CanPlace()) return false;
+        key = slots[bestSlot].key;
+        return true;
+    }
+
+    /// Undo: takes this hand's newest placement out of the tower. Cards from earlier hands are
+    /// never touched. Returns the card that came out, or null if there is nothing to undo.
+    public CardInstance UndoLastPlacement()
+    {
+        if (!CanAct || placementsThisHand.Count == 0) return null;
+
+        Placement last = placementsThisHand[placementsThisHand.Count - 1];
+        placementsThisHand.RemoveAt(placementsThisHand.Count - 1);
+
+        if (cards.TryGetValue(last.key, out Card towerCard) && towerCard != null) Destroy(towerCard.gameObject);
+        cards.Remove(last.key);
+
+        DropHeldCard();
+        AudioManager.SFX(SoundType.UnselectCard);
+        if (cards.Count == 0) ResetTower();             // that was the only card: back to "click the table"
+        return last.card;
+    }
+
+    /// The tower card that was made from this deck card (null = not in the tower).
+    public Card FindTowerCard(int cardId)
+    {
+        foreach (Card c in cards.Values)
+            if (c != null && c.CardId == cardId) return c;
+        return null;
     }
 
     /// The shake: let gravity and collisions act on the tower.
@@ -273,10 +368,11 @@ public class TowerBuilder : MonoBehaviour
 
         cards.Clear();
         slots.Clear();
+        placementsThisHand.Clear();
         bestSlot = -1;
 
+        heldCard = null;
         ClearGhost();
-        if (handManager != null) handManager.ClearSelection();
 
         state = State.WaitingFirstClick;
         TowerReset?.Invoke();
@@ -335,63 +431,16 @@ public class TowerBuilder : MonoBehaviour
 
     // ---------- Slots ----------
 
-    bool Has(int k, int l, int i) => cards.ContainsKey((k, l, i));
-    bool TentComplete(int l, int i) => Has(LEFT, l, i) && Has(RIGHT, l, i);
-
+    // Which slots are free right now (the rules are in TowerSlots; this adds where each slot is)
     void BuildSlots()
     {
         slots.Clear();
-        var seen = new HashSet<(int, int, int)>();
 
-        // tents on the bottom row
-        var baseTents = new HashSet<int>();
-        foreach (var key in cards.Keys)
-            if (key.Item1 != FLOOR && key.Item2 == 0) baseTents.Add(key.Item3);
-
-        foreach (var key in cards.Keys)
+        foreach (var key in ReadSlotRules().FindOpenSlots())
         {
-            int k = key.Item1, l = key.Item2, i = key.Item3;
-
-            if (k != FLOOR)
-            {
-                // finish this tent
-                TryAdd(seen, k == LEFT ? RIGHT : LEFT, l, i);
-
-                // flat card across two complete neighbouring tents
-                if (TentComplete(l, i))
-                {
-                    if (TentComplete(l, i + 1)) TryAdd(seen, FLOOR, l, i);
-                    if (TentComplete(l, i - 1)) TryAdd(seen, FLOOR, l, i - 1);
-                }
-
-                // start a new tent next to it on the ground row
-                if (l == 0)
-                {
-                    foreach (int n in new[] { i - 1, i + 1 })
-                    {
-                        if (baseTents.Contains(n) || baseTents.Count < maxBaseTents)
-                        {
-                            TryAdd(seen, LEFT, 0, n);
-                            TryAdd(seen, RIGHT, 0, n);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // a floor card lets you build a tent on top of it
-                TryAdd(seen, LEFT, l + 1, i);
-                TryAdd(seen, RIGHT, l + 1, i);
-            }
+            GetPose(key.kind, key.level, key.index, out Vector3 pos, out Quaternion rot);
+            slots.Add(new Slot { key = key, pos = pos, rot = rot });
         }
-    }
-
-    void TryAdd(HashSet<(int, int, int)> seen, int k, int l, int i)
-    {
-        var key = (k, l, i);
-        if (cards.ContainsKey(key) || !seen.Add(key)) return;
-        GetPose(k, l, i, out Vector3 pos, out Quaternion rot);
-        slots.Add(new Slot { key = key, pos = pos, rot = rot });
     }
 
     // ---------- Update ----------
@@ -410,10 +459,10 @@ public class TowerBuilder : MonoBehaviour
 
         ReadMouse(mouse);
 
-        // The conductor says "not now" (drawing, scoring, shaking, run over)
+        // The conductor says "not now" (every phase except Build)
         if (!CanAct)
         {
-            if (state == State.Placing) CancelSelection();
+            DropHeldCard();
             return;
         }
 
@@ -424,11 +473,10 @@ public class TowerBuilder : MonoBehaviour
                 break;
 
             case State.Choosing:
-                HandleHandKeys();
+                HandleUndoClick(mouse);
                 break;
 
             case State.Placing:
-                HandleHandKeys();
                 HandlePlacing(mouse);
                 break;
         }
@@ -472,49 +520,24 @@ public class TowerBuilder : MonoBehaviour
         if (!mouse.leftButton.wasPressedThisFrame || mouseOverUI) return;
 
         // Only start a tower where the click actually lands on the table, not anywhere on the infinite ground plane.
-        if (Physics.Raycast(mouseRay, out RaycastHit hit, 1000f, tableLayerMask))
-            StartTower(hit.point);
+        if (!Physics.Raycast(mouseRay, out RaycastHit hit, 1000f, tableLayerMask)) return;
+
+        clickedTablePoint = hit.point;
+        RequestPlaceHeldCard();
+        clickedTablePoint = null;
     }
 
-    // Sets the tower origin and places the very first card
-    void StartTower(Vector3 clickPoint)
+    // ----- State: Choosing (no card held) -----
+
+    void HandleUndoClick(Mouse mouse)
     {
-        if (handManager == null || handManager.Count == 0) return;
-
-        // use the card the player picked, or the first card in the hand
-        int index = handManager.SelectedIndex >= 0 ? handManager.SelectedIndex : 0;
-        CardData data = handManager.GetCard(index);
-
-        origin = new Vector3(clickPoint.x, groundY, clickPoint.z);
-        PlaceCard((LEFT, 0, 0), data, handManager.GetCardId(index));
-        handManager.PlayCard(index);
-
-        state = State.Choosing;
-        ReportCardPlaced();
-    }
-
-    // ----- Choosing a card (keys 1..9) -----
-
-    void HandleHandKeys()
-    {
-        var kb = Keyboard.current;
-        if (kb == null) return;
-
-        for (int i = 0; i < HandCount; i++)
-            if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame)
-                SelectCard(i);
+        if (mouse.rightButton.wasPressedThisFrame && !mouseOverUI && flow != null) flow.RequestUndo();
     }
 
     // ----- State: Placing -----
 
     void HandlePlacing(Mouse mouse)
     {
-        // the chosen card is gone (it was discarded...): drop the preview
-        if (handManager == null || handManager.SelectedIndex < 0)
-        {
-            CancelSelection();
-            return;
-        }
         if (ghost == null) return;
 
         BuildSlots();                 // which slots are free right now
@@ -522,9 +545,15 @@ public class TowerBuilder : MonoBehaviour
         MoveGhost();                  // show the preview card
 
         if (mouse.leftButton.wasPressedThisFrame && CanPlace())
-            PlaceSelectedCard();
+            RequestPlaceHeldCard();
         else if (mouse.rightButton.wasPressedThisFrame)
-            CancelSelection();
+            DropHeldCard();
+    }
+
+    // A placing click is a command: the conductor checks the phase, then calls PlaceHeldCard()
+    void RequestPlaceHeldCard()
+    {
+        if (flow != null) flow.RequestPlaceHeldCard();
     }
 
     // Slot closest to the mouse (screen space) within snapRadiusPixels, or -1
@@ -575,24 +604,20 @@ public class TowerBuilder : MonoBehaviour
         return bestSlot >= 0 && !mouseOverUI;
     }
 
-    void PlaceSelectedCard()
+    // Put the held card back (it stays in the hand, still waiting to be placed)
+    void DropHeldCard()
     {
-        CardData data = handManager != null ? handManager.SelectedCard : null;
-        if (data == null) return;
-
-        PlaceCard(slots[bestSlot].key, data, handManager.SelectedCardId);
-        PlaceCardSound();
+        heldCard = null;
         ClearGhost();
-        handManager.PlaySelectedCard();   // removes it from the hand -> discard pile
-        state = State.Choosing;
-        ReportCardPlaced();               // the conductor ends the hand at the limit
+        if (state == State.Placing) state = State.Choosing;
     }
 
-    void CancelSelection()
+    void ShowGhost(CardData data)
     {
         ClearGhost();
-        if (handManager != null) handManager.ClearSelection();
-        state = State.Choosing;
+        ghost = Instantiate(cardPrefab, FocusPoint, Quaternion.identity);
+        ghost.Setup(data, cardModel);
+        ghost.SetGhost(false);
     }
 
     void ClearGhost()
@@ -601,45 +626,20 @@ public class TowerBuilder : MonoBehaviour
         ghost = null;
     }
 
-    // Counted here; the conductor reads CanPlaceMoreCards to know when the hand is done
-    void ReportCardPlaced()
-    {
-        CardsPlacedThisHand++;
-    }
-
     // ---------- Cards ----------
 
-    void PlaceCard((int, int, int) key, CardData data, int cardId)
+    void PlaceCard((int, int, int) key, CardInstance card)
     {
         GetPose(key.Item1, key.Item2, key.Item3, out Vector3 pos, out Quaternion rot);
         Card c = Instantiate(cardPrefab, pos, rot, transform);
-        c.name = $"TowerCard #{cardId} ({data.cardName})";
-        c.CardId = cardId;
-        c.Setup(data, cardModel);
+        c.name = $"TowerCard #{card.Id} ({card.Data.cardName})";
+        c.CardId = card.Id;
+        c.Setup(card.Data, cardModel);
         c.SetPlaced();
         cards[key] = c;
-        CardPlaced?.Invoke(data, c);
+        placementsThisHand.Add(new Placement { key = key, card = card });
     }
 
-    // Called by the conductor (hand card click, HUD button) and by the number keys
-    public void SelectCard(int index)
-    {
-        if (!CanAct || handManager == null) return;
-
-        CardData data = handManager.GetCard(index);
-        if (data == null) return;
-
-        handManager.SetSelected(index);
-
-        // Before the tower exists the player just picks which card the first click will place
-        if (state == State.WaitingFirstClick) return;
-
-        if (ghost != null) Destroy(ghost.gameObject);
-        ghost = Instantiate(cardPrefab, FocusPoint, Quaternion.identity);
-        ghost.Setup(data, cardModel);
-        ghost.SetGhost(false);
-        state = State.Placing;
-    }
     public void PlaceCardSound()
     {
         AudioManager.SFX(SoundType.PlayCard);

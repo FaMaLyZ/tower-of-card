@@ -91,7 +91,7 @@ It slides up from the bottom **before every blind**. Only the current blind can 
 | # | Step | What you do |
 |---|---|---|
 | 1 | **Draw** | Cards fly in until you hold 8. Cards you didn't play stay in your hand. |
-| 2 | **Swap** | Click one card, then click the deck to swap it. **3 swaps per hand ⚙.** Press **Done Swapping** to continue; swapping is optional. |
+| 2 | **Swap** | Select up to 3 cards, then click the deck to swap them all at once. **3 swapped cards per hand ⚙** (each card costs one swap). Press **Done Swapping** to continue; swapping is optional. |
 | 3 | **Commit** | Pick 1–5 cards. The poker hand name shows at the top. Press **Play Hand**. An accepted commitment spends one hand and locks those cards. |
 | 4 | **Build** | Place every committed card on the tower. Cards stay frozen. You can undo this hand's latest placement, but cannot change the committed poker hand. |
 | 5 | **Score** | Points count up and go into the **Pot** (on the tower). |

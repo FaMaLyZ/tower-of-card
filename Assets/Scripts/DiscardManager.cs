@@ -1,13 +1,14 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// Discard system.
 ///
-///   1. The player selects a card in the hand.
+///   1. The player selects one or more cards in the hand (each card costs one swap).
 ///   2. The player clicks a Discard Zone (any 3D object with a DiscardZone component).
-///   3. The selected card goes back into the deck and the player draws a new card.
+///   3. All the selected cards go back into the deck in one go, and the player draws that many new cards.
 ///
-/// How many discards the player gets each turn is set in the Inspector.
+/// How many swaps the player gets each hand comes from GameConfig (the conductor passes it in).
 public class DiscardManager : MonoBehaviour
 {
     [Header("References (auto-found if empty)")]
@@ -15,28 +16,32 @@ public class DiscardManager : MonoBehaviour
     public DeckManager deckManager;
 
     [Header("Rules")]
-    [Tooltip("How many cards the player may discard each turn. 0 = discarding is off.")]
+    [Tooltip("No longer used: the number comes from GameConfig > Swaps Per Hand. Kept so the scene value is not lost.")]
     [Min(0)] public int discardsPerTurn = 1;
 
     [Tooltip("Where the discarded card goes in the deck.")]
     public DeckReturn returnToDeck = DeckReturn.ShuffleIn;
 
-    [Tooltip("On = the new card is drawn BEFORE the discarded card goes back, so the player never gets the same card straight back.\n" +
-             "Off = the card goes back first, then the player draws (the same card is possible).")]
+    [Tooltip("On = the new cards are drawn BEFORE the discarded cards go back, so the player never gets the same card straight back.\n" +
+             "Off = the cards go back first, then the player draws (the same card is possible).")]
     public bool drawReplacementFirst = true;
 
     // ---------- Read-only info ----------
     public int DiscardsUsed { get; private set; }
-    public int DiscardsLeft => Mathf.Max(0, discardsPerTurn - DiscardsUsed);
+    public int DiscardsLeft => Mathf.Max(0, swapsThisHand - DiscardsUsed);
 
-    /// True when the rules allow a discard (the conductor checks the phase).
+    int swapsThisHand;
+
+    /// True when the rules allow swapping the selected cards (the conductor checks the phase).
     public bool CanDiscard =>
         handManager != null && deckManager != null &&
-        handManager.SelectedIndex >= 0 &&
-        DiscardsLeft > 0;
+        SelectedCount > 0 &&
+        SelectedCount <= DiscardsLeft;
 
-    // (discarded card, card drawn in its place - null if nothing could be drawn)
-    public event Action<CardData, CardData> OnDiscarded;
+    int SelectedCount => handManager.GetSelectedCardIds().Count;
+
+    // (how many cards were swapped out, how many new cards were drawn)
+    public event Action<int, int> OnDiscarded;
 
     // =====================================================================
     //  Lifecycle
@@ -48,9 +53,10 @@ public class DiscardManager : MonoBehaviour
         if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
     }
 
-    /// New hand = discards are available again. (Called by the conductor.)
-    public void ResetSwaps()
+    /// New hand = swaps are available again. (Called by the conductor.)
+    public void ResetSwaps(int swapsAllowed)
     {
+        swapsThisHand = swapsAllowed;
         DiscardsUsed = 0;
     }
 
@@ -58,40 +64,59 @@ public class DiscardManager : MonoBehaviour
     //  Discarding
     // =====================================================================
 
-    /// Discards the selected card. Returns true if it worked. (Called by the conductor.)
+    /// Swaps every selected card in one go. Returns true if it worked. (Called by the conductor.)
     public bool TryDiscardSelected()
     {
         if (!CanDiscard) return false;
 
-        // take the card out of the hand (does NOT go to the discard pile)
-        CardInstance discarded = handManager.RemoveCard(handManager.SelectedIndex);
-        if (discarded == null) return false;
+        // take the cards out of the hand (they do NOT go to the discard pile)
+        List<CardInstance> swappedOut = RemoveSelectedCardsFromHand();
+        if (swappedOut.Count == 0) return false;
 
-        int countAfterRemoval = handManager.Count;
+        int drawn = drawReplacementFirst
+            ? DrawThenReturn(swappedOut)
+            : ReturnThenDraw(swappedOut);
 
-        if (drawReplacementFirst)
-        {
-            handManager.DrawCards(1);
-            deckManager.ReturnToDeck(discarded, returnToDeck);
-
-            // the deck was empty, so nothing could be drawn: take a card now that one is back
-            if (handManager.Count == countAfterRemoval) handManager.DrawCards(1);
-        }
-        else
-        {
-            deckManager.ReturnToDeck(discarded, returnToDeck);
-            handManager.DrawCards(1);
-        }
-
-        CardData drawn = handManager.Count > countAfterRemoval
-            ? handManager.GetCard(handManager.Count - 1)
-            : null;
-
-        DiscardsUsed++;
+        DiscardsUsed += swappedOut.Count;
         DiscardSound();
-        OnDiscarded?.Invoke(discarded.Data, drawn);
+        OnDiscarded?.Invoke(swappedOut.Count, drawn);
         return true;
     }
+
+    List<CardInstance> RemoveSelectedCardsFromHand()
+    {
+        var removed = new List<CardInstance>();
+        foreach (int cardId in handManager.GetSelectedCardIds())
+        {
+            CardInstance card = handManager.RemoveCardById(cardId);
+            if (card != null) removed.Add(card);
+        }
+        return removed;
+    }
+
+    // New cards first, so the player can't get a swapped card straight back
+    int DrawThenReturn(List<CardInstance> swappedOut)
+    {
+        int drawn = handManager.DrawCards(swappedOut.Count);
+        ReturnCardsToDeck(swappedOut);
+
+        // the deck ran out before every card was replaced: draw the rest now that cards are back
+        if (drawn < swappedOut.Count) drawn += handManager.DrawCards(swappedOut.Count - drawn);
+        return drawn;
+    }
+
+    int ReturnThenDraw(List<CardInstance> swappedOut)
+    {
+        ReturnCardsToDeck(swappedOut);
+        return handManager.DrawCards(swappedOut.Count);
+    }
+
+    void ReturnCardsToDeck(List<CardInstance> cards)
+    {
+        foreach (CardInstance card in cards)
+            deckManager.ReturnToDeck(card, returnToDeck);
+    }
+
     public void DiscardSound()
     {
         AudioManager.SFX(SoundType.UnselectCard);

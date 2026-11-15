@@ -6,8 +6,8 @@ using UnityEngine;
 ///   Input sends commands here (RequestXxx). The conductor checks the phase,
 ///   asks a worker to do the job, and moves to the next phase.
 ///
-/// A1 keeps the old turn loop (draw, build, score, shake) under the new phase names.
-/// Swap and Commit arrive in A2, Bank / Ride in A3, blinds and Glass in A4.
+/// One hand is: Draw, Swap, Commit, Build, Score, Shake (A2).
+/// The run is still the old fixed number of hands. Bank / Ride arrive in A3, blinds and Glass in A4.
 public class GameFlowController : MonoBehaviour
 {
     [Header("Settings")]
@@ -25,18 +25,25 @@ public class GameFlowController : MonoBehaviour
     public float SecondsInPhase => Time.time - phaseStartTime;
     public int HandNumber { get; private set; }
     public int HandsPerRun => config != null ? config.oldLoopTurnsPerRun : 0;
-    public int CardsPerHand => config != null ? config.maxCommitCards : 0;
     public int CardsPlacedThisHand => tower != null ? tower.CardsPlacedThisHand : 0;
     public bool IsRunOver => Phase == GamePhase.RunEnd;
 
-    /// True while a click on a hand card, a tower slot or End Turn is allowed.
-    public bool IsBuilding => Phase == GamePhase.Build && !endHandRequested;
+    /// The commit worker: the live hand name, why Play Hand is refused, the committed cards.
+    public CommitManager Commit { get; private set; }
 
-    public bool CanSwapSelectedCard => IsBuilding && swap != null && swap.CanDiscard;
+    // Which commands count right now (the HUD uses these to grey out buttons)
+    public bool IsSwapping => Phase == GamePhase.Swap && !doneSwappingRequested;
+    public bool IsCommitting => Phase == GamePhase.Commit && !playHandAccepted;
+    public bool IsBuilding => Phase == GamePhase.Build;
+    public bool CanClickHandCards => IsSwapping || IsCommitting || IsBuilding;
+    public bool CanSwapSelectedCard => IsSwapping && swap != null && swap.CanDiscard;
+    public bool CanPlayHand => IsCommitting && Commit.Problem == "";
+    public bool CanUndo => IsBuilding && CardsPlacedThisHand > 0;
 
     Coroutine flow;
     float phaseStartTime;
-    bool endHandRequested;
+    bool doneSwappingRequested;
+    bool playHandAccepted;
 
     // =====================================================================
     //  Lifecycle
@@ -45,6 +52,7 @@ public class GameFlowController : MonoBehaviour
     void Awake()
     {
         FindMissingWorkers();
+        CreatePlainWorkers();
         WarnIfSecondConductorExists();
         AddDebugCheats();
     }
@@ -67,6 +75,13 @@ public class GameFlowController : MonoBehaviour
         if (swap == null) swap = FindAnyObjectByType<DiscardManager>();
         if (tower == null) tower = FindAnyObjectByType<TowerBuilder>();
         if (score == null) score = FindAnyObjectByType<ScoreManager>();
+    }
+
+    // Workers that are plain C# (not components) are made here
+    void CreatePlainWorkers()
+    {
+        int maxCommitCards = config != null ? config.maxCommitCards : 5;
+        Commit = new CommitManager(hand, tower, maxCommitCards);
     }
 
     void WarnIfSecondConductorExists()
@@ -107,34 +122,88 @@ public class GameFlowController : MonoBehaviour
     // =====================================================================
 
     /// A hand card was clicked. The card is named by its ID, so the hand order does not matter.
+    /// What the click means depends on the phase.
     public void RequestSelectCardById(int cardId)
     {
-        if (!IsBuilding) return;
+        if (hand.FindIndexOfCard(cardId) < 0) return;       // that card is no longer in the hand
 
-        int handIndex = hand.FindIndexOfCard(cardId);
-        if (handIndex < 0) return;              // that card is no longer in the hand
-        tower.SelectCard(handIndex);
+        if (IsSwapping) PickCardToSwap(cardId);
+        else if (IsCommitting) ToggleCardInCommit(cardId);
+        else if (IsBuilding) HoldCommittedCard(cardId);
     }
 
-    /// A HUD card button was pressed (these are numbered by hand position).
+    /// A HUD card button or a number key was pressed (these are numbered by hand position).
     public void RequestSelectCard(int handIndex)
     {
-        if (!IsBuilding) return;
-        tower.SelectCard(handIndex);
+        RequestSelectCardById(hand.GetCardId(handIndex));
     }
 
-    /// The discard zone was clicked.
+    // Swap: pick as many cards as there are swaps left. Clicking a picked card again puts it down.
+    void PickCardToSwap(int cardId)
+    {
+        if (swap == null) return;
+        hand.ToggleSelected(cardId, swap.DiscardsLeft);
+    }
+
+    // Commit: add the card to the selection or take it out, then refresh the hand name
+    void ToggleCardInCommit(int cardId)
+    {
+        if (hand.ToggleSelected(cardId, config.maxCommitCards)) Commit.PreviewSelectedHand();
+    }
+
+    // Build: pick up one of the committed cards that is still waiting to be placed
+    void HoldCommittedCard(int cardId)
+    {
+        tower.HoldCard(Commit.FindUnplacedCard(cardId));
+    }
+
+    /// The deck (discard zone) was clicked: swap every picked card for a new one, in one go.
     public void RequestSwapSelectedCard()
     {
         if (!CanSwapSelectedCard) return;
         swap.TryDiscardSelected();
     }
 
-    /// The End Turn button.
-    public void RequestEndHand()
+    /// The Done Swapping button.
+    public void RequestDoneSwapping()
+    {
+        if (!IsSwapping) return;
+        doneSwappingRequested = true;
+    }
+
+    /// The Play Hand button. A refused commit spends nothing: the player just reselects.
+    public void RequestPlayHand()
+    {
+        if (!IsCommitting) return;                          // wrong phase or a double-click: ignore
+        if (!Commit.TryCommitSelectedCards()) return;       // worker says the commit is not legal
+        playHandAccepted = true;                            // CommitPhase is waiting for this
+    }
+
+    /// The table or a snap point was clicked while building.
+    public void RequestPlaceHeldCard()
     {
         if (!IsBuilding) return;
-        endHandRequested = true;
+
+        // An empty table needs no card picked first: the click places the next committed card
+        if (!tower.IsHoldingCard) tower.HoldCard(Commit.GetFirstUnplacedCard());
+
+        CardInstance placed = tower.PlaceHeldCard();
+        if (placed == null) return;
+
+        Commit.MarkPlaced(placed);
+        hand.RemoveCardById(placed.Id);
+    }
+
+    /// Undo (button or right-click): this hand's newest placement goes back to the hand.
+    public void RequestUndo()
+    {
+        if (!IsBuilding) return;
+
+        CardInstance card = tower.UndoLastPlacement();
+        if (card == null) return;
+
+        Commit.MarkUnplaced(card);
+        hand.ReturnCardToHand(card);
     }
 
     /// Debug key F9 (until blinds exist, "the blind" is the whole run).
@@ -165,6 +234,7 @@ public class GameFlowController : MonoBehaviour
     void ClearTheTable()
     {
         HandNumber = 0;
+        Commit.Clear();
         tower.DisablePlacement();
         tower.SweepTower();
         hand.EmptyHand();
@@ -188,40 +258,88 @@ public class GameFlowController : MonoBehaviour
     IEnumerator PlayOneHand()
     {
         HandNumber++;
+        SweepTowerIfFull();
         yield return DrawPhase();
         if (hand.Count == 0) yield break;                   // jump: nothing to play
-        yield return BuildPhase();
+        yield return SwapPhase();                           // until "Done Swapping" (or no swaps left)
+        yield return CommitPhase();                         // until "Play Hand" is accepted
+        yield return BuildPhase();                          // until every committed card is placed
         ScorePhase();
         yield return ShakePhase();
+    }
+
+    /// Temporary, until Bank exists (A3): a full tower would leave nothing to commit, so clear it.
+    void SweepTowerIfFull()
+    {
+        if (tower.HasLegalPlacement()) return;
+        Debug.Log("[Flow] the tower is full: sweeping it (Bank replaces this in A3)");
+        tower.SweepTower();
     }
 
     IEnumerator DrawPhase()
     {
         SetPhase(GamePhase.Draw);
         score.ClearLastHand();
-        if (swap != null) swap.ResetSwaps();
-        hand.DrawCardsForNewHand();
+        Commit.Clear();
+        if (swap != null) swap.ResetSwaps(config.swapsPerHand);
+        hand.DrawCardsUntilHandHas(config.handSize);
         yield return new WaitForSeconds(config.oldLoopDrawSeconds);
     }
 
-    /// Ends when every card for this hand is placed, the hand is empty, or End Turn is pressed.
+    /// Ends when Done Swapping is pressed or the swaps run out. Swapping is never forced.
+    IEnumerator SwapPhase()
+    {
+        SetPhase(GamePhase.Swap);
+        doneSwappingRequested = false;
+        hand.ClearSelection();
+
+        while (!doneSwappingRequested && HasSwapsLeft())
+            yield return null;
+
+        hand.ClearSelection();
+    }
+
+    bool HasSwapsLeft()
+    {
+        return swap != null && swap.DiscardsLeft > 0;
+    }
+
+    /// Ends when Play Hand is accepted. That locks the committed cards.
+    IEnumerator CommitPhase()
+    {
+        SetPhase(GamePhase.Commit);
+        playHandAccepted = false;
+        Commit.PreviewSelectedHand();                       // nothing selected yet: "Select 1 to 5 cards"
+
+        while (!playHandAccepted)
+            yield return null;
+    }
+
+    /// Ends when every committed card is placed. Until then Undo can take this hand's cards back.
     IEnumerator BuildPhase()
     {
         SetPhase(GamePhase.Build);
-        endHandRequested = false;
-        tower.EnablePlacement(CardsPerHand);
+        tower.EnablePlacement();
 
-        while (!endHandRequested && tower.CanPlaceMoreCards && hand.Count > 0)
+        while (Commit.HasUnplacedCards())
             yield return null;
 
         tower.DisablePlacement();
         hand.ClearSelection();
+        SpendCommittedCards();
+    }
+
+    // The committed cards are used up: they go to the discard pile
+    void SpendCommittedCards()
+    {
+        foreach (CardInstance card in Commit.CommittedCards)
+            deck.Discard(card);
     }
 
     void ScorePhase()
     {
         SetPhase(GamePhase.Score);
-        score.ScorePlayedCards();
+        score.ScoreHand(Commit.CommittedCards);
     }
 
     IEnumerator ShakePhase()

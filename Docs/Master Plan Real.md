@@ -28,7 +28,7 @@
 
 ### 1.1 Confirmed rules
 
-- Draw up to 8 cards in hand. Unused cards stay for the next hand. Swap one selected card by clicking the deck, up to 3 times per hand ⚙.
+- Draw up to 8 cards in hand. Unused cards stay for the next hand. Swap cards by selecting them and clicking the deck: up to 3 cards per hand ⚙, in one go or spread over several swaps (each card costs one swap).
 - Commit 1–5 cards, then place **every** committed card. The poker score uses exactly that set.
 - The hand score goes into the **Pot** (unsafe) before the shake.
 - **Bank** makes the Pot safe and clears the tower. **Ride** keeps the Pot and the surviving tower.
@@ -241,7 +241,7 @@ IEnumerator RevealScore(ScoreContext result)     // juice, started from the Hand
 | `BlindManager` (plain C#) | `BlindScore`, `HandsLeft`, target, win/fail result, leave bonus | Starting the next blind, cracking the Glass |
 | `DeckManager` | The 52 card instances, draw pile, reset, shuffle | Phase changes |
 | `HandManager` | Cards in hand, selection, basic layout, reorder | Draw animation, totals |
-| `SwapManager` | Swapping one card, swaps left | Phase changes |
+| `SwapManager` | Swapping the selected cards, swaps left | Phase changes |
 | `CommitManager` | Hand preview, the locked committed set, which are still unplaced | Spending the hand, animation |
 | `TowerBuilder` | Placement, slots and support, the shake, `ShakeResult`, sweep | Game over, score penalties, UI calls |
 | `ScoreManager` + `PokerHandEvaluator` | The score of one hand | The Pot, safe totals, the reveal animation |
@@ -436,7 +436,7 @@ classDiagram
 | Blind menu | Only the current blind can be picked; later ones are previews. **Select** starts it. **Skip** (Small/Big only) repairs one crack and moves on one blind. |
 | Start blind | Empty Pot, tower and hand. Reset and shuffle all 52 cards. `BlindScore` = 0, hands reset. Keep `RunTotal`, reward and Glass. |
 | Draw | Fill the hand to 8. Reset swaps. |
-| Swap | Up to 3 single-card swaps. **Done Swapping** moves on. Swapping is never forced. |
+| Swap | Select up to 3 cards (as many as there are swaps left) and click the deck to swap them all at once. Each card costs one swap. **Done Swapping** moves on. Swapping is never forced. |
 | Commit | Select 1–5, see the hand name. **Play Hand** is accepted only if the cards can all be placed ([§3.2](#32-a-commit-must-be-finishable)). Accepting locks the set and spends one hand. |
 | Build | Place the committed cards. Physics is frozen. Undo works on this hand's placements only. Nothing is scored yet. |
 | Score | Score the committed hand once and add it to the Pot. |
@@ -514,7 +514,7 @@ After step 6 nothing may change that payout. Sweeping the tower after a Bank nev
 
 A card is in exactly one place: draw pile, hand, committed (unplaced), tower, or spent. An animation copy is not a real card.
 
-- **Swap:** draw the new card first, then return the old one to the draw pile. Check a card is available before starting. Never half-finish a swap.
+- **Swap:** draw the new cards first, then return the old ones to the draw pile. Check the cards are available before starting. Never half-finish a swap.
 - Played, broken and swept cards stay spent until the next blind. Bank does not refill the hand, swaps, deck or hands left.
 - A new blind (or a retry) restores all 52 cards.
 - With today's numbers the deck cannot run out (4 hands: 8 + 3×5 drawn + 12 swaps = 35 cards). In `GameConfig.OnValidate`, warn if a change makes it possible.
@@ -573,7 +573,7 @@ The first playtest (P1) answers one question: *is Bank vs Ride interesting?* Bui
 | **A0. Baseline** ✅ *done, tag `good-A0`* | Branch `prototype-loop`; commit the working build. Add `GameEvents`, `GameConfig`, `PresentationGate`, empty `DebugCheats`, and the EditMode test assembly. | The game plays exactly as before. |
 | **A1. Conductor** ✅ *done, tag `good-A1`* | Three commits, each playable (see [6.3](#63-existing-scripts) for why `TurnManager` is not deleted here).<br>**A1a:** add `GameFlowController`; switch `TowerBuilder`, `HandManager`, `ScoreManager`, `DiscardManager` and `GameUi` over to it. `TurnManager` becomes an empty, switched-off shell.<br>**A1b:** delete `CheckGameOver` and the next-turn break timing, so only the conductor decides game over.<br>**A1c:** play-test, run the scene checker, tell teammates. | No false game over. Play Again leaves exactly one conductor. A debug key restarts a full tower (until A3). The scene checker reports no Missing Script and no empty required field. |
 | **B0. Hand contract** ✅ *done, tag `good-B0`* | One person: root + `Visual` child, card IDs, selection, basic layout and input. | The hand works with no juice. A2 and Track B both build on this. |
-| **A2. Commit** | Select 1–5 → live hand name → Play Hand → `CanFit` → place only those cards → Undo. | A commit that needs newly opened slots is accepted. An impossible commit spends nothing. Every accepted build can be finished. |
+| **A2. Commit** ✅ *done, tag `good-A2`* | Select 1–5 → live hand name → Play Hand → `CanFit` → place only those cards → Undo. | A commit that needs newly opened slots is accepted. An impossible commit spends nothing. Every accepted build can be finished. |
 | **A3. Bank / Ride** | `PotManager` + tests. `ResolveShake` ([§3.3](#33-the-shake-has-a-time-limit)). Full-tower rule, Bank, last-hand auto-bank. A light `BlindManager`: one fixed target, four hands, a Safe Points counter. `BankRideView` as a new script. | Normal hand, breaks, collapse, last hand and full tower all work with plain buttons. The worked example in §1.3 passes as a test. |
 | **🎯 P1. Bank/Ride playtest** | Short sessions, you plus 2–3 other people. Log every choice ([§7.4](#74-playtests)). | Players can explain why they banked or rode, and both get chosen for a reason. **If one choice always wins, fix the rules before A4.** |
 | **A4. Blinds, Glass, run** | Full `BlindManager`, `RunState`, `GlassLives` + tests. Blind menu, targets, Leave Table, Skip, rewards, 4 Antes, final-Boss retry. `BlindMenuView`, `GlassView`, `RunEndView` as new scripts. | Every branch works: win, fail, skip, retry, cleared, shattered. Safe totals and the life cap stay right. |
