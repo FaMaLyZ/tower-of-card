@@ -9,7 +9,8 @@ using UnityEngine;
 /// One hand is: Draw, Swap, Commit, Build, Score, Shake (A2).
 /// Each hand's score goes into the Pot; the shake cuts it or empties it.
 /// If the tower survives, the player Banks (Pot becomes Safe Points, tower cleared) or Rides.
-/// The run is still the old fixed number of hands. The blind arrives in A3c.
+/// A3c: the game is one blind with a fixed target and a few hands. The last hand banks by itself.
+/// The blind menu, Antes, Glass and Leave Table arrive in A4.
 public class GameFlowController : MonoBehaviour
 {
     [Header("Settings")]
@@ -26,9 +27,14 @@ public class GameFlowController : MonoBehaviour
     public GamePhase Phase { get; private set; } = GamePhase.None;
     public float SecondsInPhase => Time.time - phaseStartTime;
     public int HandNumber { get; private set; }
-    public int HandsPerRun => config != null ? config.oldLoopTurnsPerRun : 0;
     public int CardsPlacedThisHand => tower != null ? tower.CardsPlacedThisHand : 0;
-    public bool IsRunOver => Phase == GamePhase.RunEnd;
+
+    // The blind (the HUD reads these)
+    public int HandsPerBlind => blind.HandsPerBlind;
+    public int HandsLeft => blind.HandsLeft;
+    public long Target => blind.Target;
+    public bool IsBlindOver => Phase == GamePhase.BlindEnd;
+    public BlindResult LastBlindResult { get; private set; }
 
     /// The commit worker: the live hand name, why Play Hand is refused, the committed cards.
     public CommitManager Commit { get; private set; }
@@ -113,7 +119,9 @@ public class GameFlowController : MonoBehaviour
         int breakPercent = config != null ? config.breakPercent : 10;
         int heightPercent = config != null ? config.heightPercent : 10;
         pot = new PotManager(breakPercent, heightPercent);
-        blind = new BlindManager();
+        int handsPerBlind = config != null ? config.handsPerBlind : 4;
+        int targetGrowthPercent = config != null ? config.targetGrowthPercent : 150;
+        blind = new BlindManager(handsPerBlind, targetGrowthPercent);
     }
 
     void WarnIfSecondConductorExists()
@@ -207,7 +215,9 @@ public class GameFlowController : MonoBehaviour
     public void RequestPlayHand()
     {
         if (!IsCommitting) return;                          // wrong phase or a double-click: ignore
+        if (blind.HandsLeft <= 0) return;                   // no hand to spend (should not happen)
         if (!Commit.TryCommitSelectedCards()) return;       // worker says the commit is not legal
+        blind.UseOneHand();                                 // the hand is spent here, exactly once
         playHandAccepted = true;                            // CommitPhase is waiting for this
     }
 
@@ -260,7 +270,13 @@ public class GameFlowController : MonoBehaviour
         AnnouncePotChanged(oldChips, PotChangeReason.Cheat);
     }
 
-    /// Debug key F9 (until blinds exist, "the blind" is the whole run).
+    /// Debug key F3: add Safe Points up to the target (a quick way to test a win).
+    public void RequestCheatSafePointsToTarget()
+    {
+        blind.AddSafePoints(blind.Target - blind.BlindScore);
+    }
+
+    /// Debug key F9 (until A4, "the blind" is the whole run).
     public void RequestRestartBlind()
     {
         if (!HasEverythingItNeeds()) return;
@@ -290,7 +306,6 @@ public class GameFlowController : MonoBehaviour
         HandNumber = 0;
         Commit.Clear();
         ClearThePot();
-        blind.StartBlind();
         tower.DisablePlacement();
         tower.SweepTower();
         hand.EmptyHand();
@@ -298,17 +313,43 @@ public class GameFlowController : MonoBehaviour
         score.ResetScore();
     }
 
+    /// A3c: the run is one blind. A4 puts the blind menu and the Antes around it.
     IEnumerator PlayRun()
     {
-        while (HandNumber < HandsPerRun)
+        yield return PlayBlind();
+        flow = null;
+    }
+
+    IEnumerator PlayBlind()
+    {
+        StartBlind();
+        while (blind.HandsLeft > 0)
         {
             yield return PlayOneHand();
             if (NothingLeftToPlay()) break;                 // jump: deck and hand are both empty
         }
 
         yield return WaitForScoreReveal();
-        SetPhase(GamePhase.RunEnd);
-        flow = null;
+        FinishBlind();
+    }
+
+    /// Safe Points back to 0, all hands back, the target worked out. The table is already clear.
+    void StartBlind()
+    {
+        blind.StartBlind(config.FirstBlindBaseTarget, 1);
+        Debug.Log($"[Flow] blind started: target {blind.Target}, {blind.HandsLeft} hands");
+        GameEvents.RaiseBlindStarted(blind.Target);
+    }
+
+    /// Judged on Safe Points only. Win or fail, the blind ends here.
+    void FinishBlind()
+    {
+        LastBlindResult = blind.GetResult();                // set first: PhaseChanged listeners may read it
+        SetPhase(GamePhase.BlindEnd);
+
+        Debug.Log($"[Flow] blind {LastBlindResult}: {blind.BlindScore} / {blind.Target}");
+        if (LastBlindResult == BlindResult.Won) GameEvents.RaiseBlindWon(blind.BlindScore, blind.Target);
+        else GameEvents.RaiseBlindFailed(blind.BlindScore, blind.Target);
     }
 
     IEnumerator PlayOneHand()
@@ -323,6 +364,7 @@ public class GameFlowController : MonoBehaviour
         yield return ShakePhase();                          // physics -> one ShakeResult -> Pot updated once
 
         if (LastShake.Collapsed) yield break;               // jump: tower fell, the Pot is already lost
+        if (blind.HandsLeft == 0) { BankThePot(); yield break; }   // jump: the last hand banks by itself
 
         yield return BankOrRidePhase();                     // Ride is disabled if the tower is full
         if (bankOrRideChoice == BankOrRideChoice.Bank) BankThePot();
@@ -335,7 +377,7 @@ public class GameFlowController : MonoBehaviour
         Commit.Clear();
         if (swap != null) swap.ResetSwaps(config.swapsPerHand);
         hand.DrawCardsUntilHandHas(config.handSize);
-        yield return new WaitForSeconds(config.oldLoopDrawSeconds);
+        yield return new WaitForSeconds(config.drawPauseSeconds);
     }
 
     /// Ends when Done Swapping is pressed or the swaps run out. Swapping is never forced.

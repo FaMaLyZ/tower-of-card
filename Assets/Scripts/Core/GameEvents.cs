@@ -69,6 +69,21 @@ public static class GameEvents
 
     public static void RaisePotBanked(long payout, long safePoints) => PotBanked?.Invoke(payout, safePoints);
 
+    /// A blind started. Carries its target.
+    public static event Action<long> BlindStarted;
+
+    public static void RaiseBlindStarted(long target) => BlindStarted?.Invoke(target);
+
+    /// A blind ended as a win. Carries the blind score and the target.
+    public static event Action<long, long> BlindWon;
+
+    public static void RaiseBlindWon(long blindScore, long target) => BlindWon?.Invoke(blindScore, target);
+
+    /// A blind ended as a fail. Carries the blind score and the target.
+    public static event Action<long, long> BlindFailed;
+
+    public static void RaiseBlindFailed(long blindScore, long target) => BlindFailed?.Invoke(blindScore, target);
+
     /// Backstop for listeners that forgot to unsubscribe (Master Plan rule 8).
     /// Runs once when the game starts, so a stale listener from the last Play session can't survive.
     /// Do NOT call this from StartNewRun(): it would remove listeners that just subscribed.
@@ -81,5 +96,8 @@ public static class GameEvents
         ShakeResolved = null;
         PotChanged = null;
         PotBanked = null;
+        BlindStarted = null;
+        BlindWon = null;
+        BlindFailed = null;
     }
 }

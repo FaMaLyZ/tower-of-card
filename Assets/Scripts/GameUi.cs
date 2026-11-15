@@ -33,7 +33,7 @@ public class GameUI : MonoBehaviour
     public bool isGameOverPanelActive = false;
 
     [Header("Turn info texts")]
-    public TMP_Text turnText;                   // "Turn 1"
+    public TMP_Text turnText;                   // "Hand 1 / 4   Target 150"
     public TMP_Text cardsText;                  // "Cards: 2 / 5" (placed / committed)
     public TMP_Text stateText;                  // what to do now, or why Play Hand is refused
     public TMP_Text hintText;                   // help text from TowerBuilder
@@ -85,7 +85,8 @@ public class GameUI : MonoBehaviour
     public string cardDetailFormat = "Rank: {0}   Suit: {1}   Weight: {2}";
     [Tooltip("When no card is hovered or selected, show the normal help text instead.")]
     public bool showInstructionsWhenNoCard = true;
-    public string turnFormat = "Turn {0} / {0}";
+    [Tooltip("{0} = hand number, {1} = hands per blind, {2} = Safe Points, {3} = target")]
+    public string turnFormat = "Hand {0} / {1}   Target {3:N0}";
     public string cardsFormat = "Cards: {0} / {1}";
     public string deckFormat = "Deck: {0}";
     public string discardFormat = "Discard: {0}";
@@ -97,7 +98,8 @@ public class GameUI : MonoBehaviour
     public string handLabelFormat = "{0}: {1}";      // {0} = key number, {1} = card name
     public string bannerStartFormat = "Turn {0}";
     public string bannerEndFormat = "Turn {0} complete";
-    public string gameOverLabel = "Game Over";
+    public string blindWonLabel = "Blind won!";
+    public string blindFailedLabel = "Blind failed";
     public string yourTurnLabel = "Your turn";
     public string startingLabel = "Get ready...";
     public string turnEndedLabel = "Turn ended";
@@ -159,7 +161,7 @@ public class GameUI : MonoBehaviour
         RefreshUndoButton();
         RefreshNextTurnButton();
         RefreshHand();
-        if (flow != null && flow.IsRunOver)
+        if (flow != null && flow.IsBlindOver)
         {
             if (!isGameOverPanelActive)
             {
@@ -218,7 +220,7 @@ public class GameUI : MonoBehaviour
         if (!GameRunning) return;
 
         if (turnText != null)
-            turnText.text = string.Format(turnFormat, flow.HandNumber, flow.HandsPerRun);
+            turnText.text = string.Format(turnFormat, flow.HandNumber, flow.HandsPerBlind, flow.SafePoints, flow.Target);
 
         if (cardsText != null)
             cardsText.text = string.Format(cardsFormat, flow.CardsPlacedThisHand, flow.Commit.CommittedCards.Count);
@@ -448,7 +450,7 @@ public class GameUI : MonoBehaviour
     {
         switch (flow.Phase)
         {
-            case GamePhase.RunEnd: return gameOverLabel;
+            case GamePhase.BlindEnd: return GetBlindResultLabel();
             case GamePhase.Draw:   return startingLabel;
             case GamePhase.Swap:   return string.Format(swapStateFormat, discardManager != null ? discardManager.DiscardsLeft : 0);
             case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
@@ -466,13 +468,18 @@ public class GameUI : MonoBehaviour
         return flow.Commit.Preview.displayName;
     }
 
+    string GetBlindResultLabel()
+    {
+        return flow.LastBlindResult == BlindResult.Won ? blindWonLabel : blindFailedLabel;
+    }
+
     string GetBannerText()
     {
         if (!GameRunning) return "";
 
         switch (flow.Phase)
         {
-            case GamePhase.RunEnd: return gameOverLabel;
+            case GamePhase.BlindEnd: return GetBlindResultLabel();
             case GamePhase.Draw:   return string.Format(bannerStartFormat, flow.HandNumber);
             case GamePhase.Swap:
             case GamePhase.Commit:

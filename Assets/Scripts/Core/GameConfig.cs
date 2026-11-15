@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Serialization;
 
 /// Every tunable number lives here, never in code (Master Plan rule 9).
 /// Percent values are whole numbers because the Inspector can't show decimal:
@@ -16,8 +17,8 @@ public class GameConfig : ScriptableObject
     [Header("Blind")]
     [Min(1)] public int handsPerBlind = 4;
     [Min(1)] public int antesPerRun = 4;
-    [Tooltip("Small, Big, Boss base targets for Ante 1.")]
-    public int[] baseTargets = { 300, 450, 600 };
+    [Tooltip("Small, Big, Boss base targets for Ante 1. P1 plays only the Small one (150, lowered for P1; tune after it).")]
+    public int[] baseTargets = { 150, 225, 300 };
     [Tooltip("Reward as a percent: 120 = x1.2. Small, Big, Boss.")]
     public int[] rewardPercents = { 120, 140, 160 };
     [Tooltip("Each Ante multiplies targets by this percent: 150 = x1.5.")]
@@ -40,10 +41,12 @@ public class GameConfig : ScriptableObject
 
     [Header("Presentation")]
     [Min(0f)] public float maxPresentationWait = 3.0f;
+    [Tooltip("Pause after drawing, so the new cards can be seen before swapping starts.")]
+    [FormerlySerializedAs("oldLoopDrawSeconds")]
+    [Min(0f)] public float drawPauseSeconds = 2.0f;
 
-    [Header("Old turn loop (temporary: A3c replaces these)")]
-    [Min(1)] public int oldLoopTurnsPerRun = 10;
-    [Min(0f)] public float oldLoopDrawSeconds = 2.0f;
+    /// The first blind's target (P1 plays only this one).
+    public int FirstBlindBaseTarget => baseTargets != null && baseTargets.Length > 0 ? baseTargets[0] : 150;
 
     /// Most cards one blind can pull from the deck: first fill, a refill after each hand, and every swap.
     public int WorstCaseCardsDrawn =>
