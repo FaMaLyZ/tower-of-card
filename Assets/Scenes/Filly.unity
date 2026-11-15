@@ -465,6 +465,7 @@ MonoBehaviour:
   orbitSpeed: 60
   focusOffset: {x: 0, y: 0, z: 0}
   followSpeed: 4
+  resetSmoothing: 3
 --- !u!114 &67061923
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -515,18 +516,17 @@ MonoBehaviour:
     length: 1.5
     width: 1.07
     thickness: 0.02
+    massMultiplier: 1
     autoOrientModel: 1
     manualEuler: {x: 0, y: 0, z: 0}
     flipFace: 0
   groundY: 0
-  turnManager: {fileID: 1227103243}
-  handManager: {fileID: 332459159}
   tiltAngle: 27
   maxBaseTents: 4
+  fallenDistance: 0.35
+  fallenAngle: 35
   physicsOnEndTurn: 1
   freezeWhenTurnBegins: 1
-  snapRadiusPixels: 90
-  snapSpeed: 25
 --- !u!4 &195017822
 Transform:
   m_ObjectHideFlags: 0
@@ -710,6 +710,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::AudioManager
   sfxSource: {fileID: 786035758}
   musicSource: {fileID: 791183147}
+  uiSource: {fileID: 0}
   sfxGroup: {fileID: 1852264438299153004, guid: 732465d9bbc4d8441928a89d9f6c6e7a, type: 2}
   musicGroup: {fileID: -8272398297030345689, guid: 732465d9bbc4d8441928a89d9f6c6e7a, type: 2}
   uiGroup: {fileID: -6119522042706269216, guid: 732465d9bbc4d8441928a89d9f6c6e7a, type: 2}
@@ -965,21 +966,25 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HandManager
   deckManager: {fileID: 1908267859}
-  turnManager: {fileID: 1227103243}
+  flow: {fileID: 0}
   cardPrefab: {fileID: 0}
   handTranform: {fileID: 1967341411}
   fanSpread: 3
   cardSpacing: 0.5
   verticalSpacing: 0
   deepSpacing: 0.03
+  handCardScale: 1
   handModelEuler: {x: 0, y: 0, z: 0}
   cardsDrawPerTurn: 8
   maxHandSize: 8
   discardHandAtEndOfTurn: 0
   autoEndTurnWhenHandEmpty: 1
+  moveSpeed: 12
+  drawFromPoint: {fileID: 0}
+  spawnScale: 0.5
   selectedLift: 0.5
   selectedScale: 1.3
-  cardInHand: []
+  allCardLeft: 0
 --- !u!1 &365901236
 GameObject:
   m_ObjectHideFlags: 0
@@ -1873,7 +1878,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5514e1e2c68dde84489b2b59ab02fa9c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ScoreManager
-  turnManager: {fileID: 1227103243}
   tower: {fileID: 195017821}
   handTypes:
   - hand: 0
@@ -2321,56 +2325,6 @@ MonoBehaviour:
   m_ShadowLayerMask: 1
   m_RenderingLayers: 1
   m_ShadowRenderingLayers: 1
---- !u!1 &1227103241
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1227103244}
-  - component: {fileID: 1227103243}
-  m_Layer: 0
-  m_Name: TurnManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1227103243
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1227103241}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c68e4cad67dc414b914d43ce5319cd4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TurnManager
-  cardsPerTurn: 5
-  maxTurns: 0
-  startTurnDelay: 2
-  endTurnDelay: 3
-  autoStartNextTurn: 1
-  beginOnStart: 1
---- !u!4 &1227103244
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1227103241}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.51039, y: 0, z: 13.82564}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1352556862
 GameObject:
   m_ObjectHideFlags: 0
@@ -2400,30 +2354,32 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9843ac92a4de1374b9ef33017c97b210, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameUI
-  turnManager: {fileID: 1227103243}
-  tower: {fileID: 195017821}
-  canvas: {fileID: 989166574}
+  flow: {fileID: 0}
+  placement: {fileID: 0}
+  handManager: {fileID: 0}
+  deckManager: {fileID: 1908267859}
+  swapManager: {fileID: 0}
+  scoreManager: {fileID: 1007714718}
+  runEndPanel: {fileID: 0}
   turnText: {fileID: 1912519958}
+  runText: {fileID: 0}
   cardsText: {fileID: 40612158}
   stateText: {fileID: 1559507554}
   hintText: {fileID: 963078074}
-  deckManager: {fileID: 1908267859}
   deckText: {fileID: 2028015427}
   discardText: {fileID: 1168406145}
-  scoreManager: {fileID: 1007714718}
+  swapsLeftText: {fileID: 0}
   handNameText: {fileID: 365901238}
   chipsText: {fileID: 1955992694}
   multText: {fileID: 1039139093}
   turnScoreText: {fileID: 225159706}
   totalScoreText: {fileID: 1413922759}
+  potText: {fileID: 0}
   bannerText: {fileID: 1615897810}
   endTurnButton: {fileID: 1676804769}
-  nextTurnButton: {fileID: 0}
-  handSlots: []
-  selectedScale: 1.15
-  snapMarkerTemplate: {fileID: 301170680}
-  snapMarkerColor: {r: 0, g: 0, b: 0, a: 0.6}
-  snapMarkerBestColor: {r: 0.2, g: 1, b: 0.3, a: 1}
+  undoButton: {fileID: 0}
+  cardDetailFormat: 'Rank: {0}   Suit: {1}   Weight: {2}'
+  showInstructionsWhenNoCard: 1
   turnFormat: Turn {0}
   cardsFormat: 'Cards: {0} / {1}'
   deckFormat: 'Deck: {0}'
@@ -2432,13 +2388,40 @@ MonoBehaviour:
   multFormat: 'Mult: x{0:0.##}'
   turnScoreFormat: 'Turn score: {0:N0}'
   totalScoreFormat: 'Score: {0:N0}'
-  handLabelFormat: '{0}: {1}'
+  swapsLeftFormat: 'Swaps left: {0}'
   bannerStartFormat: Turn {0}
   bannerEndFormat: Turn {0} complete
-  gameOverLabel: Game Over
-  yourTurnLabel: Your turn
+  blindWonLabel: Blind won!
+  blindFailedLabel: Blind failed
+  blindResultFormat: '{0}: {1}
+
+    {2:N0} / {3:N0}'
+  leaveBonusFormat: '
+
+    Left the table: +{0:N0}'
+  runFormat: Ante {0} / {1}  {2} blind{5}   Run {3:N0}   Reward x{4:0.##}
+  retryLabel: ' (retry)'
+  runEndStateLabel: Run over
+  blindMenuStateLabel: Choose your blind
   startingLabel: Get ready...
   turnEndedLabel: Turn ended
+  potUnsettledFormat: 'Pot: {0:N0} (unsettled)'
+  potSettledFormat: 'Pot: {0:N0}
+
+    Bank now: {1:N0} (+{2}% height, {3} levels)'
+  lastShakeFormat: '
+
+    Last shake: {0} broken (-{1}% each)'
+  collapsedLabel: '
+
+    The tower collapsed: the Pot is lost'
+  bankOrRideStateLabel: Bank the Pot, or Ride to keep building
+  continueOrLeaveStateLabel: Target reached! Continue, or Leave Table for a bonus
+  doneSwappingLabel: Done Swapping
+  playHandLabel: Play Hand
+  swapStateFormat: 'Swap: pick up to {0} cards, then click the deck'
+  commitStateLabel: Press Play Hand
+  buildStateFormat: 'Place your cards: {0} left'
 --- !u!4 &1352556864
 Transform:
   m_ObjectHideFlags: 0
@@ -3618,7 +3601,6 @@ SceneRoots:
   - {fileID: 295818140}
   - {fileID: 195017822}
   - {fileID: 899604213}
-  - {fileID: 1227103244}
   - {fileID: 1352556864}
   - {fileID: 1007714719}
   - {fileID: 989166575}

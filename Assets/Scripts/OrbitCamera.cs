@@ -25,7 +25,7 @@ public class OrbitCamera : MonoBehaviour
 
     void Start()
     {
-        if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
+        if (tower == null) tower = FindAnyObjectByType<TowerBuilder>();
 
         yaw = startYaw = transform.eulerAngles.y;
         focus = GetFocusTarget();

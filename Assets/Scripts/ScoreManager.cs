@@ -88,7 +88,7 @@ public class ScoreContext
 ///   2. The poker hand they make decides the base  chips x mult  (e.g. Pair = 10 x 2).
 ///   3. Every scoring card adds its chip value (2-10 = face value, J/Q/K = 10, Ace = 11).
 ///   4. Other scripts may add bonuses (+chips, +mult, x mult) - like Balatro jokers.
-///   5. Turn score = chips x mult, added to the total score.
+///   5. Turn score = chips x mult. The conductor puts it into the Pot; this script keeps no total.
 ///
 /// The result is revealed step by step so the UI can animate it.
 public class ScoreManager : MonoBehaviour
@@ -111,10 +111,8 @@ public class ScoreManager : MonoBehaviour
     public event Action<ScoreContext> OnApplyEffects;       // add jokers / bonuses here
     public event Action<ScoreStep> OnScoreStep;             // every revealed step
     public event Action<ScoreContext> OnTurnScored;         // the whole turn has been scored
-    public event Action<long> OnTotalScoreChanged;
 
     // ---------- Read-only info (UI reads these) ----------
-    public long TotalScore { get; private set; }
     public long TurnScore { get; private set; }
     public string HandName { get; private set; } = "";
     public float CurrentChips { get; private set; }
@@ -131,7 +129,7 @@ public class ScoreManager : MonoBehaviour
 
     void Awake()
     {
-        if (tower == null) tower = FindFirstObjectByType<TowerBuilder>();
+        if (tower == null) tower = FindAnyObjectByType<TowerBuilder>();
     }
 
     // =====================================================================
@@ -289,10 +287,8 @@ public class ScoreManager : MonoBehaviour
         CurrentChips = ctx.chips;
         CurrentMult = ctx.mult;
         TurnScore = ctx.finalScore;
-        TotalScore += ctx.finalScore;
 
         OnTurnScored?.Invoke(ctx);
-        OnTotalScoreChanged?.Invoke(TotalScore);
     }
 
     void ClearDisplay()
@@ -325,10 +321,7 @@ public class ScoreManager : MonoBehaviour
         sequence = null;
         IsScoring = false;
         LastContext = null;
-
-        TotalScore = 0;
         ClearDisplay();
-        OnTotalScoreChanged?.Invoke(TotalScore);
     }
 
     [ContextMenu("Reset hand values to defaults")]

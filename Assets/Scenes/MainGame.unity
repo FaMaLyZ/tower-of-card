@@ -1025,6 +1025,7 @@ GameObject:
   m_Component:
   - component: {fileID: 195017822}
   - component: {fileID: 195017821}
+  - component: {fileID: 195017823}
   m_Layer: 0
   m_Name: TowerBuilder
   m_TagString: Untagged
@@ -1054,18 +1055,12 @@ MonoBehaviour:
     manualEuler: {x: 0, y: 0, z: 0}
     flipFace: 0
   groundY: 0.25
-  tableLayerMask:
-    serializedVersion: 2
-    m_Bits: 128
-  flow: {fileID: 0}
   tiltAngle: 27
   maxBaseTents: 4
   fallenDistance: 0.35
   fallenAngle: 35
   physicsOnEndTurn: 1
   freezeWhenTurnBegins: 1
-  snapRadiusPixels: 90
-  snapSpeed: 25
 --- !u!4 &195017822
 Transform:
   m_ObjectHideFlags: 0
@@ -1081,6 +1076,30 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &195017823
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 195017820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a3e530a3926c55b4c9202d2837735301, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TowerPlacementInput
+  flow: {fileID: 0}
+  tower: {fileID: 0}
+  tableLayerMask:
+    serializedVersion: 2
+    m_Bits: 128
+  snapRadiusPixels: 90
+  snapSpeed: 25
+  firstClickHint: Click the table to start the tower
+  placingHint: 'Click a snap point to place. Right-click: put the card back. Orbit
+    camera: A / D.'
+  choosingHint: 'Pick one of your raised cards to place it. Right-click: undo the
+    last card.'
 --- !u!1 &225159704
 GameObject:
   m_ObjectHideFlags: 0
@@ -2807,6 +2826,7 @@ MonoBehaviour:
   deck: {fileID: 1908267859}
   swap: {fileID: 1894643685}
   tower: {fileID: 195017821}
+  placement: {fileID: 0}
   score: {fileID: 1007714718}
 --- !u!4 &466649125
 Transform:
@@ -3350,7 +3370,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8e0a3d3a338835e4f9044a1ada03ae01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DiscardZone
-  discardManager: {fileID: 1894643685}
   flow: {fileID: 0}
   hoverScale: 1.1
 --- !u!1 &745742808
@@ -5848,50 +5867,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1193565840}
   m_CullTransparentMesh: 1
---- !u!1 &1227103241
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1227103244}
-  - component: {fileID: 1227103243}
-  m_Layer: 0
-  m_Name: TurnManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1227103243
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1227103241}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c68e4cad67dc414b914d43ce5319cd4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TurnManager
---- !u!4 &1227103244
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1227103241}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.51039, y: 0, z: 13.82564}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1274515778
 GameObject:
   m_ObjectHideFlags: 0
@@ -6256,6 +6231,7 @@ GameObject:
   - component: {fileID: 1352556866}
   - component: {fileID: 1352556867}
   - component: {fileID: 1352556868}
+  - component: {fileID: 1352556869}
   m_Layer: 0
   m_Name: GameUi
   m_TagString: Untagged
@@ -6276,22 +6252,20 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameUI
   flow: {fileID: 0}
-  tower: {fileID: 195017821}
+  placement: {fileID: 0}
   handManager: {fileID: 332459159}
-  canvas: {fileID: 989166574}
-  gameOverPanel: {fileID: 2133716170}
-  isGameOverPanelActive: 0
+  deckManager: {fileID: 1908267859}
+  swapManager: {fileID: 0}
+  scoreManager: {fileID: 1007714718}
+  runEndPanel: {fileID: 2133716170}
   turnText: {fileID: 1912519958}
   runText: {fileID: 1815304380}
   cardsText: {fileID: 40612158}
   stateText: {fileID: 1559507554}
   hintText: {fileID: 963078074}
-  deckManager: {fileID: 1908267859}
   deckText: {fileID: 2028015427}
   discardText: {fileID: 1168406145}
-  discardManager: {fileID: 0}
-  discardsLeftText: {fileID: 0}
-  scoreManager: {fileID: 1007714718}
+  swapsLeftText: {fileID: 0}
   handNameText: {fileID: 365901238}
   chipsText: {fileID: 1955992694}
   multText: {fileID: 1039139093}
@@ -6301,12 +6275,6 @@ MonoBehaviour:
   bannerText: {fileID: 1615897810}
   endTurnButton: {fileID: 1676804769}
   undoButton: {fileID: 0}
-  nextTurnButton: {fileID: 0}
-  handSlots: []
-  selectedScale: 1.15
-  snapMarkerTemplate: {fileID: 301170680}
-  snapMarkerColor: {r: 0, g: 0, b: 0, a: 0.6}
-  snapMarkerBestColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   cardDetailFormat: 'Rank: {0}   Suit: {1}   Weight: {2}'
   showInstructionsWhenNoCard: 1
   turnFormat: Hand {0} / {1}   Target {3:N0}
@@ -6317,8 +6285,7 @@ MonoBehaviour:
   multFormat: x{0:0.##}
   turnScoreFormat: '{0:N0}'
   totalScoreFormat: '{0:N0}'
-  discardsLeftFormat: 'Discards left: {0}'
-  handLabelFormat: '{0}: {1}'
+  swapsLeftFormat: 'Discards left: {0}'
   bannerStartFormat: Turn {0}
   bannerEndFormat: Turn {0} complete
   blindWonLabel: Blind won!
@@ -6333,7 +6300,6 @@ MonoBehaviour:
   retryLabel: ' (retry)'
   runEndStateLabel: Run over
   blindMenuStateLabel: Choose your blind
-  yourTurnLabel: Your turn
   startingLabel: Get ready...
   turnEndedLabel: Turn ended
   potUnsettledFormat: 'Pot: {0:N0} (unsettled)'
@@ -6487,6 +6453,23 @@ MonoBehaviour:
   skippedLabel: Skipped
   skipRepairText: Skip (repair 1 crack)
   skipGlassFullText: Skip (Glass is whole)
+--- !u!114 &1352556869
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1352556862}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 719335e86c686bf48b74ccd8a01e4574, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SnapMarkerView
+  placement: {fileID: 0}
+  canvas: {fileID: 989166574}
+  snapMarkerTemplate: {fileID: 301170680}
+  snapMarkerColor: {r: 1, g: 1, b: 1, a: 0.6}
+  snapMarkerBestColor: {r: 0.2, g: 1, b: 0.3, a: 1}
 --- !u!1001 &1400221178
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -8670,7 +8653,7 @@ GameObject:
   - component: {fileID: 1894643686}
   - component: {fileID: 1894643685}
   m_Layer: 0
-  m_Name: DiscardManager
+  m_Name: SwapManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -8690,7 +8673,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::DiscardManager
   handManager: {fileID: 332459159}
   deckManager: {fileID: 1908267859}
-  discardsPerTurn: 3
   returnToDeck: 0
   drawReplacementFirst: 1
 --- !u!4 &1894643686
@@ -10107,7 +10089,6 @@ SceneRoots:
   - {fileID: 9507133}
   - {fileID: 195017822}
   - {fileID: 899604213}
-  - {fileID: 1227103244}
   - {fileID: 1352556864}
   - {fileID: 1007714719}
   - {fileID: 1894643686}

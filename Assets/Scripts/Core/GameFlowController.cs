@@ -22,8 +22,9 @@ public class GameFlowController : MonoBehaviour
     [Header("Workers (auto-found if empty)")]
     public HandManager hand;
     public DeckManager deck;
-    public DiscardManager swap;
+    public SwapManager swap;
     public TowerBuilder tower;
+    public TowerPlacementInput placement;
     public ScoreManager score;
 
     // ---------- Read-only info (the HUD reads these) ----------
@@ -109,7 +110,7 @@ public class GameFlowController : MonoBehaviour
     public bool IsCommitting => Phase == GamePhase.Commit && !playHandAccepted;
     public bool IsBuilding => Phase == GamePhase.Build;
     public bool CanClickHandCards => IsSwapping || IsCommitting || IsBuilding;
-    public bool CanSwapSelectedCard => IsSwapping && swap != null && swap.CanDiscard;
+    public bool CanSwapSelectedCard => IsSwapping && swap != null && swap.CanSwap;
     public bool CanPlayHand => IsCommitting && Commit.Problem == "";
     public bool CanUndo => IsBuilding && CardsPlacedThisHand > 0;
 
@@ -152,8 +153,9 @@ public class GameFlowController : MonoBehaviour
     {
         if (hand == null) hand = FindAnyObjectByType<HandManager>();
         if (deck == null) deck = FindAnyObjectByType<DeckManager>();
-        if (swap == null) swap = FindAnyObjectByType<DiscardManager>();
+        if (swap == null) swap = FindAnyObjectByType<SwapManager>();
         if (tower == null) tower = FindAnyObjectByType<TowerBuilder>();
+        if (placement == null) placement = FindAnyObjectByType<TowerPlacementInput>();
         if (score == null) score = FindAnyObjectByType<ScoreManager>();
     }
 
@@ -201,8 +203,9 @@ public class GameFlowController : MonoBehaviour
         ok &= CheckExists(hand, "HandManager");
         ok &= CheckExists(deck, "DeckManager");
         ok &= CheckExists(tower, "TowerBuilder");
+        ok &= CheckExists(placement, "TowerPlacementInput (add it next to the TowerBuilder)");
         ok &= CheckExists(score, "ScoreManager");
-        if (swap == null) Debug.LogWarning("GameFlowController: no DiscardManager in the scene, so swapping is off.", this);
+        if (swap == null) Debug.LogWarning("GameFlowController: no SwapManager in the scene, so swapping is off.", this);
         return ok;
     }
 
@@ -228,7 +231,7 @@ public class GameFlowController : MonoBehaviour
         else if (IsBuilding) HoldCommittedCard(cardId);
     }
 
-    /// A HUD card button or a number key was pressed (these are numbered by hand position).
+    /// A number key was pressed (numbered by hand position).
     public void RequestSelectCard(int handIndex)
     {
         RequestSelectCardById(hand.GetCardId(handIndex));
@@ -238,7 +241,7 @@ public class GameFlowController : MonoBehaviour
     void PickCardToSwap(int cardId)
     {
         if (swap == null) return;
-        hand.ToggleSelected(cardId, swap.DiscardsLeft);
+        hand.ToggleSelected(cardId, swap.SwapsLeft);
     }
 
     // Commit: add the card to the selection or take it out, then refresh the hand name
@@ -250,14 +253,14 @@ public class GameFlowController : MonoBehaviour
     // Build: pick up one of the committed cards that is still waiting to be placed
     void HoldCommittedCard(int cardId)
     {
-        tower.HoldCard(Commit.FindUnplacedCard(cardId));
+        placement.HoldCard(Commit.FindUnplacedCard(cardId));
     }
 
-    /// The deck (discard zone) was clicked: swap every picked card for a new one, in one go.
+    /// The deck (swap zone) was clicked: swap every picked card for a new one, in one go.
     public void RequestSwapSelectedCard()
     {
         if (!CanSwapSelectedCard) return;
-        swap.TryDiscardSelected();
+        swap.TrySwapSelected();
     }
 
     /// The Done Swapping button.
@@ -283,9 +286,9 @@ public class GameFlowController : MonoBehaviour
         if (!IsBuilding) return;
 
         // An empty table needs no card picked first: the click places the next committed card
-        if (!tower.IsHoldingCard) tower.HoldCard(Commit.GetFirstUnplacedCard());
+        if (!placement.IsHoldingCard) placement.HoldCard(Commit.GetFirstUnplacedCard());
 
-        CardInstance placed = tower.PlaceHeldCard();
+        CardInstance placed = placement.PlaceHeldCard();
         if (placed == null) return;
 
         Commit.MarkPlaced(placed);
@@ -297,6 +300,7 @@ public class GameFlowController : MonoBehaviour
     {
         if (!IsBuilding) return;
 
+        placement.DropHeldCard();
         CardInstance card = tower.UndoLastPlacement();
         if (card == null) return;
 
@@ -410,7 +414,7 @@ public class GameFlowController : MonoBehaviour
         HandNumber = 0;
         Commit.Clear();
         ClearThePot();
-        tower.DisablePlacement();
+        placement.DisableInput();
         tower.SweepTower();
         hand.EmptyHand();
         deck.ResetDeck();
@@ -577,7 +581,7 @@ public class GameFlowController : MonoBehaviour
 
     bool HasSwapsLeft()
     {
-        return swap != null && swap.DiscardsLeft > 0;
+        return swap != null && swap.SwapsLeft > 0;
     }
 
     /// Ends when Play Hand is accepted. That locks the committed cards.
@@ -595,12 +599,13 @@ public class GameFlowController : MonoBehaviour
     IEnumerator BuildPhase()
     {
         SetPhase(GamePhase.Build);
-        tower.EnablePlacement();
+        tower.StartHandPlacements();
+        placement.EnableInput();
 
         while (Commit.HasUnplacedCards())
             yield return null;
 
-        tower.DisablePlacement();
+        placement.DisableInput();
         hand.ClearSelection();
         SpendCommittedCards();
     }

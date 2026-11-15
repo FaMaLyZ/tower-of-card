@@ -100,7 +100,7 @@ public class HandManager : MonoBehaviour
 
     void Awake()
     {
-        if (deckManager == null) deckManager = FindFirstObjectByType<DeckManager>();
+        if (deckManager == null) deckManager = FindAnyObjectByType<DeckManager>();
         if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
 
         if (handTranform == null)

@@ -48,9 +48,6 @@ public class Card : MonoBehaviour
     [SerializeField] private GameObject cardBreakPre;
     private readonly int isBreakHash = Animator.StringToHash("Break");
 
-    // Raised just before a card breaks (TowerBuilder listens so it can forget the card)
-    public static event Action<Card> Broken;
-
     public CardData Data { get; private set; }
 
     /// Which card of the deck this is (-1 = not a real card, for example the placement ghost).
@@ -296,7 +293,7 @@ public class Card : MonoBehaviour
         if (isBroken) return;
         isBroken = true;
 
-        Broken?.Invoke(this);
+        GameEvents.RaiseCardBroken(this);
         StartCoroutine(BreakCoroutine());
     }
     IEnumerator BreakCoroutine()

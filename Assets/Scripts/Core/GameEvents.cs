@@ -61,6 +61,12 @@ public static class GameEvents
 
     public static void RaiseSelectionChanged(IReadOnlyList<int> selectedCardIds) => SelectionChanged?.Invoke(selectedCardIds);
 
+    /// A card is breaking (raised just before it is destroyed). TowerBuilder counts it for the
+    /// next ShakeResult; effects may play here. The Pot numbers come from ShakeResolved, never from this.
+    public static event Action<Card> CardBroken;
+
+    public static void RaiseCardBroken(Card card) => CardBroken?.Invoke(card);
+
     /// A shake is fully resolved: what broke, how many levels stand, collapsed or not.
     public static event Action<ShakeResult> ShakeResolved;
 
@@ -128,6 +134,7 @@ public static class GameEvents
         PhaseChanged = null;
         HandChanged = null;
         SelectionChanged = null;
+        CardBroken = null;
         ShakeResolved = null;
         PotChanged = null;
         PotBanked = null;
