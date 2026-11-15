@@ -1,7 +1,7 @@
 # Neo Tower of Cards — Master Plan
 
 > **Read this first.** It is the build order and the code shape for the new prototype.
-> **Date:** 2026-11-14 · **Revision 4** — Boss twists cut; revision 3 merged the two revision-2 drafts (see [§10 Change log](#10-change-log)).
+> **Date:** 2026-11-15 · **Revision 5** — A3 split into playable parts, lower P1 target; revision 4 cut Boss twists; revision 3 merged the two revision-2 drafts (see [§10 Change log](#10-change-log)).
 > **Related docs:** [Core Gameplay Loop.md](Core%20Gameplay%20Loop.md) (player rules) · [juice-plan.md](juice-plan.md) (visual and audio details)
 > **Who owns what:** Core Gameplay Loop owns the player rules. This plan owns the code and the work order. The juice plan owns the effects. Keep the three in step. Older GDDs describe the old prototype and do not override these.
 > **Marks:** **⚙** = a number to tune. **Assumption** = a rule added to make the prototype buildable, not yet proven by play.
@@ -574,11 +574,26 @@ The first playtest (P1) answers one question: *is Bank vs Ride interesting?* Bui
 | **A1. Conductor** ✅ *done, tag `good-A1`* | Three commits, each playable (see [6.3](#63-existing-scripts) for why `TurnManager` is not deleted here).<br>**A1a:** add `GameFlowController`; switch `TowerBuilder`, `HandManager`, `ScoreManager`, `DiscardManager` and `GameUi` over to it. `TurnManager` becomes an empty, switched-off shell.<br>**A1b:** delete `CheckGameOver` and the next-turn break timing, so only the conductor decides game over.<br>**A1c:** play-test, run the scene checker, tell teammates. | No false game over. Play Again leaves exactly one conductor. A debug key restarts a full tower (until A3). The scene checker reports no Missing Script and no empty required field. |
 | **B0. Hand contract** ✅ *done, tag `good-B0`* | One person: root + `Visual` child, card IDs, selection, basic layout and input. | The hand works with no juice. A2 and Track B both build on this. |
 | **A2. Commit** ✅ *done, tag `good-A2`* | Select 1–5 → live hand name → Play Hand → `CanFit` → place only those cards → Undo. | A commit that needs newly opened slots is accepted. An impossible commit spends nothing. Every accepted build can be finished. |
-| **A3. Bank / Ride** | `PotManager` + tests. `ResolveShake` ([§3.3](#33-the-shake-has-a-time-limit)). Full-tower rule, Bank, last-hand auto-bank. A light `BlindManager`: one fixed target, four hands, a Safe Points counter. `BankRideView` as a new script. | Normal hand, breaks, collapse, last hand and full tower all work with plain buttons. The worked example in §1.3 passes as a test. |
+| **A3. Bank / Ride** | Three commits, each playable and checkable by hand (see the note below the table).<br>**A3a. Pot and shake:** `PotManager` + tests. `ResolveShake` ([§3.3](#33-the-shake-has-a-time-limit)) with `ShakeResult` replaces the fixed shake wait. Plain HUD: Pot, Bank quote with breakdown, breaks, levels. Collapse sets the Pot to 0. Cheats F2 (+1000 Pot).<br>**A3b. Bank and Ride:** Bank / Ride buttons, Safe Points counter, **Bank clears the whole tower**, Ride keeps Pot and tower, full-tower rule (Ride disabled with the reason shown). The temporary full-tower sweep is deleted. `BankRideView` as a new script.<br>**A3c. Blind:** light `BlindManager`: one fixed target, four hands, last-hand auto-bank, Win / Fail end screen with restart. Lower P1 target (see note). `BlindManager` tests. Cheat F3 (safe points up to the target). | **A3a:** the Pot grows, breaks cut it, F1 collapse makes it 0, the worked example in §1.3 passes as a test. **A3b:** Bank pays Safe Points and the tower disappears; Ride builds on the survivors; a full tower disables Ride. **A3c:** a full 4-hand blind can be won and failed; the last hand banks by itself. |
 | **🎯 P1. Bank/Ride playtest** | Short sessions, you plus 2–3 other people. Log every choice ([§7.4](#74-playtests)). | Players can explain why they banked or rode, and both get chosen for a reason. **If one choice always wins, fix the rules before A4.** |
 | **A4. Blinds, Glass, run** | Full `BlindManager`, `RunState`, `GlassLives` + tests. Blind menu, targets, Leave Table, Skip, rewards, 4 Antes, final-Boss retry. `BlindMenuView`, `GlassView`, `RunEndView` as new scripts. | Every branch works: win, fail, skip, retry, cleared, shattered. Safe totals and the life cap stay right. |
 | **🎯 P2. Run playtest** | At least 10 full runs. Tune one group of numbers at a time. | Choices stay interesting across Antes. Leave/Continue and Skip/Play are understood. Ten runs is a first look, not proof of balance. |
 | **A6. Clean-up** | Finish splitting `TowerBuilder`; move what is left of `GameUi` into `HudView` and delete it; remove dead code. | All scenarios in §7 pass. No second flow owner, no broken scene reference. |
+
+> **Decisions for A3 (2026-11-15).**
+> - **Bank clears the whole tower.** Bank is a big reset: the height bonus is paid once and the next hand starts on an empty table. Ride is the only way to keep the tower.
+> - **P1 target is lowered to 150** for the first blind (was 300). Reason: a High Card scores about 12 and a Pair about 30–50, so 4 hands cannot reach 300 without luck, and a playtest where everyone fails tells us nothing. Big and Boss keep the same ratios (225, 300) but nothing reads them until A4. Set it in `GameConfig` during A3c, when `BlindManager` first reads it. Tune it again after P1.
+> - **The split is by what can be checked, not by size.** Each A3 commit adds something you can see and break on purpose. Do not merge them, and do not split them finer into steps with nothing to play.
+>
+> **Note for Fable (the model doing A1–A3).** A3 is the step most likely to go wrong in small ways. Check these before committing each part:
+> 1. **One `ShakeResult` per shake, one Pot update per shake** (rule 15). The break count comes from a `HashSet` of card IDs; `Card.Broken` can fire twice for one card. Fallen cards are counted at the end of the shake, never at the next draw.
+> 2. **Pot maths is `decimal`, rounded once** ([§1.3](#13-score-maths-exact)). The height bonus is never written back into the Pot. Test the example: Pot 244, quote 351, then 426 after a Ride.
+> 3. **`ResolveShake` replaces `oldLoopShakeSeconds` and `oldLoopTurnsPerRun`.** Count time in `FixedUpdate` steps; a timeout is not a collapse. Remove the old `GameConfig` fields in the same commit that stops using them, so there is no dead setting.
+> 4. **Only the conductor changes the phase.** `BankThePot()`, `LoseThePot()` and the Bank / Ride choice live in `GameFlowController`; `PotManager` only does the maths and returns a result. Commands go through `RequestBank()` / `RequestRide()` with a phase check (rule 5).
+> 5. **Bank must sweep the tower after the payout is final.** Sweeping never counts as a break. `TowerBuilder.SweepTower()` already exists; `Card.Break` must not be called on swept cards.
+> 6. **The full-tower rule uses `HasLegalPlacement()`**, which already exists from A2. Delete `SweepTowerIfFull()` in the conductor in A3b; a full tower is not game over.
+> 7. **Already built in A2, do not redo:** `CanFit`, undo, the Commit phase, the multi-card swap (up to 3 cards per hand, each card costs one swap), `CommitManager`, `TowerSlots`. The old `TurnManager.cs` stays an empty shell until A6.
+> 8. **Check in play, not only in tests:** a collapse on the last hand, a Ride onto a full tower, and Play Again mid-shake (no old coroutine or listener may survive).
 
 ### 6.3 Existing scripts
 
@@ -733,6 +748,8 @@ One script, `DebugCheats`, inside `#if UNITY_EDITOR || DEVELOPMENT_BUILD`. Cheat
 ---
 
 ## 10. Change log
+
+**Revision 5 (2026-11-15).** A1, B0 and A2 done. A2 swap rule changed: select up to 3 cards and swap them in one go (each card costs one swap). A3 split into A3a Pot and shake, A3b Bank and Ride, A3c Blind, each playable. Bank clears the whole tower. P1 target lowered to 150. Added a checklist note for Fable under §6.2.
 
 **Revision 4 (2026-11-14).** Boss twists cut to fit a 10-day schedule. The Boss stays as the third blind of each Ante with the largest target: it cannot be skipped, a win repairs one crack, and the final one clears the run. Removed: the four twists, `IBossTwist`, step A5. Twists can come back after the prototype. Also added: the safe A1 split, `TurnManager` kept as a shell until A6, the scene checker, the Rules assembly and the git and schedule notes in §6.6.
 

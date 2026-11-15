@@ -66,6 +66,61 @@ public class TowerSlotsTests
     }
 
     [Test]
+    public void EmptyTable_HasNoBaseCard()
+    {
+        Assert.IsFalse(MakeTower(4).HasBaseCard());
+    }
+
+    [Test]
+    public void LoneBaseCard_StopsACollapse_ButGivesNoLevel()
+    {
+        TowerSlots tower = MakeTower(4, (Left, 0, 0));
+
+        Assert.IsTrue(tower.HasBaseCard());
+        Assert.AreEqual(0, tower.CountStandingLevels());
+    }
+
+    [Test]
+    public void TwoTentsAFloorAndATent_AreTwoLevels()
+    {
+        TowerSlots tower = MakeTower(4,
+            (Left, 0, 0), (Right, 0, 0), (Left, 0, 1), (Right, 0, 1),
+            (Floor, 0, 0),
+            (Left, 1, 0), (Right, 1, 0));
+
+        Assert.AreEqual(2, tower.CountStandingLevels());
+        Assert.AreEqual(0, tower.FindUnsupportedCards().Count);
+    }
+
+    [Test]
+    public void FloorCardAlone_AddsNoLevel()
+    {
+        TowerSlots tower = MakeTower(4,
+            (Left, 0, 0), (Right, 0, 0), (Left, 0, 1), (Right, 0, 1),
+            (Floor, 0, 0));
+
+        Assert.AreEqual(1, tower.CountStandingLevels());
+    }
+
+    [Test]
+    public void BrokenCardUnderAFloor_LeavesEverythingAboveUnsupported()
+    {
+        // the right half of the second tent broke: the floor and the tent on it have lost their support
+        TowerSlots tower = MakeTower(4,
+            (Left, 0, 0), (Right, 0, 0), (Left, 0, 1),
+            (Floor, 0, 0),
+            (Left, 1, 0), (Right, 1, 0));
+
+        List<(int kind, int level, int index)> unsupported = tower.FindUnsupportedCards();
+
+        Assert.AreEqual(3, unsupported.Count);
+        Assert.IsTrue(unsupported.Contains((Floor, 0, 0)));
+        Assert.IsTrue(unsupported.Contains((Left, 1, 0)));
+        Assert.IsTrue(unsupported.Contains((Right, 1, 0)));
+        Assert.AreEqual(1, tower.CountStandingLevels());        // only the first tent still counts
+    }
+
+    [Test]
     public void FullTower_HasNoOpenSlot()
     {
         TowerSlots tower = MakeTower(4);

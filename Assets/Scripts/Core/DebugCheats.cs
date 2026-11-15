@@ -8,11 +8,13 @@ using UnityEngine.InputSystem;
 ///
 ///   on-screen label  current phase and seconds in it
 ///   F1               push the tower over
+///   F2               +1000 Pot chips
 ///   F9               restart the blind
-///   (A3 adds F2, F3; A4 adds F4, F5)
+///   (A3c adds F3; A4 adds F4, F5)
 public class DebugCheats : MonoBehaviour
 {
     const float PushSpeed = 3f;
+    const long CheatPotChips = 1000;
 
     GameFlowController flow;
 
@@ -27,14 +29,21 @@ public class DebugCheats : MonoBehaviour
         if (keyboard == null || flow == null) return;
 
         if (keyboard.f1Key.wasPressedThisFrame) PushTowerOver();
+        if (keyboard.f2Key.wasPressedThisFrame) AddPotChips();
         if (keyboard.f9Key.wasPressedThisFrame) RestartBlind();
     }
 
     void PushTowerOver()
     {
         if (flow.tower == null) return;
-        Debug.Log("[Cheat] F1: push the tower over");
+        Debug.Log("[Cheat] F1: push the tower over (at the next shake if it is not shaking now)");
         flow.tower.PushTowerOver(PushSpeed);
+    }
+
+    void AddPotChips()
+    {
+        Debug.Log($"[Cheat] F2: +{CheatPotChips} Pot chips");
+        flow.RequestCheatAddPotChips(CheatPotChips);
     }
 
     void RestartBlind()
@@ -51,7 +60,7 @@ public class DebugCheats : MonoBehaviour
 
     string BuildPhaseLabel()
     {
-        return $"Phase: {flow.Phase}  ({flow.SecondsInPhase:0.0}s)   hand {flow.HandNumber}/{flow.HandsPerRun}   F1 push  F9 restart";
+        return $"Phase: {flow.Phase}  ({flow.SecondsInPhase:0.0}s)   hand {flow.HandNumber}/{flow.HandsPerRun}   F1 push  F2 +pot  F9 restart";
     }
 }
 #endif

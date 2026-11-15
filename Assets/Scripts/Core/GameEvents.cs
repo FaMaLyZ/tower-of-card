@@ -20,6 +20,17 @@ public enum GamePhase
     RunEnd
 }
 
+/// Why the Pot changed (sent with GameEvents.PotChanged).
+public enum PotChangeReason
+{
+    HandScored,
+    ShakeResolved,
+    Collapsed,
+    Banked,
+    Cleared,
+    Cheat
+}
+
 /// Announcements for the HUD, sound and juice. An event tells listeners what ALREADY
 /// happened; it never moves the game forward (Master Plan rule 3).
 ///
@@ -41,6 +52,23 @@ public static class GameEvents
 
     public static void RaiseSelectionChanged(IReadOnlyList<int> selectedCardIds) => SelectionChanged?.Invoke(selectedCardIds);
 
+    /// A shake is fully resolved: what broke, how many levels stand, collapsed or not.
+    public static event Action<ShakeResult> ShakeResolved;
+
+    public static void RaiseShakeResolved(ShakeResult result) => ShakeResolved?.Invoke(result);
+
+    /// The Pot changed, told AFTER the change. Carries the old chips, the new chips, why, and what
+    /// a Bank would pay now. Listeners show these numbers; they never redo the maths.
+    public static event Action<long, long, PotChangeReason, long> PotChanged;
+
+    public static void RaisePotChanged(long oldChips, long newChips, PotChangeReason reason, long bankQuote) =>
+        PotChanged?.Invoke(oldChips, newChips, reason, bankQuote);
+
+    /// A Bank was paid. Carries the payout and the Safe Points after it.
+    public static event Action<long, long> PotBanked;
+
+    public static void RaisePotBanked(long payout, long safePoints) => PotBanked?.Invoke(payout, safePoints);
+
     /// Backstop for listeners that forgot to unsubscribe (Master Plan rule 8).
     /// Runs once when the game starts, so a stale listener from the last Play session can't survive.
     /// Do NOT call this from StartNewRun(): it would remove listeners that just subscribed.
@@ -50,5 +78,8 @@ public static class GameEvents
         PhaseChanged = null;
         HandChanged = null;
         SelectionChanged = null;
+        ShakeResolved = null;
+        PotChanged = null;
+        PotBanked = null;
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -88,6 +89,16 @@ public class TowerBuilder : MonoBehaviour
     public bool IsHoldingCard => heldCard != null;
 
     bool placementEnabled;
+
+    /// What the last shake did. Made once per shake by ResolveShake; the Pot is updated from it.
+    public ShakeResult LastShakeResult { get; private set; }
+
+    // Every card that broke since the last ShakeResult. A set, so a card can never count twice.
+    readonly HashSet<int> brokenCardIds = new HashSet<int>();
+    bool isShaking;
+    bool shakeTimedOut;
+    int shakeCount;
+    float queuedPushSpeed;            // debug cheat: shove the tower when the next shake starts
 
     public string HintText
     {
@@ -275,27 +286,26 @@ public class TowerBuilder : MonoBehaviour
         return null;
     }
 
-    /// The shake: let gravity and collisions act on the tower.
-    public void ReleasePhysics()
-    {
-        if (physicsOnEndTurn) SetCardsFrozen(false);
-    }
-
-    /// The shake is over: lock every card where it is now.
-    public void FreezeTower()
-    {
-        SetCardsFrozen(true);
-    }
-
     /// Removes every card and lets the player start a new tower with a click on the table.
+    /// Sweeping never counts as a break.
     public void SweepTower()
     {
+        isShaking = false;
+        queuedPushSpeed = 0f;
+        brokenCardIds.Clear();
         ResetTower();
     }
 
-    /// Debug cheat: unfreeze the tower and shove every card sideways.
+    /// Debug cheat: shove every card sideways. Outside a shake the push waits for the next shake,
+    /// so the fall is always counted by a ShakeResult.
     public void PushTowerOver(float pushSpeed)
     {
+        if (!isShaking)
+        {
+            queuedPushSpeed = pushSpeed;
+            return;
+        }
+
         foreach (var c in cards.Values)
         {
             if (c == null) continue;
@@ -304,41 +314,141 @@ public class TowerBuilder : MonoBehaviour
         }
     }
 
-    /// Called by the conductor at the END of the shake, never later (Master Plan section 0).
-    ///
-    /// A card knocked out of its slot by the shake stays registered under that slot's key, so the
-    /// spot looks empty but refuses new cards. Break anything that is no longer where it was
-    /// placed - Card.Break raises Broken, and HandleCardBroken then drops the key so the slot
-    /// opens up again.
-    public void BreakFallenCards()
-    {
-        if (state == State.WaitingFirstClick) return;
+    // ---------- The shake (Master Plan 3.3) ----------
 
-        List<Card> fallen = null;
+    /// The whole shake: release physics, wait until the tower is quiet (never forever), work out
+    /// what broke and what still stands, then freeze the survivors. Leaves ONE result in
+    /// LastShakeResult. After that nothing may change the payout.
+    public IEnumerator ResolveShake(GameConfig config)
+    {
+        isShaking = true;
+        ReleasePhysics();
+        ApplyQueuedPush();
+
+        yield return WaitUntilTowerIsQuiet(config);
+
+        BreakFallenCards();                 // out of their slot = broken, counted once
+        BreakUnsupportedCards();            // floating above a gap = broken too
+        FreezeTower();                      // survivors stay where they are, no snapping back
+        LastShakeResult = BuildShakeResult();
+        isShaking = false;
+
+        if (LastShakeResult.Collapsed) ResetTower();    // clear the debris; the table is free again
+    }
+
+    void ReleasePhysics()
+    {
+        if (physicsOnEndTurn) SetCardsFrozen(false);
+    }
+
+    void FreezeTower()
+    {
+        SetCardsFrozen(true);
+    }
+
+    void ApplyQueuedPush()
+    {
+        if (queuedPushSpeed <= 0f) return;
+
+        float pushSpeed = queuedPushSpeed;
+        queuedPushSpeed = 0f;
+        PushTowerOver(pushSpeed);
+    }
+
+    // Time is counted in physics steps, so a paused game does not use up the window.
+    // Ends when the tower has been still for the quiet time, or at the maximum time.
+    IEnumerator WaitUntilTowerIsQuiet(GameConfig config)
+    {
+        var nextPhysicsStep = new WaitForFixedUpdate();
+        float elapsed = 0f;
+        float quietFor = 0f;
+        shakeTimedOut = false;
+
+        while (true)
+        {
+            yield return nextPhysicsStep;
+            elapsed += Time.fixedDeltaTime;
+            quietFor = IsTowerQuiet(config) ? quietFor + Time.fixedDeltaTime : 0f;
+
+            if (elapsed >= config.shakeMinSeconds && quietFor >= config.shakeQuietSeconds) yield break;
+
+            if (elapsed >= config.shakeMaxSeconds)
+            {
+                shakeTimedOut = true;
+                Debug.LogWarning($"TowerBuilder: the tower was still moving after {config.shakeMaxSeconds} s. The shake was ended by the time limit.", this);
+                yield break;
+            }
+        }
+    }
+
+    bool IsTowerQuiet(GameConfig config)
+    {
+        foreach (Card c in cards.Values)
+            if (c != null && c.IsMoving(config.shakeSpeedLimit, config.shakeSpinLimit)) return false;
+        return true;
+    }
+
+    // A card knocked out of its slot stays registered under that slot's key, so the spot looks
+    // empty but refuses new cards. Break anything that is no longer where it was placed:
+    // Card.Break raises Broken, and HandleCardBroken counts it and frees the slot.
+    void BreakFallenCards()
+    {
+        var fallen = new List<Card>();
         foreach (var pair in cards)
         {
             Card c = pair.Value;
-            if (c == null) continue;
-
-            GetPose(pair.Key.Item1, pair.Key.Item2, pair.Key.Item3, out Vector3 pos, out Quaternion rot);
-            if (Vector3.Distance(c.transform.position, pos) <= fallenDistance &&
-                Quaternion.Angle(c.transform.rotation, rot) <= fallenAngle) continue;
-
-            if (fallen == null) fallen = new List<Card>();
-            fallen.Add(c);
+            if (c != null && HasLeftItsSlot(pair.Key, c)) fallen.Add(c);
         }
 
-        if (fallen == null) return;
         foreach (Card c in fallen) c.Break();   // modifies "cards", so never break while iterating it
+    }
+
+    bool HasLeftItsSlot((int, int, int) key, Card c)
+    {
+        GetPose(key.Item1, key.Item2, key.Item3, out Vector3 pos, out Quaternion rot);
+        return Vector3.Distance(c.transform.position, pos) > fallenDistance ||
+               Quaternion.Angle(c.transform.rotation, rot) > fallenAngle;
+    }
+
+    // A card whose support is gone (the tent or floor under it broke) is not a survivor
+    void BreakUnsupportedCards()
+    {
+        ForgetDestroyedCards();
+
+        foreach (var key in ReadSlotRules().FindUnsupportedCards())
+            if (cards.TryGetValue(key, out Card c) && c != null) c.Break();
+    }
+
+    ShakeResult BuildShakeResult()
+    {
+        ForgetDestroyedCards();
+        TowerSlots survivors = ReadSlotRules();
+
+        shakeCount++;
+        var result = new ShakeResult(
+            shakeCount,
+            new List<int>(brokenCardIds),
+            survivors.CountStandingLevels(),
+            !survivors.HasBaseCard(),               // collapsed = no base card left standing
+            shakeTimedOut);
+
+        brokenCardIds.Clear();
+        return result;
     }
 
     // If every ground-level card is gone (broken or destroyed) there is nothing left to build on.
     // Without this the game gets stuck: no snap points exist and the "first click" never comes back.
+    // During a shake this waits: ResolveShake decides what collapsed, once, at the end.
     void CheckTowerStillExists()
     {
-        if (state == State.WaitingFirstClick) return;
+        if (state == State.WaitingFirstClick || isShaking) return;
 
-        // forget cards that were destroyed
+        ForgetDestroyedCards();
+        if (!ReadSlotRules().HasBaseCard()) ResetTower();
+    }
+
+    void ForgetDestroyedCards()
+    {
         List<(int, int, int)> dead = null;
         foreach (var pair in cards)
         {
@@ -348,16 +458,6 @@ public class TowerBuilder : MonoBehaviour
         }
         if (dead != null)
             foreach (var key in dead) cards.Remove(key);
-
-        if (!HasBaseCard()) ResetTower();
-    }
-
-    // Is there at least one card standing on the ground (a tent card at level 0)?
-    bool HasBaseCard()
-    {
-        foreach (var key in cards.Keys)
-            if (key.Item1 != FLOOR && key.Item2 == 0) return true;
-        return false;
     }
 
     // The tower is gone: clear what is left and let the player start a new one with a click on the ground
@@ -378,7 +478,7 @@ public class TowerBuilder : MonoBehaviour
         TowerReset?.Invoke();
     }
 
-    // A card broke (hit the ground too hard): forget it so its slot becomes free again
+    // A tower card broke: count it (once) for the next ShakeResult and free its slot
     void HandleCardBroken(Card broken)
     {
         (int, int, int)? foundKey = null;
@@ -386,8 +486,10 @@ public class TowerBuilder : MonoBehaviour
         {
             if (pair.Value == broken) { foundKey = pair.Key; break; }
         }
+        if (!foundKey.HasValue) return;     // not a tower card (or already counted)
 
-        if (foundKey.HasValue) cards.Remove(foundKey.Value);
+        cards.Remove(foundKey.Value);
+        brokenCardIds.Add(broken.CardId);
     }
 
     // true = freeze all placed cards, false = apply physics to them

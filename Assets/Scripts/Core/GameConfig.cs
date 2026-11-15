@@ -41,10 +41,9 @@ public class GameConfig : ScriptableObject
     [Header("Presentation")]
     [Min(0f)] public float maxPresentationWait = 3.0f;
 
-    [Header("Old turn loop (temporary: A2 and A3 replace these)")]
+    [Header("Old turn loop (temporary: A3c replaces these)")]
     [Min(1)] public int oldLoopTurnsPerRun = 10;
     [Min(0f)] public float oldLoopDrawSeconds = 2.0f;
-    [Min(0f)] public float oldLoopShakeSeconds = 3.0f;
 
     /// Most cards one blind can pull from the deck: first fill, a refill after each hand, and every swap.
     public int WorstCaseCardsDrawn =>

@@ -53,7 +53,11 @@ public class GameUI : MonoBehaviour
     public TMP_Text chipsText;                  // "Chips: 25"
     public TMP_Text multText;                   // "Mult: x2"
     public TMP_Text turnScoreText;              // "Turn score: 50"
-    public TMP_Text totalScoreText;             // "Score: 120"
+    public TMP_Text totalScoreText;             // "Safe: 120" (points that were banked)
+
+    [Header("Pot (optional)")]
+    [Tooltip("Shows the Pot, what a Bank would pay now, and what the last shake did. Needs room for 3 lines.")]
+    public TMP_Text potText;
 
     [Header("Banner (big center text)")]
     public TMP_Text bannerText;
@@ -88,7 +92,7 @@ public class GameUI : MonoBehaviour
     public string chipsFormat = "Chips: {0:0}";
     public string multFormat = "Mult: x{0:0.##}";
     public string turnScoreFormat = "Turn score: {0:N0}";
-    public string totalScoreFormat = "Score: {0:N0}";
+    public string totalScoreFormat = "Safe: {0:N0}";
     public string discardsLeftFormat = "Discards left: {0}";
     public string handLabelFormat = "{0}: {1}";      // {0} = key number, {1} = card name
     public string bannerStartFormat = "Turn {0}";
@@ -97,6 +101,13 @@ public class GameUI : MonoBehaviour
     public string yourTurnLabel = "Your turn";
     public string startingLabel = "Get ready...";
     public string turnEndedLabel = "Turn ended";
+    public string potUnsettledFormat = "Pot: {0:N0} (unsettled)";
+    [Tooltip("{0} = Pot chips, {1} = what Bank pays, {2} = height bonus percent, {3} = standing levels")]
+    public string potSettledFormat = "Pot: {0:N0}\nBank now: {1:N0} (+{2}% height, {3} levels)";
+    [Tooltip("{0} = cards broken in the last shake, {1} = Pot percent lost to them")]
+    public string lastShakeFormat = "\nLast shake: {0} broken (-{1}% each)";
+    public string collapsedLabel = "\nThe tower collapsed: the Pot is lost";
+    public string bankOrRideStateLabel = "Bank the Pot, or Ride to keep building";
     public string doneSwappingLabel = "Done Swapping";
     public string playHandLabel = "Play Hand";
     public string swapStateFormat = "Swap: pick up to {0} cards, then click the deck";
@@ -141,6 +152,7 @@ public class GameUI : MonoBehaviour
         RefreshHint();
         RefreshDeckInfo();
         RefreshScore();
+        RefreshPot();
         RefreshDiscards();
         RefreshBanner();
         RefreshMainButton();
@@ -169,7 +181,7 @@ public class GameUI : MonoBehaviour
     // Texts and markers must not block mouse clicks on the game (TowerBuilder ignores clicks over UI)
     void PreventUIFromBlockingClicks()
     {
-        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText, discardsLeftText })
+        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText, discardsLeftText, potText })
             if (t != null) t.raycastTarget = false;
 
         if (snapMarkerTemplate != null) snapMarkerTemplate.raycastTarget = false;
@@ -255,7 +267,27 @@ public class GameUI : MonoBehaviour
             turnScoreText.text = string.Format(turnScoreFormat, scoreManager.TurnScore);
         }
         if (totalScoreText != null)
-            totalScoreText.text = string.Format(totalScoreFormat, scoreManager.TotalScore);
+            totalScoreText.text = string.Format(totalScoreFormat, flow != null ? flow.SafePoints : 0);
+    }
+
+    // The Pot: raw chips while a shake can still change it, then the Bank quote with its breakdown
+    void RefreshPot()
+    {
+        if (potText == null || !GameRunning) return;
+        potText.text = BuildPotText();
+    }
+
+    string BuildPotText()
+    {
+        if (!flow.IsPotSettled) return string.Format(potUnsettledFormat, flow.PotChips);
+
+        int heightBonusPercent = flow.config.heightPercent * flow.StandingLevels;
+        string text = string.Format(potSettledFormat, flow.PotChips, flow.BankQuote, heightBonusPercent, flow.StandingLevels);
+
+        ShakeResult shake = flow.LastShake;
+        if (shake == null) return text;
+        if (shake.Collapsed) return text + collapsedLabel;
+        return text + string.Format(lastShakeFormat, shake.BrokenCount, flow.config.breakPercent);
     }
 
     void RefreshDiscards()
@@ -421,6 +453,7 @@ public class GameUI : MonoBehaviour
             case GamePhase.Swap:   return string.Format(swapStateFormat, discardManager != null ? discardManager.DiscardsLeft : 0);
             case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
             case GamePhase.Build:  return string.Format(buildStateFormat, flow.Commit.UnplacedCount);
+            case GamePhase.BankOrRide: return bankOrRideStateLabel;
             default:               return turnEndedLabel;
         }
     }
@@ -443,7 +476,8 @@ public class GameUI : MonoBehaviour
             case GamePhase.Draw:   return string.Format(bannerStartFormat, flow.HandNumber);
             case GamePhase.Swap:
             case GamePhase.Commit:
-            case GamePhase.Build:  return "";
+            case GamePhase.Build:
+            case GamePhase.BankOrRide: return "";
             default:               return string.Format(bannerEndFormat, flow.HandNumber);
         }
     }

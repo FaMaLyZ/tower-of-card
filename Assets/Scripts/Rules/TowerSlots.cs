@@ -28,6 +28,84 @@ public class TowerSlots
 
     public bool HasOpenSlot() => FindOpenSlots().Count > 0;
 
+    // ---------- After a shake: what is still standing ----------
+
+    /// Is at least one tent card standing on the table? If not, the tower has collapsed.
+    public bool HasBaseCard()
+    {
+        foreach (var card in occupied)
+            if (card.kind != Floor && card.level == 0) return true;
+        return false;
+    }
+
+    /// Cards with nothing under them all the way down to the table. They are floating, not survivors.
+    public List<(int kind, int level, int index)> FindUnsupportedCards()
+    {
+        HashSet<(int kind, int level, int index)> supported = FindSupportedCards();
+
+        var unsupported = new List<(int kind, int level, int index)>();
+        foreach (var card in occupied)
+            if (!supported.Contains(card)) unsupported.Add(card);
+        return unsupported;
+    }
+
+    /// Levels counted up from the table without gaps. A level counts when it has at least one
+    /// complete, supported tent (left + right). A floor card adds no level by itself.
+    public int CountStandingLevels()
+    {
+        HashSet<(int kind, int level, int index)> supported = FindSupportedCards();
+
+        int levels = 0;
+        while (HasCompleteTent(supported, levels)) levels++;
+        return levels;
+    }
+
+    // Works up from the table: a card is supported only if what it rests on is supported
+    HashSet<(int kind, int level, int index)> FindSupportedCards()
+    {
+        var supported = new HashSet<(int kind, int level, int index)>();
+
+        for (int level = 0; level <= FindTopLevel(); level++)
+        {
+            // tent cards stand on the table, or on the floor card below them
+            foreach (var card in occupied)
+            {
+                if (card.kind == Floor || card.level != level) continue;
+                if (level == 0 || supported.Contains((Floor, level - 1, card.index))) supported.Add(card);
+            }
+
+            // a floor card lies across two complete tents
+            foreach (var card in occupied)
+            {
+                if (card.kind != Floor || card.level != level) continue;
+                if (IsTentIn(supported, level, card.index) && IsTentIn(supported, level, card.index + 1)) supported.Add(card);
+            }
+        }
+        return supported;
+    }
+
+    int FindTopLevel()
+    {
+        int top = 0;
+        foreach (var card in occupied)
+            if (card.level > top) top = card.level;
+        return top;
+    }
+
+    static bool HasCompleteTent(HashSet<(int kind, int level, int index)> cards, int level)
+    {
+        foreach (var card in cards)
+            if (card.kind == Left && card.level == level && cards.Contains((Right, level, card.index))) return true;
+        return false;
+    }
+
+    static bool IsTentIn(HashSet<(int kind, int level, int index)> cards, int level, int index)
+    {
+        return cards.Contains((Left, level, index)) && cards.Contains((Right, level, index));
+    }
+
+    // ---------- While building: where a card may go ----------
+
     /// True if SOME order of placements fits all the cards. A placed card can open new slots
     /// (the other half of a tent, a floor, a new level), so this is not "open slots >= cards".
     public bool CanFit(int cardCount)

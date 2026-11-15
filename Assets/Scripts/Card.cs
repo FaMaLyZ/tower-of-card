@@ -278,6 +278,13 @@ public class Card : MonoBehaviour
         }
     }
 
+    /// Is the card still moving faster than "quiet"? (TowerBuilder uses this to know when a shake has settled.)
+    public bool IsMoving(float speedLimit, float spinLimit)
+    {
+        if (isBroken || IsFrozenOrGhost()) return false;
+        return rb.linearVelocity.magnitude > speedLimit || rb.angularVelocity.magnitude > spinLimit;
+    }
+
     bool IsFrozenOrGhost()
     {
         return rb.isKinematic || rb.constraints == RigidbodyConstraints.FreezeAll;

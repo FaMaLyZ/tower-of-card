@@ -7,7 +7,9 @@ using UnityEngine;
 ///   asks a worker to do the job, and moves to the next phase.
 ///
 /// One hand is: Draw, Swap, Commit, Build, Score, Shake (A2).
-/// The run is still the old fixed number of hands. Bank / Ride arrive in A3, blinds and Glass in A4.
+/// Each hand's score goes into the Pot; the shake cuts it or empties it.
+/// If the tower survives, the player Banks (Pot becomes Safe Points, tower cleared) or Rides.
+/// The run is still the old fixed number of hands. The blind arrives in A3c.
 public class GameFlowController : MonoBehaviour
 {
     [Header("Settings")]
@@ -31,6 +33,29 @@ public class GameFlowController : MonoBehaviour
     /// The commit worker: the live hand name, why Play Hand is refused, the committed cards.
     public CommitManager Commit { get; private set; }
 
+    // The Pot (unsafe points). The HUD shows these numbers; it never redoes the maths.
+    public long PotChips => pot.PotChips;
+    public ShakeResult LastShake { get; private set; }
+    public int StandingLevels => LastShake != null ? LastShake.StandingLevels : 0;
+    public long BankQuote => pot.QuoteBankPayout(StandingLevels, RewardMultiplier);
+
+    /// False from the moment a hand is scored until its shake is resolved: the Pot can still change.
+    public bool IsPotSettled { get; private set; } = true;
+
+    const decimal RewardMultiplier = 1m;        // blind rewards arrive in A4
+
+    /// Points that are already safe. A collapse never touches them.
+    public long SafePoints => blind.BlindScore;
+
+    // The Bank / Ride choice
+    public bool IsChoosingBankOrRide => Phase == GamePhase.BankOrRide && bankOrRideChoice == BankOrRideChoice.None;
+
+    /// Ride needs somewhere to put the next card. A full tower can only be Banked.
+    public bool CanRide => IsChoosingBankOrRide && tower.HasLegalPlacement();
+
+    enum BankOrRideChoice { None, Bank, Ride }
+    BankOrRideChoice bankOrRideChoice;
+
     // Which commands count right now (the HUD uses these to grey out buttons)
     public bool IsSwapping => Phase == GamePhase.Swap && !doneSwappingRequested;
     public bool IsCommitting => Phase == GamePhase.Commit && !playHandAccepted;
@@ -40,6 +65,8 @@ public class GameFlowController : MonoBehaviour
     public bool CanPlayHand => IsCommitting && Commit.Problem == "";
     public bool CanUndo => IsBuilding && CardsPlacedThisHand > 0;
 
+    PotManager pot;
+    BlindManager blind;
     Coroutine flow;
     float phaseStartTime;
     bool doneSwappingRequested;
@@ -82,6 +109,11 @@ public class GameFlowController : MonoBehaviour
     {
         int maxCommitCards = config != null ? config.maxCommitCards : 5;
         Commit = new CommitManager(hand, tower, maxCommitCards);
+
+        int breakPercent = config != null ? config.breakPercent : 10;
+        int heightPercent = config != null ? config.heightPercent : 10;
+        pot = new PotManager(breakPercent, heightPercent);
+        blind = new BlindManager();
     }
 
     void WarnIfSecondConductorExists()
@@ -206,6 +238,28 @@ public class GameFlowController : MonoBehaviour
         hand.ReturnCardToHand(card);
     }
 
+    /// The Bank button.
+    public void RequestBank()
+    {
+        if (!IsChoosingBankOrRide) return;                  // wrong phase or a double-click: ignore
+        bankOrRideChoice = BankOrRideChoice.Bank;
+    }
+
+    /// The Ride button.
+    public void RequestRide()
+    {
+        if (!CanRide) return;                               // wrong phase, double-click, or a full tower
+        bankOrRideChoice = BankOrRideChoice.Ride;
+    }
+
+    /// Debug key F2: put extra chips in the Pot.
+    public void RequestCheatAddPotChips(long chips)
+    {
+        long oldChips = pot.PotChips;
+        pot.AddHandScore(chips);
+        AnnouncePotChanged(oldChips, PotChangeReason.Cheat);
+    }
+
     /// Debug key F9 (until blinds exist, "the blind" is the whole run).
     public void RequestRestartBlind()
     {
@@ -235,6 +289,8 @@ public class GameFlowController : MonoBehaviour
     {
         HandNumber = 0;
         Commit.Clear();
+        ClearThePot();
+        blind.StartBlind();
         tower.DisablePlacement();
         tower.SweepTower();
         hand.EmptyHand();
@@ -258,22 +314,18 @@ public class GameFlowController : MonoBehaviour
     IEnumerator PlayOneHand()
     {
         HandNumber++;
-        SweepTowerIfFull();
         yield return DrawPhase();
         if (hand.Count == 0) yield break;                   // jump: nothing to play
         yield return SwapPhase();                           // until "Done Swapping" (or no swaps left)
         yield return CommitPhase();                         // until "Play Hand" is accepted
         yield return BuildPhase();                          // until every committed card is placed
         ScorePhase();
-        yield return ShakePhase();
-    }
+        yield return ShakePhase();                          // physics -> one ShakeResult -> Pot updated once
 
-    /// Temporary, until Bank exists (A3): a full tower would leave nothing to commit, so clear it.
-    void SweepTowerIfFull()
-    {
-        if (tower.HasLegalPlacement()) return;
-        Debug.Log("[Flow] the tower is full: sweeping it (Bank replaces this in A3)");
-        tower.SweepTower();
+        if (LastShake.Collapsed) yield break;               // jump: tower fell, the Pot is already lost
+
+        yield return BankOrRidePhase();                     // Ride is disabled if the tower is full
+        if (bankOrRideChoice == BankOrRideChoice.Bank) BankThePot();
     }
 
     IEnumerator DrawPhase()
@@ -336,19 +388,74 @@ public class GameFlowController : MonoBehaviour
             deck.Discard(card);
     }
 
+    /// The committed hand is scored once and goes into the Pot. From here the Pot is unsettled.
     void ScorePhase()
     {
         SetPhase(GamePhase.Score);
-        score.ScoreHand(Commit.CommittedCards);
+        ScoreContext result = score.ScoreHand(Commit.CommittedCards);
+        if (result == null) return;
+
+        long oldChips = pot.PotChips;
+        pot.AddHandScore(result.finalScore);
+        IsPotSettled = false;
+        AnnouncePotChanged(oldChips, PotChangeReason.HandScored);
     }
 
+    /// One shake, one ShakeResult, one Pot update. A collapse empties the Pot.
     IEnumerator ShakePhase()
     {
         SetPhase(GamePhase.Shake);
-        tower.ReleasePhysics();
-        yield return new WaitForSeconds(config.oldLoopShakeSeconds);
-        tower.FreezeTower();
-        tower.BreakFallenCards();                           // resolved now, never at the next draw
+        yield return tower.ResolveShake(config);
+
+        LastShake = tower.LastShakeResult;
+        long oldChips = pot.PotChips;
+        pot.ApplyShakeResult(LastShake);
+        IsPotSettled = true;
+
+        Debug.Log($"[Flow] shake {LastShake.ShakeId}: {LastShake.BrokenCount} broken, {LastShake.StandingLevels} levels, " +
+                  $"collapsed {LastShake.Collapsed}, pot {oldChips} -> {pot.PotChips}");
+        GameEvents.RaiseShakeResolved(LastShake);
+        AnnouncePotChanged(oldChips, LastShake.Collapsed ? PotChangeReason.Collapsed : PotChangeReason.ShakeResolved);
+    }
+
+    /// Ends when the player presses Bank or Ride.
+    IEnumerator BankOrRidePhase()
+    {
+        SetPhase(GamePhase.BankOrRide);
+        bankOrRideChoice = BankOrRideChoice.None;
+
+        while (bankOrRideChoice == BankOrRideChoice.None)
+            yield return null;
+    }
+
+    /// Bank: the Pot (plus the height bonus) becomes Safe Points, then the whole tower is cleared.
+    /// The payout is final before the sweep, so sweeping can never change it.
+    void BankThePot()
+    {
+        long oldChips = pot.PotChips;
+        long payout = pot.BankPot(StandingLevels, RewardMultiplier);
+        blind.AddSafePoints(payout);
+
+        tower.SweepTower();
+        LastShake = null;                                   // the tower it described is gone
+
+        Debug.Log($"[Flow] banked {payout} (pot was {oldChips}), safe points {blind.BlindScore}");
+        AnnouncePotChanged(oldChips, PotChangeReason.Banked);
+        GameEvents.RaisePotBanked(payout, blind.BlindScore);
+    }
+
+    void ClearThePot()
+    {
+        long oldChips = pot.PotChips;
+        pot.Clear();
+        LastShake = null;
+        IsPotSettled = true;
+        AnnouncePotChanged(oldChips, PotChangeReason.Cleared);
+    }
+
+    void AnnouncePotChanged(long oldChips, PotChangeReason reason)
+    {
+        GameEvents.RaisePotChanged(oldChips, pot.PotChips, reason, BankQuote);
     }
 
     /// Lets the last score finish counting before the game-over screen. Never waits forever (rule 13).
