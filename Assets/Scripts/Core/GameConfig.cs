@@ -17,7 +17,7 @@ public class GameConfig : ScriptableObject
     [Header("Blind")]
     [Min(1)] public int handsPerBlind = 4;
     [Min(1)] public int antesPerRun = 4;
-    [Tooltip("Small, Big, Boss base targets for Ante 1. P1 plays only the Small one (150, lowered for P1; tune after it).")]
+    [Tooltip("Small, Big, Boss base targets for Ante 1 (Small lowered to 150 for P1; tune after P2).")]
     public int[] baseTargets = { 150, 225, 300 };
     [Tooltip("Reward as a percent: 120 = x1.2. Small, Big, Boss.")]
     public int[] rewardPercents = { 120, 140, 160 };
@@ -41,12 +41,26 @@ public class GameConfig : ScriptableObject
 
     [Header("Presentation")]
     [Min(0f)] public float maxPresentationWait = 3.0f;
+    [Tooltip("How long the blind result stays on screen before the next blind starts (until the blind menu in A4c).")]
+    [Min(0f)] public float blindEndPauseSeconds = 2.5f;
     [Tooltip("Pause after drawing, so the new cards can be seen before swapping starts.")]
     [FormerlySerializedAs("oldLoopDrawSeconds")]
     [Min(0f)] public float drawPauseSeconds = 2.0f;
 
-    /// The first blind's target (P1 plays only this one).
-    public int FirstBlindBaseTarget => baseTargets != null && baseTargets.Length > 0 ? baseTargets[0] : 150;
+    static readonly int[] DefaultBaseTargets = { 150, 225, 300 };
+    static readonly int[] DefaultRewardPercents = { 120, 140, 160 };
+
+    /// The Ante 1 target of a Small, Big or Boss blind (BlindManager grows it per Ante).
+    public int GetBaseTarget(BlindKind kind) => PickForBlind(baseTargets, DefaultBaseTargets, kind);
+
+    /// The reward of a Small, Big or Boss blind, as a percent (120 = x1.2).
+    public int GetRewardPercent(BlindKind kind) => PickForBlind(rewardPercents, DefaultRewardPercents, kind);
+
+    static int PickForBlind(int[] values, int[] fallback, BlindKind kind)
+    {
+        int index = (int)kind;
+        return values != null && index < values.Length ? values[index] : fallback[index];
+    }
 
     /// Most cards one blind can pull from the deck: first fill, a refill after each hand, and every swap.
     public int WorstCaseCardsDrawn =>

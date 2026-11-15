@@ -3,12 +3,12 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.Serialization;
 
-/// The end screen of a blind: won or failed, and the Safe Points against the target.
+/// The end screen of a run: Cleared or Shattered, the Run Total, and how far the run got.
 ///
 /// A view: it only reads the conductor and shows the result. It sits on the end panel, which
-/// GameUI turns on when the blind is over. The panel's Play Again button restarts the game.
-/// Replaces FinalScores (A3c), which showed the old running total.
-public class BlindEndView : MonoBehaviour
+/// GameUI turns on when the run is over. The panel's Play Again button restarts the game.
+/// A4b: was BlindEndView (one blind was the whole game). Same script file ID, so the scene keeps it.
+public class RunEndView : MonoBehaviour
 {
     [Header("Game references (auto-found if empty)")]
     public GameFlowController flow;
@@ -18,12 +18,11 @@ public class BlindEndView : MonoBehaviour
     public TMP_Text resultText;
 
     [Header("Texts")]
-    [Tooltip("{0} = won / failed label, {1} = Safe Points, {2} = target")]
-    public string resultFormat = "{0}\n{1:N0} / {2:N0}";
-    public string wonLabel = "BLIND WON";
-    public string failedLabel = "BLIND FAILED";
-    [Tooltip("Added after the result when the player took Leave Table. {0} = the bonus")]
-    public string leaveBonusFormat = "\nLeft the table: +{0:N0} bonus";
+    [Tooltip("{0} = cleared / shattered label, {1} = Run Total, {2} = Ante reached, {3} = Antes per run, {4} = last blind")]
+    [TextArea(1, 4)]
+    public string resultFormat = "{0}\nRun total {1:N0}\nAnte {2} / {3}, {4} blind";
+    public string clearedLabel = "RUN CLEARED";
+    public string shatteredLabel = "GLASS SHATTERED";
 
     [Header("Fade In Settings")]
     public CanvasGroup canvasGroup;
@@ -50,12 +49,10 @@ public class BlindEndView : MonoBehaviour
 
     void RefreshResult()
     {
-        if (resultText == null || flow == null || !flow.IsBlindOver) return;
+        if (resultText == null || flow == null || !flow.IsRunOver) return;
 
-        string label = flow.LastBlindResult == BlindResult.Won ? wonLabel : failedLabel;
-        string text = string.Format(resultFormat, label, flow.SafePoints, flow.Target);
-        if (flow.LeftTable) text += string.Format(leaveBonusFormat, flow.LeaveBonusPaid);
-        resultText.text = text;
+        string label = flow.RunOutcome == RunOutcome.Cleared ? clearedLabel : shatteredLabel;
+        resultText.text = string.Format(resultFormat, label, flow.RunTotal, flow.AnteNumber, flow.AntesPerRun, flow.LastBlindKind);
     }
 
     void StartFadeIn()

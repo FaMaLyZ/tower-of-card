@@ -20,6 +20,15 @@ public enum GamePhase
     RunEnd
 }
 
+/// Why the Glass changed (sent with GameEvents.GlassChanged).
+public enum GlassChangeReason
+{
+    BlindFailed,
+    BossWon,
+    Skipped,
+    Cheat
+}
+
 /// Why the Pot changed (sent with GameEvents.PotChanged).
 public enum PotChangeReason
 {
@@ -64,20 +73,30 @@ public static class GameEvents
     public static void RaisePotChanged(long oldChips, long newChips, PotChangeReason reason, long bankQuote) =>
         PotChanged?.Invoke(oldChips, newChips, reason, bankQuote);
 
-    /// A Bank was paid. Carries the payout and the Safe Points after it.
-    public static event Action<long, long> PotBanked;
+    /// A Bank was paid. Carries the payout, the Safe Points after it and the Run Total after it.
+    public static event Action<long, long, long> PotBanked;
 
-    public static void RaisePotBanked(long payout, long safePoints) => PotBanked?.Invoke(payout, safePoints);
+    public static void RaisePotBanked(long payout, long safePoints, long runTotal) => PotBanked?.Invoke(payout, safePoints, runTotal);
 
     /// The player took Leave Table. Carries the bonus paid and the blind score after it.
     public static event Action<long, long> TableLeft;
 
     public static void RaiseTableLeft(long bonus, long blindScore) => TableLeft?.Invoke(bonus, blindScore);
 
-    /// A blind started. Carries its target.
-    public static event Action<long> BlindStarted;
+    /// The blind menu opened. Carries the blind that can be chosen, the Ante and its target.
+    public static event Action<BlindKind, int, long> BlindOffered;
 
-    public static void RaiseBlindStarted(long target) => BlindStarted?.Invoke(target);
+    public static void RaiseBlindOffered(BlindKind kind, int ante, long target) => BlindOffered?.Invoke(kind, ante, target);
+
+    /// A Small or Big blind was skipped. Carries which blind and the Ante.
+    public static event Action<BlindKind, int> BlindSkipped;
+
+    public static void RaiseBlindSkipped(BlindKind kind, int ante) => BlindSkipped?.Invoke(kind, ante);
+
+    /// A blind started. Carries which blind, the Ante and its target.
+    public static event Action<BlindKind, int, long> BlindStarted;
+
+    public static void RaiseBlindStarted(BlindKind kind, int ante, long target) => BlindStarted?.Invoke(kind, ante, target);
 
     /// A blind ended as a win. Carries the blind score and the target.
     public static event Action<long, long> BlindWon;
@@ -88,6 +107,17 @@ public static class GameEvents
     public static event Action<long, long> BlindFailed;
 
     public static void RaiseBlindFailed(long blindScore, long target) => BlindFailed?.Invoke(blindScore, target);
+
+    /// The Glass gained or lost a life. Carries the old lives, the new lives and why.
+    public static event Action<int, int, GlassChangeReason> GlassChanged;
+
+    public static void RaiseGlassChanged(int oldLives, int newLives, GlassChangeReason reason) =>
+        GlassChanged?.Invoke(oldLives, newLives, reason);
+
+    /// The run is over. Carries the Run Total and whether it was cleared (false = shattered).
+    public static event Action<long, bool> RunEnded;
+
+    public static void RaiseRunEnded(long runTotal, bool cleared) => RunEnded?.Invoke(runTotal, cleared);
 
     /// Backstop for listeners that forgot to unsubscribe (Master Plan rule 8).
     /// Runs once when the game starts, so a stale listener from the last Play session can't survive.
@@ -105,5 +135,9 @@ public static class GameEvents
         BlindStarted = null;
         BlindWon = null;
         BlindFailed = null;
+        GlassChanged = null;
+        BlindOffered = null;
+        BlindSkipped = null;
+        RunEnded = null;
     }
 }

@@ -11,7 +11,9 @@ using UnityEngine;
 /// If the tower survives, the player Banks (Pot becomes Safe Points, tower cleared) or Rides.
 /// A3c: the game is one blind with a fixed target and a few hands. The last hand banks by itself.
 /// A4a: a Bank that reaches the target with hands left offers Continue / Leave Table.
-/// The blind menu, Antes and Glass arrive in A4b / A4c.
+/// A4b: a run is Small, Big, Boss for each Ante. A fail cracks the Glass, a Boss win repairs it.
+/// The run ends Cleared (final Boss won) or Shattered (no lives).
+/// A4c: before each blind the blind menu: Select plays it, Skip (Small / Big only) repairs one crack.
 public class GameFlowController : MonoBehaviour
 {
     [Header("Settings")]
@@ -37,6 +39,34 @@ public class GameFlowController : MonoBehaviour
     public bool IsBlindOver => Phase == GamePhase.BlindEnd;
     public BlindResult LastBlindResult { get; private set; }
 
+    /// The blind that was just played (the run has already moved on when the result is shown).
+    public BlindKind LastBlindKind { get; private set; }
+
+    // The run (the HUD reads these)
+    public int AnteNumber => run.AnteNumber;
+    public int AntesPerRun => run.AntesPerRun;
+    public BlindKind CurrentBlind => run.CurrentBlind;
+    public bool IsRetry => run.IsRetry;
+    public long RunTotal => run.RunTotal;
+    public decimal RewardMultiplier => run.RewardMultiplier;
+    public int GlassLives => run.Glass.LivesRemaining;
+    public int GlassMaxLives => run.Glass.MaxLives;
+    public RunOutcome RunOutcome => run.Outcome;
+    public bool IsRunOver => Phase == GamePhase.RunEnd;
+
+    // The blind menu (only the current blind can be chosen; the other two are previews)
+    public bool IsChoosingBlind => Phase == GamePhase.BlindMenu && blindMenuChoice == BlindMenuChoice.None;
+    public bool CanSkipBlind => IsChoosingBlind && run.CanSkipCurrentBlind;
+    public BlindRecord GetBlindRecord(BlindKind kind) => run.GetRecord(kind);
+    public int GetBlindRewardPercent(BlindKind kind) => config.GetRewardPercent(kind);
+
+    /// What a blind of the current Ante needs (the same formula BlindManager uses when it starts).
+    public long GetBlindTarget(BlindKind kind) =>
+        BlindManager.CalculateTarget(config.GetBaseTarget(kind), run.AnteNumber, config.targetGrowthPercent);
+
+    enum BlindMenuChoice { None, Select, Skip }
+    BlindMenuChoice blindMenuChoice;
+
     /// The commit worker: the live hand name, why Play Hand is refused, the committed cards.
     public CommitManager Commit { get; private set; }
 
@@ -48,8 +78,6 @@ public class GameFlowController : MonoBehaviour
 
     /// False from the moment a hand is scored until its shake is resolved: the Pot can still change.
     public bool IsPotSettled { get; private set; } = true;
-
-    const decimal RewardMultiplier = 1m;        // blind rewards arrive in A4
 
     /// Points that are already safe. A collapse never touches them.
     public long SafePoints => blind.BlindScore;
@@ -87,6 +115,11 @@ public class GameFlowController : MonoBehaviour
 
     PotManager pot;
     BlindManager blind;
+    RunState run;
+
+    /// False after a script reload in Play mode: the plain C# workers are gone until Play is restarted.
+    public bool IsReady => blind != null && run != null && pot != null;
+
     Coroutine flow;
     float phaseStartTime;
     bool doneSwappingRequested;
@@ -137,6 +170,14 @@ public class GameFlowController : MonoBehaviour
         int targetGrowthPercent = config != null ? config.targetGrowthPercent : 150;
         int leaveBonusPercent = config != null ? config.leaveBonusPercent : 10;
         blind = new BlindManager(handsPerBlind, targetGrowthPercent, leaveBonusPercent);
+        run = CreateRunState();
+    }
+
+    RunState CreateRunState()
+    {
+        int antesPerRun = config != null ? config.antesPerRun : 4;
+        int glassMaxLives = config != null ? config.glassMaxLives : 3;
+        return new RunState(antesPerRun, glassMaxLives);
     }
 
     void WarnIfSecondConductorExists()
@@ -291,6 +332,20 @@ public class GameFlowController : MonoBehaviour
         continueOrLeaveChoice = ContinueOrLeaveChoice.Leave;
     }
 
+    /// The Select button of the blind menu: play the current blind.
+    public void RequestSelectBlind()
+    {
+        if (!IsChoosingBlind) return;                       // wrong phase or a double-click: ignore
+        blindMenuChoice = BlindMenuChoice.Select;
+    }
+
+    /// The Skip button of the blind menu. A Boss can never be skipped.
+    public void RequestSkipBlind()
+    {
+        if (!CanSkipBlind) return;                          // wrong phase, a Boss, or a double-click
+        blindMenuChoice = BlindMenuChoice.Skip;
+    }
+
     /// Debug key F2: put extra chips in the Pot.
     public void RequestCheatAddPotChips(long chips)
     {
@@ -305,8 +360,28 @@ public class GameFlowController : MonoBehaviour
         blind.AddSafePoints(blind.Target - blind.BlindScore);
     }
 
-    /// Debug key F9 (until A4, "the blind" is the whole run).
-    public void RequestRestartBlind()
+    /// Debug key F4: crack the Glass once. Never the last life: only a failed blind may shatter it.
+    public void RequestCheatCrackGlass()
+    {
+        if (run.Glass.LivesRemaining <= 1)
+        {
+            Debug.Log("[Cheat] F4: one life left, fail a blind to shatter the Glass");
+            return;
+        }
+
+        int oldLives = run.Glass.LivesRemaining;
+        run.Glass.Crack();
+        GameEvents.RaiseGlassChanged(oldLives, run.Glass.LivesRemaining, GlassChangeReason.Cheat);
+    }
+
+    /// Debug key F5: the next blind will be the Boss.
+    public void RequestCheatNextBlindBoss()
+    {
+        run.MakeNextBlindBoss();
+    }
+
+    /// Debug key F9: a brand new run.
+    public void RequestRestartRun()
     {
         if (!HasEverythingItNeeds()) return;
         StartNewRun();
@@ -319,8 +394,8 @@ public class GameFlowController : MonoBehaviour
     public void StartNewRun()
     {
         StopFlow();
-        ClearTheTable();
-        flow = StartCoroutine(PlayRun());
+        run = CreateRunState();
+        flow = StartCoroutine(PlayRun());                   // the blind menu clears the table at once
     }
 
     void StopFlow()
@@ -342,13 +417,50 @@ public class GameFlowController : MonoBehaviour
         score.ResetScore();
     }
 
-    /// A3c: the run is one blind. A4 puts the blind menu and the Antes around it.
+    /// The blind menu, then the chosen blind, until the run is Cleared or Shattered.
     IEnumerator PlayRun()
     {
-        yield return PlayBlind();
+        Debug.Log($"[Flow] run started: {run.AntesPerRun} Antes, {run.Glass.LivesRemaining} lives");
+        while (!run.IsOver)
+        {
+            yield return BlindMenuPhase();
+            if (blindMenuChoice == BlindMenuChoice.Skip) { SkipTheBlind(); continue; }   // jump: back to the menu
+
+            yield return PlayBlind();
+            yield return ShowBlindResult();
+        }
+
+        FinishRun();
         flow = null;
     }
 
+    /// Ends when the player presses Select or Skip. The table is cleared first, so the menu sits on an empty table.
+    IEnumerator BlindMenuPhase()
+    {
+        ClearTheTable();                                    // empty Pot, tower and hand; all 52 cards back
+        SetPhase(GamePhase.BlindMenu);
+        blindMenuChoice = BlindMenuChoice.None;
+        GameEvents.RaiseBlindOffered(run.CurrentBlind, run.AnteNumber, GetBlindTarget(run.CurrentBlind));
+
+        while (blindMenuChoice == BlindMenuChoice.None)
+            yield return null;
+    }
+
+    /// Skip: no score, no reward, one crack repaired (never above the maximum), then the next blind.
+    void SkipTheBlind()
+    {
+        BlindKind kind = run.CurrentBlind;
+        int ante = run.AnteNumber;
+        int oldLives = run.Glass.LivesRemaining;
+        if (!run.SkipBlind()) return;                       // RunState says no (a Boss): nothing changes
+
+        Debug.Log($"[Flow] Ante {ante} {kind} blind skipped, glass {oldLives} -> {run.Glass.LivesRemaining}");
+        GameEvents.RaiseBlindSkipped(kind, ante);
+        if (run.Glass.LivesRemaining != oldLives)
+            GameEvents.RaiseGlassChanged(oldLives, run.Glass.LivesRemaining, GlassChangeReason.Skipped);
+    }
+
+    /// The table is already clear (the blind menu did it).
     IEnumerator PlayBlind()
     {
         StartBlind();
@@ -362,23 +474,61 @@ public class GameFlowController : MonoBehaviour
         FinishBlind();
     }
 
-    /// Safe Points back to 0, all hands back, the target worked out. The table is already clear.
+    /// Safe Points back to 0, all hands back, the target worked out for this blind and Ante.
+    /// Run Total, reward and Glass carry over. A final-Boss retry gets the same target.
     void StartBlind()
     {
-        blind.StartBlind(config.FirstBlindBaseTarget, 1);
-        Debug.Log($"[Flow] blind started: target {blind.Target}, {blind.HandsLeft} hands");
-        GameEvents.RaiseBlindStarted(blind.Target);
+        BlindKind kind = run.CurrentBlind;
+        run.StartBlind();
+        blind.StartBlind(config.GetBaseTarget(kind), run.AnteNumber);
+
+        string retry = run.IsRetry ? " (retry)" : "";
+        Debug.Log($"[Flow] Ante {run.AnteNumber} {kind} blind{retry} started: target {blind.Target}, {blind.HandsLeft} hands");
+        GameEvents.RaiseBlindStarted(kind, run.AnteNumber, blind.Target);
     }
 
-    /// Judged on Safe Points only. Win or fail, the blind ends here.
+    /// Judged on Safe Points only. Win: reward once (and a repair on a Boss). Fail: one crack.
+    /// RunState then moves to the next blind, keeps the final Boss for a retry, or ends the run.
     void FinishBlind()
     {
-        LastBlindResult = blind.GetResult();                // set first: PhaseChanged listeners may read it
-        SetPhase(GamePhase.BlindEnd);
+        LastBlindKind = run.CurrentBlind;
+        LastBlindResult = blind.GetResult();
+        int oldLives = run.Glass.LivesRemaining;
 
-        Debug.Log($"[Flow] blind {LastBlindResult}: {blind.BlindScore} / {blind.Target}");
+        if (LastBlindResult == BlindResult.Won) run.RecordBlindWon(config.GetRewardPercent(LastBlindKind));
+        else run.RecordBlindFailed();
+
+        Debug.Log($"[Flow] {LastBlindKind} blind {LastBlindResult}: {blind.BlindScore} / {blind.Target}, " +
+                  $"run total {run.RunTotal}, reward x{run.RewardMultiplier:0.###}, glass {run.Glass.LivesRemaining}/{run.Glass.MaxLives}");
+        SetPhase(GamePhase.BlindEnd);                       // after the result is recorded: listeners may read it
+
         if (LastBlindResult == BlindResult.Won) GameEvents.RaiseBlindWon(blind.BlindScore, blind.Target);
         else GameEvents.RaiseBlindFailed(blind.BlindScore, blind.Target);
+        AnnounceGlassChange(oldLives);
+    }
+
+    void AnnounceGlassChange(int oldLives)
+    {
+        int newLives = run.Glass.LivesRemaining;
+        if (newLives == oldLives) return;
+
+        GlassChangeReason reason = newLives < oldLives ? GlassChangeReason.BlindFailed : GlassChangeReason.BossWon;
+        GameEvents.RaiseGlassChanged(oldLives, newLives, reason);
+    }
+
+    /// The blind result stays on screen for a moment before the blind menu opens.
+    IEnumerator ShowBlindResult()
+    {
+        yield return new WaitForSeconds(config.blindEndPauseSeconds);
+    }
+
+    /// Cleared or Shattered. The end panel shows the Run Total.
+    void FinishRun()
+    {
+        SetPhase(GamePhase.RunEnd);
+        bool cleared = run.Outcome == RunOutcome.Cleared;
+        Debug.Log($"[Flow] run {run.Outcome}: run total {run.RunTotal}");
+        GameEvents.RaiseRunEnded(run.RunTotal, cleared);
     }
 
     IEnumerator PlayOneHand()
@@ -509,13 +659,14 @@ public class GameFlowController : MonoBehaviour
         long oldChips = pot.PotChips;
         long payout = pot.BankPot(StandingLevels, RewardMultiplier);
         blind.AddSafePoints(payout);
+        run.AddToRunTotal(payout);
 
         tower.SweepTower();
         LastShake = null;                                   // the tower it described is gone
 
         Debug.Log($"[Flow] banked {payout} (pot was {oldChips}), safe points {blind.BlindScore}");
         AnnouncePotChanged(oldChips, PotChangeReason.Banked);
-        GameEvents.RaisePotBanked(payout, blind.BlindScore);
+        GameEvents.RaisePotBanked(payout, blind.BlindScore, run.RunTotal);
     }
 
     /// Ends when the player presses Continue or Leave Table. Leave pays the bonus once;
@@ -534,6 +685,7 @@ public class GameFlowController : MonoBehaviour
     void LeaveTheTable()
     {
         long bonus = blind.LeaveTable();
+        run.AddToRunTotal(bonus);
         Debug.Log($"[Flow] left the table: bonus {bonus}, safe points {blind.BlindScore}");
         GameEvents.RaiseTableLeft(bonus, blind.BlindScore);
     }

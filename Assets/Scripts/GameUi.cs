@@ -34,6 +34,8 @@ public class GameUI : MonoBehaviour
 
     [Header("Turn info texts")]
     public TMP_Text turnText;                   // "Hand 1 / 4   Target 150"
+    [Tooltip("Optional: the run line, e.g. \"Ante 1 / 4  Small blind   Run 320   Reward x1.2\"")]
+    public TMP_Text runText;
     public TMP_Text cardsText;                  // "Cards: 2 / 5" (placed / committed)
     public TMP_Text stateText;                  // what to do now, or why Play Hand is refused
     public TMP_Text hintText;                   // help text from TowerBuilder
@@ -100,6 +102,16 @@ public class GameUI : MonoBehaviour
     public string bannerEndFormat = "Turn {0} complete";
     public string blindWonLabel = "Blind won!";
     public string blindFailedLabel = "Blind failed";
+    [Tooltip("Banner between blinds. {0} = blind (Small / Big / Boss), {1} = won / failed label, {2} = blind score, {3} = target")]
+    [TextArea(1, 3)]
+    public string blindResultFormat = "{0}: {1}\n{2:N0} / {3:N0}";
+    [Tooltip("Added to the banner when the player left the table. {0} = the bonus")]
+    public string leaveBonusFormat = "\nLeft the table: +{0:N0}";
+    [Tooltip("{0} = Ante, {1} = Antes per run, {2} = blind, {3} = Run Total, {4} = reward multiplier, {5} = retry label")]
+    public string runFormat = "Ante {0} / {1}  {2} blind{5}   Run {3:N0}   Reward x{4:0.##}";
+    public string retryLabel = " (retry)";
+    public string runEndStateLabel = "Run over";
+    public string blindMenuStateLabel = "Choose your blind";
     public string yourTurnLabel = "Your turn";
     public string startingLabel = "Get ready...";
     public string turnEndedLabel = "Turn ended";
@@ -162,14 +174,7 @@ public class GameUI : MonoBehaviour
         RefreshUndoButton();
         RefreshNextTurnButton();
         RefreshHand();
-        if (flow != null && flow.IsBlindOver)
-        {
-            if (!isGameOverPanelActive)
-            {
-                setGameoverPanelActive(true);
-                isGameOverPanelActive = true;
-            }
-        }
+        RefreshGameOverPanel();
     }
 
     void LateUpdate()
@@ -184,7 +189,7 @@ public class GameUI : MonoBehaviour
     // Texts and markers must not block mouse clicks on the game (TowerBuilder ignores clicks over UI)
     void PreventUIFromBlockingClicks()
     {
-        foreach (var t in new[] { turnText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText, discardsLeftText, potText })
+        foreach (var t in new[] { turnText, runText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText, discardsLeftText, potText })
             if (t != null) t.raycastTarget = false;
 
         if (snapMarkerTemplate != null) snapMarkerTemplate.raycastTarget = false;
@@ -214,7 +219,7 @@ public class GameUI : MonoBehaviour
     //  REFRESH (every frame) - one method per UI element
     // =====================================================================
 
-    bool GameRunning => flow != null && flow.Phase != GamePhase.None;
+    bool GameRunning => flow != null && flow.IsReady && flow.Phase != GamePhase.None;
 
     void RefreshTurnInfo()
     {
@@ -222,6 +227,10 @@ public class GameUI : MonoBehaviour
 
         if (turnText != null)
             turnText.text = string.Format(turnFormat, flow.HandNumber, flow.HandsPerBlind, flow.SafePoints, flow.Target);
+
+        if (runText != null)
+            runText.text = string.Format(runFormat, flow.AnteNumber, flow.AntesPerRun, flow.CurrentBlind,
+                                         flow.RunTotal, flow.RewardMultiplier, flow.IsRetry ? retryLabel : "");
 
         if (cardsText != null)
             cardsText.text = string.Format(cardsFormat, flow.CardsPlacedThisHand, flow.Commit.CommittedCards.Count);
@@ -334,8 +343,9 @@ public class GameUI : MonoBehaviour
     {
         if (endTurnButton == null) return;
 
-        endTurnButton.gameObject.SetActive(GameRunning);
-        if (!GameRunning) return;
+        bool show = GameRunning && !IsBetweenBlinds();
+        endTurnButton.gameObject.SetActive(show);
+        if (!show) return;
 
         bool swapping = flow.Phase == GamePhase.Swap;
         endTurnButton.interactable = swapping ? flow.IsSwapping : flow.CanPlayHand;
@@ -452,6 +462,8 @@ public class GameUI : MonoBehaviour
         switch (flow.Phase)
         {
             case GamePhase.BlindEnd: return GetBlindResultLabel();
+            case GamePhase.RunEnd: return runEndStateLabel;
+            case GamePhase.BlindMenu: return blindMenuStateLabel;
             case GamePhase.Draw:   return startingLabel;
             case GamePhase.Swap:   return string.Format(swapStateFormat, discardManager != null ? discardManager.DiscardsLeft : 0);
             case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
@@ -470,9 +482,33 @@ public class GameUI : MonoBehaviour
         return flow.Commit.Preview.displayName;
     }
 
+    // Menu, result banner and end screen: no hand is being played, so the Play Hand button hides
+    bool IsBetweenBlinds()
+    {
+        return flow.Phase == GamePhase.BlindMenu || flow.Phase == GamePhase.BlindEnd || flow.Phase == GamePhase.RunEnd;
+    }
+
     string GetBlindResultLabel()
     {
         return flow.LastBlindResult == BlindResult.Won ? blindWonLabel : blindFailedLabel;
+    }
+
+    // "Small: Blind won!  160 / 150" (+ the leave bonus), shown between blinds
+    string BuildBlindResultBanner()
+    {
+        string text = string.Format(blindResultFormat, flow.LastBlindKind, GetBlindResultLabel(), flow.SafePoints, flow.Target);
+        if (flow.LeftTable) text += string.Format(leaveBonusFormat, flow.LeaveBonusPaid);
+        return text;
+    }
+
+    // The end panel is open exactly while the run is over (Play Again / F9 closes it again)
+    void RefreshGameOverPanel()
+    {
+        bool runOver = flow != null && flow.IsRunOver;
+        if (runOver == isGameOverPanelActive) return;
+
+        setGameoverPanelActive(runOver);
+        isGameOverPanelActive = runOver;
     }
 
     string GetBannerText()
@@ -481,7 +517,9 @@ public class GameUI : MonoBehaviour
 
         switch (flow.Phase)
         {
-            case GamePhase.BlindEnd: return GetBlindResultLabel();
+            case GamePhase.BlindEnd: return BuildBlindResultBanner();
+            case GamePhase.RunEnd:                           // the end panel shows the run result
+            case GamePhase.BlindMenu: return "";             // the blind menu shows itself
             case GamePhase.Draw:   return string.Format(bannerStartFormat, flow.HandNumber);
             case GamePhase.Swap:
             case GamePhase.Commit:
