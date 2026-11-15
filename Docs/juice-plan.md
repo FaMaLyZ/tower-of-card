@@ -1,7 +1,7 @@
 # Neo Tower of Cards — Juice & Feel Plan
 
-> **Status:** Presentation plan, aligned with the revised [Master Plan](Master%20Plan.md) and [Core Gameplay Loop](Core%20Gameplay%20Loop.md).
-> **Date:** 2026-11-11
+> **Status:** Presentation plan, aligned with the [Master Plan](Master%20Plan%20Real.md) and [Core Gameplay Loop](Core%20Gameplay%20Loop.md).
+> **Date:** 2026-11-11 · **Revision 2:** 2026-11-16, after A6 (see [Revision notes](#revision-notes))
 > **Authority:** The Core Gameplay Loop owns the rules; the Master Plan owns architecture and build order. This document describes how those actions look and sound.
 
 **Reference:** Mix and Jam — "Recreating Balatro's Game Feel"
@@ -9,7 +9,7 @@
 
 ## Before Adding Effects
 
-- `GameFlowController` is the only phase controller. It **replaces** `TurnManager`; do not add another flow manager on top.
+- `GameFlowController` is the only phase controller (`TurnManager` is gone since A6); do not add another flow manager on top.
 - Hand roots keep the authoritative position, input target, card identity, selection, and order. A `Visual` child receives hover, tilt, punch, arc, and lag effects.
 - Basic selection highlights, usable layout, drag input, and reorder behavior belong to the normal view/controller. They still work when every juice component is disabled.
 - UI input sends commands to the conductor/core for validation. Juice components listen to accepted results and never change cards, score, Pot, or phase.
@@ -64,7 +64,7 @@ When an accepted selection changes a card from unselected to selected, it lifts 
 ### 2.2 Toggle-Pop Deselect
 Clicking a selected card removes that card from the selected set. It punches down with a small undershoot, then returns to its normal visual pose.
 
-- **Rule:** In Commit, toggling one selected card does not clear the other selected cards. Swap uses one selected card at a time.
+- **Rule:** Toggling one selected card never clears the others. Commit allows up to 5 selected cards; Swap allows as many as there are swaps left (up to 3).
 - **File / integration:** The normal input controller requests the selection change; `HandCardJuice.cs` animates its result.
 
 ### 2.3 Snap Punch on Card Arrival
@@ -101,7 +101,7 @@ The player can drag a card left or right to rearrange the hand. Other cards move
 ### 3.3 Mouse Lag While Dragging
 A dragged card's visual follows the mouse with a slight lag, roughly one frame behind. Apply this to the hand card visual or the tower ghost visual.
 
-- **File / integration:** `HandCardJuice.cs` and a ghost presentation component read the immediate input target, then ease only their visual offset (`moveSpeed` around 20 as a starting value).
+- **File / integration:** `HandCardJuice.cs` for hand cards. For the tower, `TowerPlacementInput` already eases its preview card toward the snapped slot (`snapSpeed`); any extra lag goes in a separate presentation component that reads it.
 - **Placement requirement:** Snapping, hit tests, preview legality, and the accepted slot use the immediate logical target. On placement, the real physics card appears at the accepted slot, never at the delayed visual position.
 
 ---
@@ -145,7 +145,7 @@ Read the card's actual gameplay mass and chip value. This is separate from the b
 ## Category 6 — World / Tower
 
 ### 6.1 Camera Shake on Collapse
-On the authoritative `TowerCollapsed` event, play a camera shake lasting about 0.3 seconds, with decaying X/Y amplitude.
+On the authoritative `TowerCollapsed` event (added in C4, see [Events the effects need](#events-the-effects-need)), play a camera shake lasting about 0.3 seconds, with decaying X/Y amplitude.
 
 - **File / integration:** `CameraShaker.cs` listens to `TowerCollapsed` and adds an offset to the orbit camera's normal pose.
 - **Rule:** A broken card alone does not imply collapse. `TowerBuilder` does not call camera effects directly, and the camera effect never shakes the physical table.
@@ -167,7 +167,7 @@ The deck responds to hover, cards entering or leaving, and rejected interaction.
 
 ## Overview
 
-The [Master Plan](Master%20Plan.md) defines every transition and edge case. This document supplies presentation cues for those phases:
+The [Master Plan](Master%20Plan%20Real.md) defines every transition and edge case. This document supplies presentation cues for those phases:
 
 ```text
 Draw → Swap → Commit → Build → Score → Shake → resolve the hand
@@ -185,23 +185,23 @@ The hand model already contains the accepted draw. A missing animator, skip, or 
 
 ## Phase 2 — Swap
 
-The player chooses **one card**, then clicks the deck to exchange it. They may repeat this up to **3 times per hand**, or finish swapping early. This is not a batch mulligan.
+The player picks **up to 3 cards** (one swap each), then clicks the deck once to exchange all of them. They may finish early with **Done Swapping**. Unused swaps do not carry to the next hand.
 
 **Visual state:**
 
-- The selected swap card has a distinct tint and lift.
-- The deck glows while an exchange is available.
-- The HUD says **"Choose a card, then click the deck"** and shows the swaps remaining.
+- The picked cards have a distinct tint and lift.
+- The deck glows while a swap is possible (`GameFlowController.CanSwapSelectedCard`).
+- The HUD says **"Swap: pick up to N cards, then click the deck"**.
 
 **On an accepted swap:**
 
-1. The outgoing card pops, tilts, and arcs toward the deck.
+1. The outgoing cards pop, tilt, and arc toward the deck, slightly staggered.
 2. The deck flashes on arrival.
-3. The accepted replacement arcs into the hand and punches on arrival.
+3. The replacements arc into the hand and punch on arrival.
 
-The swap is one core transaction; failed draws or rejected commands do not consume a swap. An animation cannot cause an additional exchange. Clicking the deck without a selected card gives rejection feedback.
+The swap is one core transaction (`SwapManager.TrySwapSelected`); an animation cannot cause an extra exchange. Clicking the deck with nothing picked gives rejection feedback, which needs the `SwapRejected` event first.
 
-**Integration:** `SwapManager` owns the exchange. Normal views issue commands. Draw/deck/hand presenters animate accepted results. There is no separate `MulliganManager` or batch-swap rule.
+**Integration:** `SwapManager` owns the exchange. `SwapZone` sends the deck click to the conductor. Draw / deck / hand presenters animate accepted results.
 
 ## Phase 3 — Commit
 
@@ -220,7 +220,7 @@ The baseline view sets the readable committed/reserve layout instantly even with
 
 The player places only the committed cards. The remaining hand stays visible but cannot be placed in this hand.
 
-- The normal ghost and snap markers show legal placements even with all effects off.
+- The preview card (`TowerPlacementInput`) and snap markers (`SnapMarkerView`) show legal placements even with all effects off.
 - Optional marker glow and visual lag help guide placement.
 - Accepted placement uses the real slot, independent of the delayed visual.
 - Undo, remaining-card checks, and protection against impossible completion follow the Master Plan.
@@ -238,6 +238,8 @@ The scorer evaluates the committed set once, after Build completes. The conducto
 5. The final chips × multiplier result receives a scale flash and particle burst.
 6. The score travels into the **Pot display**. It does not become Safe Points here.
 
+**Today:** `ScoreManager` still plays a step-by-step reveal itself (`stepDelay`), and the conductor waits for it (`WaitForScoreReveal`). C2 moves that reveal into a juice script, makes ScoreManager instant, and has the conductor wait on `PresentationGate` instead.
+
 **Integration:** `ScoreRevealJuice` / `ScoreTickerUI` reads an immutable score result. `FloatingNumber` handles optional popups. Plain HUD values are correct immediately when reveal effects are absent. The gate is bounded and skippable; skipping must neither lose nor duplicate points.
 
 ## Phase 6 — Shake and Resolution
@@ -245,7 +247,7 @@ The scorer evaluates the committed set once, after Build completes. The conducto
 The core releases the tower, waits using the Master Plan's bounded settling policy, and captures one authoritative result. Juice may play contact or break sounds during physics, but it does not compute penalties or decide collapse.
 
 - **Breaks:** Visual debris may appear on `CardBroken`. Numeric Pot loss is animated only from the resolved Pot change, using the deduplicated result; repeated collision notifications never subtract extra points.
-- **Collapse:** `TowerCollapsed` triggers Pot shatter and camera shake. The Pot HUD shows the core's final zero.
+- **Collapse:** `TowerCollapsed` triggers Pot shatter and camera shake. Until that event exists, `ShakeResolved` with `Collapsed == true` means the same thing. The Pot HUD shows the core's final zero.
 - **Survival:** The HUD shows the final standing-level bonus and Bank value from the captured result. Presentation cannot change those measurements.
 - **Last hand:** The core automatically Banks only if the Pot survives the shake, then finishes the blind. Do not present a false Bank/Ride choice.
 
@@ -255,7 +257,7 @@ The core releases the tower, waits using the Master Plan's bounded settling poli
 - **Ride:** The accepted choice keeps the Pot and standing tower. The conductor begins the next hand. A full tower's disabled Ride explanation remains readable without effects.
 - **After Bank:** If Leave Table is legal, show **Continue** and **Leave Table**. Do not automatically draw while this choice is pending.
 - **Blind result:** The menu slide, win/fail cues, and Glass crack or repair effects react to resolved results. A skip advances according to the core rules; an animation cannot apply a second repair.
-- **Run intro:** Cards fly in to form the deck during the optional intro gate. With effects off, the ready deck and Blind Menu appear immediately.
+- **Run intro:** Cards fly in to form the deck during the optional intro gate. `GamePhase.RunIntro` exists but the conductor does not enter it yet; C8 adds that step. With effects off, the ready deck and Blind Menu appear immediately.
 
 ---
 
@@ -283,17 +285,34 @@ The evaluator decides the strongest hand and scoring-card indices. Extra non-sco
 
 # Implementation Order
 
-Follow the [Master Plan](Master%20Plan.md) for gates and acceptance checks. These are dependencies, not a second build schedule:
+Agreed order after A6 (2026-11-16). The [Master Plan](Master%20Plan%20Real.md) still owns the gates and acceptance checks.
 
-| Dependency | Presentation work |
-|---|---|
-| **A0 → A1** | Establish config, events, and the single conductor before adding flow effects. |
-| **Shared B0 before A2 and B1** | Agree on card identity, selection, input permissions, root/`Visual` separation, and instant fallback layout. One owner makes shared hand/prefab edits. |
-| **B1–B3, alongside A2 onward** | Hover, select/deselect, tilt/fan, draw arc, and arrival punch use the agreed contracts. |
-| **B4** | Implement usable reorder input/model behavior first; then add glide, velocity tilt, and mouse lag. |
-| **B5** | Tooltip and deck feedback read actual state and rejection reasons. |
-| **After A3** | Conduct the early Bank/Ride playtest with plain controls. Use it to improve the choice before flow polish. |
-| **After A4 and the broader playtest gate** | Track C adds hand-name slam, score reveal, Pot effects, collapse camera shake, Bank sweep, blind menus, Glass effects, and run intro. |
+| Order | Work | Why here |
+|---|---|---|
+| 1 | Revise this plan | Done (revision 2). |
+| 2 | **Track B** (B1–B5), **C3** break particles, **C4** collapse camera shake | They animate cards and the camera, not the HUD, so a HUD change cannot break them. |
+| 3 | **HUD update**, planned and built with plain (instant) displays | The HUD-bound effects need to know which elements exist and where they sit. |
+| 4 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
+| Later | **C8** run intro | Needs the full run and a `RunIntro` step in the conductor. |
+
+Track B notes: B4 needs plain drag-to-reorder input (a `HandManager` reorder command) before any reorder effect. B3 is the first effect that holds `PresentationGate`, so it also adds the conductor's wait on the gate after a draw (the gate exists but nothing waits on it yet).
+
+## Events the effects need
+
+Effects listen to `GameEvents`. Each missing event is added by the step that first needs it, in the same commit, and is nulled in `ClearAllListeners`.
+
+| Event | Status | Used by | Added in |
+|---|---|---|---|
+| `HandChanged`, `SelectionChanged` | ✅ exists | B1, B3, C1 | — |
+| `CardBroken(Card)` | ✅ exists (A6) | C3 | — |
+| `ShakeResolved`, `PotChanged`, `PotBanked`, `TableLeft` | ✅ exists | C3, C5 | — |
+| `BlindOffered`, `BlindSkipped`, `BlindStarted`, `BlindWon`, `BlindFailed`, `RunEnded` | ✅ exists | C6 | — |
+| `GlassChanged` | ✅ exists | C7 | — |
+| `CardsDrawn(card IDs)` | ❌ missing: `HandChanged` gives the new list, not which cards came from the deck | B3, 6.2 | B3 |
+| `SwapRejected(reason)` | ❌ missing: a bad deck click is ignored silently | 6.2 | B5 |
+| `TowerCollapsed` | ❌ missing: `ShakeResolved.Collapsed` covers it until then | C4, C3 Pot shatter | C4 |
+| `HandCommitted(card IDs, hand)` | ❌ missing | C1 | C1 |
+| `HandScored(score result)` | ❌ missing: only `ScoreManager.OnScoreStep` / `OnTurnScored` | C2 | C2 |
 
 **Acceptance check:** Disable all optional juice components, play through selection, swaps, reorder, commit, build, score, Bank/Ride, last-hand resolution, a blind result, and replay. Inputs, totals, and transitions must still work. Re-enable effects and verify that skipping or interrupting them produces exactly the same results.
 
@@ -303,8 +322,10 @@ Follow the [Master Plan](Master%20Plan.md) for gates and acceptance checks. Thes
 
 | Component | Responsibility |
 |---|---|
-| `GameFlowController` | Core conductor defined by the Master Plan; replaces `TurnManager`. |
-| `SwapManager` | Core single-card exchange; no animation ownership. |
+| `GameFlowController` | Core conductor defined by the Master Plan (`TurnManager` was deleted in A6). |
+| `HudView` | Plain, instant HUD texts and buttons (was `GameUI`). HUD juice animates on top of it. |
+| `TowerPlacementInput` / `SnapMarkerView` | The aiming preview card and the snap markers (split out of `TowerBuilder` / `GameUI` in A6). |
+| `SwapManager` / `SwapZone` | Core multi-card exchange and the deck click; no animation ownership. |
 | `CommitManager` | Core accepted commitment and live hand result. |
 | `HandManager` / normal `HandCardView` | Card identity/order, validated input, and usable base layout. |
 | `HandCardJuice` / hand presentation component | Visual hover, punch, tilt, fan offsets, and movement effects. |
@@ -317,3 +338,15 @@ Follow the [Master Plan](Master%20Plan.md) for gates and acceptance checks. Thes
 | `GlassCrackJuice` / `MenuSlideJuice` | Resolved lives and menu transitions. |
 
 Names are implementation suggestions. Combine small presentation helpers when that stays clear; do not create a class solely to match this table.
+
+---
+
+# Revision notes
+
+**Revision 2 (2026-11-16), after A6.**
+- Swap is up to 3 cards in one deck click (built in A2), not one card at a time. Phase 2 and rule 2.2 rewritten.
+- Script names follow A6: `HudView` (was `GameUI`), `SwapManager` / `SwapZone` (were `DiscardManager` / `DiscardZone`), `TowerPlacementInput` and `SnapMarkerView` (split out of `TowerBuilder` / `GameUI`), `GameEvents.CardBroken` (was `Card.Broken`).
+- Added [Events the effects need](#events-the-effects-need): which events exist, and which step adds each missing one.
+- C2 is described as moving the existing reveal out of `ScoreManager`.
+- New implementation order: Track B, C3 and C4 first; then the HUD update; then the HUD-bound effects C1, C2, C5–C7.
+- Links point to `Master Plan Real.md`.

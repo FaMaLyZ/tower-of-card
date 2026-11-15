@@ -29,6 +29,15 @@ public enum GlassChangeReason
     Cheat
 }
 
+/// Why a click on the deck did not swap anything (sent with GameEvents.SwapRejected).
+public enum SwapRejectReason
+{
+    NotSwapPhase,
+    NothingPicked,
+    NoSwapsLeft,
+    TooManyPicked
+}
+
 /// Why the Pot changed (sent with GameEvents.PotChanged).
 public enum PotChangeReason
 {
@@ -54,6 +63,22 @@ public static class GameEvents
     public static event Action<IReadOnlyList<int>> HandChanged;
 
     public static void RaiseHandChanged(IReadOnlyList<int> cardIdsInOrder) => HandChanged?.Invoke(cardIdsInOrder);
+
+    /// Cards came from the deck into the hand (a hand fill or a swap). Carries their IDs, in the
+    /// order they were drawn. Raised once per draw, after HandChanged. The cards are already in place.
+    public static event Action<IReadOnlyList<int>> CardsDrawn;
+
+    public static void RaiseCardsDrawn(IReadOnlyList<int> cardIds) => CardsDrawn?.Invoke(cardIds);
+
+    /// A swap went through: this many cards went back into the deck (their replacements come with CardsDrawn).
+    public static event Action<int> CardsSwapped;
+
+    public static void RaiseCardsSwapped(int cardCount) => CardsSwapped?.Invoke(cardCount);
+
+    /// The deck was clicked but nothing was swapped. Carries why, so the HUD can say it in words.
+    public static event Action<SwapRejectReason> SwapRejected;
+
+    public static void RaiseSwapRejected(SwapRejectReason reason) => SwapRejected?.Invoke(reason);
 
     /// The selected cards changed. Carries the selected card IDs (empty = nothing selected).
     /// The live hand name for these cards is CommitManager.Preview (the conductor refreshes it).
@@ -133,6 +158,9 @@ public static class GameEvents
     {
         PhaseChanged = null;
         HandChanged = null;
+        CardsDrawn = null;
+        CardsSwapped = null;
+        SwapRejected = null;
         SelectionChanged = null;
         CardBroken = null;
         ShakeResolved = null;

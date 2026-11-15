@@ -109,7 +109,16 @@ public class GameFlowController : MonoBehaviour
     public bool IsSwapping => Phase == GamePhase.Swap && !doneSwappingRequested;
     public bool IsCommitting => Phase == GamePhase.Commit && !playHandAccepted;
     public bool IsBuilding => Phase == GamePhase.Build;
+
+    /// From Play Hand until the next hand starts: the committed cards are being placed or have been played,
+    /// and the rest of the hand waits. The hand layout pulls the waiting cards down while this is true.
+    public bool IsHandLockedIn =>
+        Phase == GamePhase.Build || Phase == GamePhase.Score || Phase == GamePhase.Shake ||
+        Phase == GamePhase.BankOrRide || Phase == GamePhase.ContinueOrLeave;
     public bool CanClickHandCards => IsSwapping || IsCommitting || IsBuilding;
+    /// The hand order is only for the player's eyes, so it may change whenever the hand can be clicked.
+    /// Reordering is for Swap and Commit. In Build a drag picks the card up to place it instead.
+    public bool CanReorderHand => IsSwapping || IsCommitting;
     public bool CanSwapSelectedCard => IsSwapping && swap != null && swap.CanSwap;
     public bool CanPlayHand => IsCommitting && Commit.Problem == "";
     public bool CanUndo => IsBuilding && CardsPlacedThisHand > 0;
@@ -231,6 +240,14 @@ public class GameFlowController : MonoBehaviour
         else if (IsBuilding) HoldCommittedCard(cardId);
     }
 
+    /// A hand card was dragged past a neighbour: it moves to that place in the hand.
+    /// The order never changes the commit, the score or what has been placed.
+    public void RequestMoveCard(int cardId, int newIndex)
+    {
+        if (!CanReorderHand) return;
+        hand.MoveCard(cardId, newIndex);
+    }
+
     /// A number key was pressed (numbered by hand position).
     public void RequestSelectCard(int handIndex)
     {
@@ -259,8 +276,25 @@ public class GameFlowController : MonoBehaviour
     /// The deck (swap zone) was clicked: swap every picked card for a new one, in one go.
     public void RequestSwapSelectedCard()
     {
-        if (!CanSwapSelectedCard) return;
-        swap.TrySwapSelected();
+        if (!IsReady || swap == null) return;
+
+        if (!CanSwapSelectedCard)
+        {
+            GameEvents.RaiseSwapRejected(GetSwapRejectReason());
+            return;
+        }
+
+        int cardCount = hand.GetSelectedCardIds().Count;
+        if (swap.TrySwapSelected()) GameEvents.RaiseCardsSwapped(cardCount);
+    }
+
+    SwapRejectReason GetSwapRejectReason()
+    {
+        if (!IsSwapping) return SwapRejectReason.NotSwapPhase;
+        if (swap.SwapsLeft <= 0) return SwapRejectReason.NoSwapsLeft;
+        int picked = hand.GetSelectedCardIds().Count;
+        if (picked == 0) return SwapRejectReason.NothingPicked;
+        return SwapRejectReason.TooManyPicked;
     }
 
     /// The Done Swapping button.
@@ -293,6 +327,13 @@ public class GameFlowController : MonoBehaviour
 
         Commit.MarkPlaced(placed);
         hand.RemoveCardById(placed.Id);
+    }
+
+    /// A dragged card was let go somewhere it cannot be placed: it goes back to the hand, still waiting.
+    public void RequestDropHeldCard()
+    {
+        if (!IsBuilding) return;
+        placement.DropHeldCard();
     }
 
     /// Undo (button or right-click): this hand's newest placement goes back to the hand.
@@ -564,6 +605,7 @@ public class GameFlowController : MonoBehaviour
         if (swap != null) swap.ResetSwaps(config.swapsPerHand);
         hand.DrawCardsUntilHandHas(config.handSize);
         yield return new WaitForSeconds(config.drawPauseSeconds);
+        yield return PresentationGate.WaitUntilClear(config.maxPresentationWait);   // a draw effect still flying
     }
 
     /// Ends when Done Swapping is pressed or the swaps run out. Swapping is never forced.

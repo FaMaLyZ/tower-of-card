@@ -125,8 +125,9 @@ public class TowerPlacementInput : MonoBehaviour
         CardInstance placed = heldCard;
         if (tower.IsEmpty)
         {
-            if (!clickedTablePoint.HasValue) return null;
-            tower.PlaceFirstCard(clickedTablePoint.Value, placed);
+            Vector3? tablePoint = clickedTablePoint ?? FindTablePointUnderMouse();   // a click, or a drag let go here
+            if (!tablePoint.HasValue) return null;
+            tower.PlaceFirstCard(tablePoint.Value, placed);
         }
         else
         {
@@ -195,6 +196,16 @@ public class TowerPlacementInput : MonoBehaviour
             if (hit.gameObject.GetComponentInParent<SwapZone>() != null) return true;
         }
         return false;
+    }
+
+    // The table under the mouse right now, or null (over the HUD or a hand card, or off the table)
+    Vector3? FindTablePointUnderMouse()
+    {
+        if (cam == null || Mouse.current == null) return null;
+        Vector2 screen = Mouse.current.position.ReadValue();
+        if (IsPointerOverBlockingUI(screen)) return null;
+        if (!Physics.Raycast(cam.ScreenPointToRay(screen), out RaycastHit hit, 1000f, tableLayerMask)) return null;
+        return hit.point;
     }
 
     // ----- Empty tower: a click on the table -----

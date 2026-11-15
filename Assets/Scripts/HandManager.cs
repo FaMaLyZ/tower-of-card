@@ -38,26 +38,39 @@ public class HandManager : MonoBehaviour
     public Vector3 handModelEuler = Vector3.zero;
 
     [Header("Drawing")]
-    [Tooltip("No longer used: the hand is filled up to GameConfig > Hand Size. Kept so the scene value is not lost.")]
-    public int cardsDrawPerTurn = 5;
     [Tooltip("The hand never holds more cards than this.")]
     public int maxHandSize = 10;
-    [Tooltip("No longer used: unplayed cards always stay in the hand. Kept so the scene value is not lost.")]
-    public bool discardHandAtEndOfTurn = false;
-    [Tooltip("No longer used: the conductor ends the hand when the hand is empty. Kept so the scene value is not lost.")]
-    public bool autoEndTurnWhenHandEmpty = true;
 
     [Header("Smoothing")]
-    [Tooltip("How fast cards glide to their place. Higher = snappier, 0 = instant (no smoothing).")]
+    [Tooltip("How fast cards glide to a new place when the hand changes. Higher = snappier, 0 = instant (no smoothing). " +
+             "New cards appear in their place at once; the flight from the deck is an effect (DrawJuice).")]
     public float moveSpeed = 12f;
-    [Tooltip("Optional: new cards fly in from this object (for example the deck). Empty = the middle of the hand.")]
-    public Transform drawFromPoint;
-    [Tooltip("New cards start at this fraction of their size and grow to full size. 1 = no growing.")]
-    [Range(0f, 1f)] public float spawnScale = 0.5f;
 
     [Header("Selection look")]
     public float selectedLift = 10f;        // chosen card moves up by this much
     public float selectedScale = 1.1f;      // and gets a bit bigger
+    [Tooltip("Selected cards come this much closer to the camera, so they are drawn on top of the rest.")]
+    public float selectedForward = 0.05f;
+
+    [Header("Hover look")]
+    [Tooltip("The hovered card comes this much closer to the camera, so it is on top and its whole face can be pointed at.")]
+    public float hoverForward = 0.08f;
+    [Tooltip("How far the hovered card's neighbours move aside (hand units). They really move, so their click areas move too.")]
+    public float hoverGap = 0.15f;
+    [Tooltip("How many cards on each side make room. The gap gets smaller further out.")]
+    public float hoverGapCards = 2f;
+
+    [Header("After Play Hand (Build and the rest of the hand)")]
+    [Tooltip("How high the committed cards sit while you build (instead of Selected Lift).")]
+    public float lockedInLift = 0.1f;
+    [Tooltip("How far the waiting cards drop toward the bottom of the screen.")]
+    public float waitingDrop = 0.35f;
+    [Tooltip("Size of the waiting cards (1 = normal).")]
+    public float waitingScale = 0.75f;
+    [Tooltip("Colour of the waiting cards (1 = normal, 0 = black).")]
+    [Range(0f, 1f)] public float waitingBrightness = 0.5f;
+    [Tooltip("Spacing of the waiting cards, as a part of Card Spacing (they are smaller, so they sit closer).")]
+    public float waitingSpacing = 0.75f;
 
     [Header("Check Gameover")]
     public int allCardLeft = 0;
@@ -80,8 +93,24 @@ public class HandManager : MonoBehaviour
     public int SelectedIndex => FindIndexOfCard(SelectedCardId);
     public CardData SelectedCard => GetCard(SelectedIndex);
 
+    /// The card being dragged to a new place in the hand (-1 = none).
+    public int DraggedCardId { get; private set; } = NoCard;
+    public bool IsDragging => DraggedCardId != NoCard;
+
     // The card under the mouse (-1 = none)
-    public int HoveredIndex => FindIndexOfCard(hoveredCardId);
+    // (only a card the player can use right now counts as hovered: waiting cards ignore the mouse)
+    public int HoveredIndex => IsInteractable(hoveredCardId) ? FindIndexOfCard(hoveredCardId) : -1;
+
+    /// The card picked up by dragging it out of the hand in Build (-1 = none).
+    public int PlacingDragCardId { get; private set; } = NoCard;
+
+    /// Can the player use this card right now? Only while hand cards can be clicked, and after
+    /// Play Hand only the committed cards: the waiting cards ignore hover, clicks and drags.
+    public bool IsInteractable(int cardId)
+    {
+        if (cardId == NoCard || flow == null || !flow.IsReady || !flow.CanClickHandCards) return false;
+        return !(IsLockedIn && !IsSelected(cardId));
+    }
 
     /// The card whose details should be shown: the one under the mouse, otherwise the selected one.
     public CardData InspectedCard
@@ -140,16 +169,18 @@ public class HandManager : MonoBehaviour
     {
         if (deckManager == null) return 0;
 
-        int drawn = 0;
+        var drawnIds = new List<int>();
         for (int i = 0; i < amount && Count < maxHandSize; i++)
         {
             CardInstance card = deckManager.Draw();
             if (card == null) break;            // deck is completely empty
 
             AddCardToHand(card);
-            drawn++;
+            if (FindIndexOfCard(card.Id) >= 0) drawnIds.Add(card.Id);
         }
-        return drawn;
+
+        if (drawnIds.Count > 0) GameEvents.RaiseCardsDrawn(drawnIds);
+        return drawnIds.Count;
     }
 
     /// Draws a single card from the deck (original method name kept).
@@ -173,7 +204,7 @@ public class HandManager : MonoBehaviour
 
         cardsInHand.Add(view);
         dataInHand.Add(card.Data);
-        MoveToSpawnPoint(view.transform, cardsInHand.Count - 1);
+        PutInPlace(view.transform, cardsInHand.Count - 1);
 
         AnnounceHandChanged();
     }
@@ -207,16 +238,13 @@ public class HandManager : MonoBehaviour
         return visual.transform;
     }
 
-    // Start at the spawn point so the card glides into its place
-    void MoveToSpawnPoint(Transform root, int index)
+    // A new card's root starts exactly at its place in the hand, so it can be clicked at once
+    void PutInPlace(Transform root, int index)
     {
-        GetHandTarget(index, out _, out Quaternion rotation, out Vector3 scale);
-
-        root.localPosition = drawFromPoint != null
-            ? handTranform.InverseTransformPoint(drawFromPoint.position)
-            : Vector3.zero;
+        GetHandTarget(index, out Vector3 position, out Quaternion rotation, out Vector3 scale);
+        root.localPosition = position;
         root.localRotation = rotation;
-        root.localScale = scale * spawnScale;
+        root.localScale = scale;
     }
 
     // Colours the card and writes its name (works for UI cards and 3D cards)
@@ -258,6 +286,13 @@ public class HandManager : MonoBehaviour
     public int GetCardId(int index)
     {
         return index >= 0 && index < cardsInHand.Count ? cardsInHand[index].CardId : NoCard;
+    }
+
+    /// The hand card showing this card ID (null = not in the hand). Effects use it to find a card's Visual.
+    public HandCardView FindView(int cardId)
+    {
+        int index = FindIndexOfCard(cardId);
+        return index >= 0 ? cardsInHand[index] : null;
     }
 
     /// Where this card is in the hand right now (-1 = not in the hand).
@@ -329,6 +364,8 @@ public class HandManager : MonoBehaviour
     void ForgetCard(int cardId)
     {
         if (hoveredCardId == cardId) hoveredCardId = NoCard;
+        if (DraggedCardId == cardId) DraggedCardId = NoCard;
+        if (PlacingDragCardId == cardId) PlacingDragCardId = NoCard;
         if (selectedCardIds.Remove(cardId)) AnnounceSelectionChanged();
     }
 
@@ -338,6 +375,8 @@ public class HandManager : MonoBehaviour
         bool hadSelection = selectedCardIds.Count > 0;
         selectedCardIds.Clear();
         hoveredCardId = NoCard;
+        DraggedCardId = NoCard;
+        PlacingDragCardId = NoCard;
         if (hadSelection) AnnounceSelectionChanged();
     }
 
@@ -383,7 +422,85 @@ public class HandManager : MonoBehaviour
     // The click is a command: the conductor decides if it counts in the current phase.
     public void ClickCard(HandCardView card)
     {
-        if (card != null && flow != null) flow.RequestSelectCardById(card.CardId);
+        if (card == null || flow == null || !IsInteractable(card.CardId)) return;
+        flow.RequestSelectCardById(card.CardId);
+    }
+
+    // ---------- Reordering (B4) ----------
+
+    // Called by HandCardView when a drag starts.
+    //  - Build: the drag picks the committed card up; letting go over a snap point places it.
+    //  - Swap / Commit: the drag reorders the hand.
+    public void BeginDragCard(HandCardView card)
+    {
+        if (card == null || flow == null || !IsInteractable(card.CardId)) return;
+
+        if (flow.IsBuilding)
+        {
+            PlacingDragCardId = card.CardId;
+            flow.RequestSelectCardById(card.CardId);    // in Build this picks the card up to place it
+            return;
+        }
+
+        if (flow.CanReorderHand) DraggedCardId = card.CardId;
+    }
+
+    // The dragged card asks to move to the hand place closest to the mouse (left-right on screen)
+    public void DragCardTo(HandCardView card, Vector2 screenPosition, Camera cam)
+    {
+        if (card == null || card.CardId != DraggedCardId || flow == null) return;
+
+        int target = FindPlaceNearestScreenX(screenPosition.x, cam);
+        if (target >= 0 && target != FindIndexOfCard(card.CardId)) flow.RequestMoveCard(card.CardId, target);
+    }
+
+    public void EndDragCard(HandCardView card)
+    {
+        if (card == null) return;
+        if (card.CardId == DraggedCardId) DraggedCardId = NoCard;
+        if (card.CardId == PlacingDragCardId) DropPlacingCard(card.CardId);
+    }
+
+    // Let go of a card dragged out in Build: placed if it is over a snap point (or the table for the
+    // first card), otherwise it goes back to the hand. Placing removes it from the hand.
+    void DropPlacingCard(int cardId)
+    {
+        PlacingDragCardId = NoCard;
+        flow.RequestPlaceHeldCard();
+        if (FindIndexOfCard(cardId) >= 0) flow.RequestDropHeldCard();
+    }
+
+    /// Moves one card to another place in the hand. Selection follows the card ID, so it is unchanged.
+    /// Returns false if nothing moved. (Called by the conductor.)
+    public bool MoveCard(int cardId, int newIndex)
+    {
+        int oldIndex = FindIndexOfCard(cardId);
+        if (oldIndex < 0 || newIndex < 0 || newIndex >= Count || newIndex == oldIndex) return false;
+
+        HandCardView view = cardsInHand[oldIndex];
+        CardData data = dataInHand[oldIndex];
+        cardsInHand.RemoveAt(oldIndex);
+        dataInHand.RemoveAt(oldIndex);
+        cardsInHand.Insert(newIndex, view);
+        dataInHand.Insert(newIndex, data);
+
+        AnnounceHandChanged();
+        return true;
+    }
+
+    // Which hand place is closest to this screen x (the places, not where the cards are right now)
+    int FindPlaceNearestScreenX(float screenX, Camera cam)
+    {
+        int best = -1;
+        float bestDistance = float.MaxValue;
+        for (int i = 0; i < cardsInHand.Count; i++)
+        {
+            GetHandTarget(i, out Vector3 position, out _, out _);
+            Vector3 screen = cam.WorldToScreenPoint(handTranform.TransformPoint(position));
+            float distance = Mathf.Abs(screen.x - screenX);
+            if (screen.z > 0f && distance < bestDistance) { bestDistance = distance; best = i; }
+        }
+        return best;
     }
 
     /// Takes a card out of the hand WITHOUT sending it anywhere. The caller decides where it goes
@@ -444,20 +561,87 @@ public class HandManager : MonoBehaviour
 
     // ---------- Layout (your original fan layout, now smoothed) ----------
 
-    // Where the ROOT of card number i wants to be (the Visual child just rides along)
+    // Where the ROOT of card number i wants to be (the Visual child just rides along).
+    // The hand lives in camera space: +x right, +y up, +z AWAY from the camera (so closer = minus z).
     void GetHandTarget(int i, out Vector3 position, out Quaternion rotation, out Vector3 scale)
     {
-        float middle = (cardsInHand.Count - 1) / 2f;
-        bool isSelected = IsSelected(cardsInHand[i].CardId);
+        int cardId = cardsInHand[i].CardId;
+        bool isSelected = IsSelected(cardId);
+        bool isLockedIn = IsLockedIn;
+        bool isWaiting = isLockedIn && !isSelected;
 
-        float rotationAngle = fanSpread * (i - middle);
-        rotation = Quaternion.Euler(0, 180, rotationAngle);
+        // After Play Hand the committed cards and the waiting cards are two separate rows,
+        // each centred on its own. Before that the whole hand is one row.
+        GetPlaceInRow(i, out int place, out int rowCount);
+        float fromMiddle = place - (rowCount - 1) / 2f;
+        float spacing = isWaiting ? cardSpacing * waitingSpacing : cardSpacing;
 
-        float horizontalOffset = cardSpacing * (i - middle);
-        float verticalOffset = verticalSpacing * (i - middle) + (isSelected ? selectedLift : 0f);
-        float deedOffset = (deepSpacing * (i - middle)) + (isSelected ? selectedLift : 0f);
-        position = new Vector3(horizontalOffset, verticalOffset, deedOffset);
-        scale = Vector3.one * handCardScale * (isSelected ? selectedScale : 1f);
+        rotation = Quaternion.Euler(0, 180, fanSpread * fromMiddle);
+
+        float x = spacing * fromMiddle + GetHoverGap(i);
+        float y = verticalSpacing * fromMiddle;
+        float z = deepSpacing * fromMiddle;
+        float size = handCardScale;
+
+        if (isSelected)
+        {
+            y += isLockedIn ? lockedInLift : selectedLift;
+            z -= selectedForward;                           // in front of the other cards
+            size *= selectedScale;
+        }
+        else if (isLockedIn)
+        {
+            y -= waitingDrop;                               // the rest of the hand waits lower down
+            size *= waitingScale;
+        }
+
+        if (cardId == hoveredCardId && IsInteractable(cardId) && !IsDragging) z -= hoverForward;
+
+        position = new Vector3(x, y, z);
+        scale = Vector3.one * size;
+    }
+
+    bool IsLockedIn => flow != null && flow.IsReady && flow.IsHandLockedIn;
+
+    // Which row a card is in: before Play Hand there is one row; after it, committed and waiting cards
+    // each have their own. Cards keep their hand order inside their row.
+    bool IsInSameRow(int a, int b)
+    {
+        if (!IsLockedIn) return true;
+        return IsSelected(cardsInHand[a].CardId) == IsSelected(cardsInHand[b].CardId);
+    }
+
+    // The card's place in its row (0 = leftmost) and how many cards that row has
+    void GetPlaceInRow(int i, out int place, out int rowCount)
+    {
+        place = 0;
+        rowCount = 0;
+        for (int other = 0; other < cardsInHand.Count; other++)
+        {
+            if (!IsInSameRow(i, other)) continue;
+            if (other < i) place++;
+            rowCount++;
+        }
+    }
+
+    // The hovered card's neighbours in the same row make room for it: the nearest the most,
+    // nothing past Hover Gap Cards
+    float GetHoverGap(int i)
+    {
+        int hovered = HoveredIndex;
+        if (hovered < 0 || i == hovered || IsDragging || !IsInSameRow(i, hovered)) return 0f;
+
+        GetPlaceInRow(i, out int place, out _);
+        GetPlaceInRow(hovered, out int hoveredPlace, out _);
+        int distance = Mathf.Abs(place - hoveredPlace);
+        float strength = 1f - (distance - 1) / Mathf.Max(1f, hoverGapCards);
+        return strength <= 0f ? 0f : Mathf.Sign(place - hoveredPlace) * hoverGap * strength;
+    }
+
+    // The waiting cards fade darker while the committed cards are played, and back afterwards
+    float GetDimTarget(int i)
+    {
+        return IsLockedIn && !IsSelected(cardsInHand[i].CardId) ? 1f : 0f;
     }
 
     // Moves every card a little towards its place each frame
@@ -481,6 +665,9 @@ public class HandManager : MonoBehaviour
             card.localPosition = Vector3.Lerp(card.localPosition, position, t);
             card.localRotation = Quaternion.Slerp(card.localRotation, rotation, t);
             card.localScale = Vector3.Lerp(card.localScale, scale, t);
+
+            HandCardView view = cardsInHand[i];
+            view.SetDim(Mathf.MoveTowards(view.DimAmount, GetDimTarget(i), t), waitingBrightness);
         }
     }    
     public int GetAllCardCount()

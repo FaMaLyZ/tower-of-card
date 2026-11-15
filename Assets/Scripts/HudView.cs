@@ -107,8 +107,17 @@ public class HudView : MonoBehaviour
     public string commitStateLabel = "Press Play Hand";
     public string buildStateFormat = "Place your cards: {0} left";
 
+    [Header("Deck click refused (shown in the state text)")]
+    [Min(0f)] public float swapRejectSeconds = 2f;
+    public string swapNotNowText = "You can only swap at the start of a hand";
+    public string swapNothingPickedText = "Pick the cards to swap first, then click the deck";
+    public string swapNoneLeftText = "No swaps left this hand";
+    public string swapTooManyText = "Too many cards picked for the swaps left";
+
     TMP_Text mainButtonLabel;
     bool isRunEndPanelOpen;
+    string swapRejectText = "";
+    float swapRejectHideTime;
 
     bool GameRunning => flow != null && flow.IsReady && flow.Phase != GamePhase.None;
 
@@ -121,6 +130,33 @@ public class HudView : MonoBehaviour
         FindMissingReferences();
         PreventTextsFromBlockingClicks();
         HookButtons();
+    }
+
+    void OnEnable()
+    {
+        GameEvents.SwapRejected += OnSwapRejected;
+    }
+
+    void OnDisable()
+    {
+        GameEvents.SwapRejected -= OnSwapRejected;
+    }
+
+    void OnSwapRejected(SwapRejectReason reason)
+    {
+        swapRejectText = GetSwapRejectText(reason);
+        swapRejectHideTime = Time.time + swapRejectSeconds;
+    }
+
+    string GetSwapRejectText(SwapRejectReason reason)
+    {
+        switch (reason)
+        {
+            case SwapRejectReason.NotSwapPhase: return swapNotNowText;
+            case SwapRejectReason.NothingPicked: return swapNothingPickedText;
+            case SwapRejectReason.NoSwapsLeft: return swapNoneLeftText;
+            default: return swapTooManyText;
+        }
     }
 
     void FindMissingReferences()
@@ -311,6 +347,8 @@ public class HudView : MonoBehaviour
 
     string GetStateLabel()
     {
+        if (Time.time < swapRejectHideTime) return swapRejectText;
+
         switch (flow.Phase)
         {
             case GamePhase.BlindEnd: return GetBlindResultLabel();
