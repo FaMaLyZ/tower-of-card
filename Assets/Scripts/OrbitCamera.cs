@@ -6,17 +6,17 @@ using UnityEngine.InputSystem;
 ///   D = rotate right around the tower
 public class OrbitCamera : MonoBehaviour
 {
-    public TowerBuilder tower;              // auto-found if empty
+    public TowerBuilder tower;
 
     [Header("Camera")]
-    public float distance = 10f;            // distance from the focus point
-    public float pitch = 20f;               // look-down angle (degrees)
-    public float orbitSpeed = 90f;          // degrees per second
+    public float distance = 10f;
+    public float pitch = 20f;
+    public float orbitSpeed = 90f;
     public Vector3 focusOffset = Vector3.zero;
-    public float followSpeed = 4f;          // how fast the focus follows the tower as it grows
+    public float followSpeed = 4f;
 
-    [Header("Reset (when the whole tower is gone)")]
-    public float resetSmoothing = 3f;       // how fast the camera swings back to its start view
+    [Header("Reset")]
+    public float resetSmoothing = 3f;
 
     float yaw;
     float startYaw;                         // the view the game started with

@@ -15,19 +15,18 @@ using UnityEngine.UI;
 /// then calls PlaceHeldCard() here. Where the card ends up is TowerBuilder's job.
 public class TowerPlacementInput : MonoBehaviour
 {
-    [Header("References (auto-found if empty)")]
+    [Header("References")]
     public GameFlowController flow;
     public TowerBuilder tower;
 
     [Header("First card")]
-    [Tooltip("The first card of a tower can only be placed on something in this layer (the table). Keeps players from starting a tower off the table.")]
-    public LayerMask tableLayerMask = 1 << 7;   // "Table" layer
+    public LayerMask tableLayerMask = 1 << 7;
 
     [Header("Snapping")]
-    public float snapRadiusPixels = 90f;             // mouse must be this close to a slot (screen pixels)
+    public float snapRadiusPixels = 90f;
     public float snapSpeed = 25f;
 
-    [Header("Hints (shown by HudView)")]
+    [Header("Hints")]
     public string firstClickHint = "Click the table to start the tower";
     public string placingHint = "Click a snap point to place. Right-click: put the card back. Orbit camera: A / D.";
     public string choosingHint = "Pick one of your raised cards to place it. Right-click: undo the last card.";

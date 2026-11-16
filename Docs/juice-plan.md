@@ -211,7 +211,7 @@ The player selects **1–5 cards**. The live preview shows the evaluated poker h
 
 1. Non-committed cards dim and reduce toward 0.75× scale while remaining readable.
 2. Committed cards lift, grow toward 1.2× scale, and align in the active area.
-3. A short announcement, about 0.6 seconds, shows the hand name and its real scoring values. For example, the optional name **"TWIN TENTS"** represents Two Pair, whose current base values are `20 × 2`.
+3. A short announcement, about 0.6 seconds, shows the hand name and its real scoring values. For example, the optional name **"DOUBLE BRACE"** represents Two Pair, whose current base values are `20 × 2`.
 4. The presentation gate completes or skips, and the conductor enables Build.
 
 The baseline view sets the readable committed/reserve layout instantly even without these effects. `CommitManager` owns the committed IDs; `ScoreRevealJuice` or an announcement presenter owns the slam. A rejected commitment shows its reason without spending a hand.
@@ -268,14 +268,17 @@ The normal HUD always shows the evaluated hand during Commit. Architectural name
 | Selection example | Optional shape name | Poker name |
 |---|---|---|
 | 1 card, or unmatched cards with no stronger hand | Loose Cards | High Card |
-| 2 matching ranks | Tent | Pair |
-| 4 cards forming two pairs | Twin Tents | Two Pair |
-| 3 matching ranks | Tripod | Three of a Kind |
+| 2 matching ranks | Brace | Pair |
+| 4 cards forming two pairs | Double Brace | Two Pair |
+| 3 matching ranks | Trestle | Three of a Kind |
 | 5 consecutive ranks | Staircase | Straight |
-| 5 cards of one suit | Wall | Flush |
+| 5 cards of one suit | Facade | Flush |
 | 5 cards: three of one rank and two of another | House | Full House |
 | 4 matching ranks | Tower Block | Four of a Kind |
 | 5 consecutive ranks of one suit | Spire | Straight Flush |
+| Same-suit 10–J–Q–K–A | Palace | Royal Flush |
+
+"Tent" is avoided on purpose: in the tower a tent is two cards leaning together, so a Pair called "Tent" would suggest it must be built as one.
 
 The evaluator decides the strongest hand and scoring-card indices. Extra non-scoring cards do not become chip contributions because of an animation. Zero selected cards shows **"Select 1–5 cards"** rather than a fabricated hand.
 

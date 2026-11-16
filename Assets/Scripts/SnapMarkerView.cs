@@ -4,15 +4,14 @@ using UnityEngine.UI;
 
 /// A marker on every free snap point while the player aims a card (green = where it will snap).
 ///
-/// A view: it only reads TowerPlacementInput. Moved out of GameUI in A6.
+/// A view: it only reads TowerPlacementInput.
 public class SnapMarkerView : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public TowerPlacementInput placement;
     public Canvas canvas;
 
     [Header("Markers")]
-    [Tooltip("A small inactive Image under the Canvas. It is cloned for every snap point.")]
     public Image snapMarkerTemplate;
     public Color snapMarkerColor = new Color(1f, 1f, 1f, 0.6f);
     public Color snapMarkerBestColor = new Color(0.2f, 1f, 0.3f, 1f);

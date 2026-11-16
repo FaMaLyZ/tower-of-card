@@ -3,17 +3,13 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// The Bank / Ride choice after a shake the tower survived.
-///
-/// A view: it shows the two buttons, says what Bank pays and why Ride is off, and sends the
-/// click to the conductor as a command. It never touches the Pot or the tower itself.
-/// Every field is optional; build the buttons in the editor and drag them in.
+/// A view: shows the buttons and sends the click to the conductor.
 public class BankRideView : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
 
     [Header("UI")]
-    [Tooltip("Optional: shown only while the player is choosing. Leave empty to show / hide the two buttons instead.")]
     public GameObject panel;
     public Button bankButton;
     public Button rideButton;

@@ -4,13 +4,10 @@ using UnityEngine;
 using UnityEngine.Serialization;
 
 /// The end screen of a run: Cleared or Shattered, the Run Total, and how far the run got.
-///
-/// A view: it only reads the conductor and shows the result. It sits on the end panel, which
-/// HudView turns on when the run is over. The panel's Play Again button restarts the game.
-/// A4b: was BlindEndView (one blind was the whole game). Same script file ID, so the scene keeps it.
+/// Sits on the end panel that HudView opens.
 public class RunEndView : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
 
     [Header("UI")]

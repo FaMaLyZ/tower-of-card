@@ -1,17 +1,15 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// Put this on any 3D object in the scene (the deck, a bin...) to make it the swap spot
-/// (was DiscardZone; same script file ID, so scenes keep it).
+/// Put this on any 3D object (the deck, a bin...) to make it the swap spot.
 /// With cards picked in the Swap phase, clicking the object swaps them.
 ///
 /// Needs:  a Collider on the object, and a Physics Raycaster on the Main Camera.
 public class SwapZone : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler
 {
-    public GameFlowController flow;              // auto-found if empty
+    public GameFlowController flow;
 
     [Header("Hover feedback")]
-    [Tooltip("The object grows by this factor while the mouse is over it and a swap is possible. 1 = no effect.")]
     public float hoverScale = 1.1f;
 
     Vector3 baseScale;

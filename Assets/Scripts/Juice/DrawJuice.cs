@@ -2,32 +2,22 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// Track B3 (juice-plan 2.3, 3.1, 4.1 - 4.3): drawn cards fly in from the deck one by one, along a
-/// rising curve, leaning the way they travel, and punch when they land.
-///
-/// It listens to CardsDrawn. The cards are already in the hand and in place when it hears it; it only
-/// sends each card's Visual on a flight (through that card's HandCardJuice, so HandJuice must be on too).
-/// While cards fly it holds the PresentationGate, so the Draw phase waits for the last card to land.
-/// The gate has a time limit, and this script releases it if it is switched off mid-flight.
-/// Delete it and drawn cards simply appear in their place.
+/// Drawn cards fly in from the deck one by one and punch when they land.
+/// Drives each card's HandCardJuice (so HandJuice must be on too) and holds the
+/// PresentationGate until the last card lands. Delete it and drawn cards simply appear.
 public class DrawJuice : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public HandManager hand;
-    [Tooltip("Where cards fly in from. Empty = the Swap Zone (the deck).")]
     public Transform deckPoint;
 
     [Header("Timing")]
-    [Tooltip("Seconds between one card leaving the deck and the next.")]
     public float cardInterval = 0.1f;
     public float flightSeconds = 0.35f;
 
     [Header("Flight")]
-    [Tooltip("How high the curve rises above the straight line, as a part of the flight distance.")]
     public float arcHeight = 0.4f;
-    [Tooltip("Most a card leans the way it travels (degrees). Strongest mid-flight.")]
     public float flightTiltDegrees = 25f;
-    [Tooltip("Size when leaving the deck (1 = full size).")]
     [Range(0f, 1f)] public float startScale = 0.5f;
 
     [Header("Landing")]
@@ -36,7 +26,6 @@ public class DrawJuice : MonoBehaviour
     public bool playLandSound = true;
 
     [Header("Game flow")]
-    [Tooltip("Make the Draw phase wait until the last card lands (always within GameConfig > Max Presentation Wait).")]
     public bool holdGameUntilLanded = true;
 
     Camera cam;

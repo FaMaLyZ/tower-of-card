@@ -5,71 +5,46 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-/// The player's hand.
-///  - When the conductor starts a hand it fills the hand from the DeckManager.
-///  - The player clicks a card (or presses 1-9). The click is a command: the conductor decides what
-///    it means in the current phase (pick a card to swap, add it to the commit, pick it up to place).
-///  - Several cards can be selected at once (the commit). Selected cards are shown lifted.
-///  - Cards are shown fanned out (layout code from your original HandManager).
-///  - If a CardData has a Hand Model it is shown in the hand; otherwise Card Prefab is used.
-///
-/// B0 hand contract:
-///  - Every hand card is a ROOT object (HandCardView + click collider) with a "Visual" child (the model).
-///    This script moves the root only. Effects may move the Visual only.
-///  - Cards are told apart by card ID, not by hand position. Selection and hover remember the ID,
-///    so they stay on the same card when the hand changes.
+/// The player's hand: fills it from the deck, lays it out in a fan, and tracks selection and hover.
+/// Clicks (or keys 1-9) go to the conductor, which decides what they mean in the current phase.
+/// Cards are told apart by card ID, never by hand position. Only card roots are moved here.
 public class HandManager : MonoBehaviour
 {
-    [Header("References (auto-found if empty)")]
+    [Header("References")]
     public DeckManager deckManager;
     public GameFlowController flow;
 
     [Header("Card visuals")]
-    [Tooltip("Used for cards that have no Hand Model.")]
     public GameObject cardPrefab;
     [RequiredField] public Transform handTranform;
     public float fanSpread = 5f;
     public float cardSpacing = 5f;
     public float verticalSpacing = 10f;
     public float deepSpacing = 0.01f;
-    [Tooltip("Size of every card in the hand. Change it while playing to see the result live.")]
     public float handCardScale = 1f;
-    [Tooltip("Extra rotation applied to cards that use a Hand Model (use multiples of 90). Fix sideways / upside-down models here.")]
     public Vector3 handModelEuler = Vector3.zero;
 
     [Header("Drawing")]
-    [Tooltip("The hand never holds more cards than this.")]
     public int maxHandSize = 10;
 
     [Header("Smoothing")]
-    [Tooltip("How fast cards glide to a new place when the hand changes. Higher = snappier, 0 = instant (no smoothing). " +
-             "New cards appear in their place at once; the flight from the deck is an effect (DrawJuice).")]
     public float moveSpeed = 12f;
 
     [Header("Selection look")]
-    public float selectedLift = 10f;        // chosen card moves up by this much
-    public float selectedScale = 1.1f;      // and gets a bit bigger
-    [Tooltip("Selected cards come this much closer to the camera, so they are drawn on top of the rest.")]
+    public float selectedLift = 10f;
+    public float selectedScale = 1.1f;
     public float selectedForward = 0.05f;
 
     [Header("Hover look")]
-    [Tooltip("The hovered card comes this much closer to the camera, so it is on top and its whole face can be pointed at.")]
     public float hoverForward = 0.08f;
-    [Tooltip("How far the hovered card's neighbours move aside (hand units). They really move, so their click areas move too.")]
     public float hoverGap = 0.15f;
-    [Tooltip("How many cards on each side make room. The gap gets smaller further out.")]
     public float hoverGapCards = 2f;
 
-    [Header("After Play Hand (Build and the rest of the hand)")]
-    [Tooltip("How high the committed cards sit while you build (instead of Selected Lift).")]
+    [Header("After Play Hand")]
     public float lockedInLift = 0.1f;
-    [Tooltip("How far the waiting cards drop toward the bottom of the screen.")]
     public float waitingDrop = 0.35f;
-    [Tooltip("Size of the waiting cards (1 = normal).")]
     public float waitingScale = 0.75f;
-    [Tooltip("Colour of the waiting cards (1 = normal, 0 = black).")]
     [Range(0f, 1f)] public float waitingBrightness = 0.5f;
-    [Tooltip("Spacing of the waiting cards, as a part of Card Spacing (they are smaller, so they sit closer).")]
     public float waitingSpacing = 0.75f;
 
     [Header("Check Gameover")]
@@ -426,7 +401,7 @@ public class HandManager : MonoBehaviour
         flow.RequestSelectCardById(card.CardId);
     }
 
-    // ---------- Reordering (B4) ----------
+    // ---------- Reordering ----------
 
     // Called by HandCardView when a drag starts.
     //  - Build: the drag picks the committed card up; letting go over a snap point places it.
@@ -559,7 +534,7 @@ public class HandManager : MonoBehaviour
         AnnounceHandChanged();
     }
 
-    // ---------- Layout (your original fan layout, now smoothed) ----------
+    // ---------- Layout ----------
 
     // Where the ROOT of card number i wants to be (the Visual child just rides along).
     // The hand lives in camera space: +x right, +y up, +z AWAY from the camera (so closer = minus z).

@@ -23,8 +23,7 @@ public enum RunOutcome
     Shattered
 }
 
-/// The whole run: which Ante and blind we are on, the run total, the reward multiplier and the Glass
-/// (Master Plan 1.1, 2.4).
+/// The whole run: which Ante and blind we are on, the run total, the reward multiplier and the Glass.
 ///
 /// The conductor calls StartBlind, then exactly one of RecordBlindWon / RecordBlindFailed,
 /// or SkipBlind instead of playing a Small or Big blind.

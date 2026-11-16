@@ -2,18 +2,14 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// The Continue / Leave Table choice, offered after a Bank that reached the target with hands left.
-///
-/// A view: it shows the two buttons, says what Leave pays, and sends the click to the conductor
-/// as a command. It never touches the blind score itself.
-/// Every field is optional; build the buttons in the editor and drag them in.
+/// The Continue / Leave Table choice after a Bank that reached the target with hands left.
+/// A view: shows the buttons and sends the click to the conductor.
 public class ContinueLeaveView : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
 
     [Header("UI")]
-    [Tooltip("Optional: shown only while the player is choosing. Leave empty to show / hide the two buttons instead.")]
     public GameObject panel;
     public Button continueButton;
     public Button leaveButton;

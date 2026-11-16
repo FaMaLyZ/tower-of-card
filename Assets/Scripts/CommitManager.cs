@@ -1,13 +1,8 @@
 using System.Collections.Generic;
 
-/// The commit step (Master Plan 3.2): the player selects 1-5 hand cards and presses Play Hand.
-///
-///   - Shows which poker hand the selected cards make (the preview).
-///   - Accepts the commit only if every card can be placed in the tower.
-///   - Remembers the locked set, and which of those cards are still waiting to be placed.
-///
-/// A worker: it checks the rule and returns a result. It never spends the hand or changes the
-/// phase; the conductor does that. Plain C# - the conductor creates it.
+/// The commit step: the player selects 1-5 hand cards and presses Play Hand.
+/// Previews the poker hand, accepts the commit only if every card can be placed,
+/// and tracks which locked cards are still waiting. The conductor changes the phase.
 public class CommitManager
 {
     readonly HandManager hand;

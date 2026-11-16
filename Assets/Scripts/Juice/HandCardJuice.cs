@@ -1,14 +1,9 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// The effects on ONE hand card (Track B1 - B4): hover shake, select punch, deselect pop,
-/// 3D tilt toward the mouse, the flight in from the deck,
-/// and while dragged: following the mouse with a little lag and leaning the way it moves.
-///
-/// HandJuice adds this to every hand card. It moves the card's Visual child only, as an offset
-/// on top of the Visual's rest pose, and puts the Visual back exactly when nothing is playing.
-/// It never selects, moves or reorders a card: the root (and its click collider) stays where the
-/// hand puts it. Remove HandJuice from the scene and the hand works the same, just without effects.
+/// The effects on ONE hand card: hover shake, select punch, deselect pop, tilt, draw flight and drag.
+/// Moves the Visual child only, as an offset on its rest pose; the root never moves.
+/// HandJuice adds it to every hand card.
 public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     const float RestEpsilon = 0.0001f;
@@ -16,23 +11,23 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     HandCardView view;
     HandJuice settings;
 
-    // B1: each effect remembers when it started; < 0 = not playing
+    // each effect remembers when it started; < 0 = not playing
     float shakeStart = -1f;
     float punchStart = -1f;
     float punchSeconds;
     float punchLift;                    // + = up (select), - = down (deselect), 0 = scale only (landing)
     float punchPeakScale = 1f;
 
-    // B3: the flight in from the deck; flightStart < 0 = not flying
+    // the flight in from the deck; flightStart < 0 = not flying
     DrawJuice flight;
     float flightStart = -1f;
     Vector3 flightFrom;
 
-    // B2: eased toward their targets every frame
+    // eased toward their targets every frame
     bool isHovered;
     Quaternion tilt = Quaternion.identity;          // in the root's local space
 
-    // B4: while this card is dragged its Visual follows the mouse; after release it glides home
+    // while this card is dragged its Visual follows the mouse; after release it glides home
     bool wasDragged;
     Vector3 dragOffset;                             // in the root's local space
     float dragLean;                                 // degrees, around the camera's forward axis
@@ -86,7 +81,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         punchPeakScale = peakScale;
     }
 
-    /// B3: fly in from the deck after "delay" seconds. Until then the card is hidden at the deck.
+    /// fly in from the deck after "delay" seconds. Until then the card is hidden at the deck.
     public void PlayDrawFlight(DrawJuice drawSettings, Vector3 fromWorld, float delay)
     {
         flight = drawSettings;
@@ -138,7 +133,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
                Quaternion.Angle(tilt, Quaternion.identity) < 0.01f;
     }
 
-    // B1: a quick left-right wobble around the card's own Z axis that dies out
+    // a quick left-right wobble around the card's own Z axis that dies out
     float GetShakeAngle()
     {
         if (shakeStart < 0f) return 0f;
@@ -150,7 +145,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         return settings.hoverShakeDegrees * wave * (1f - t);
     }
 
-    // B1 / B3: one bump out and back (select goes up, deselect dips, landing only grows). Scale follows.
+    // one bump out and back (select goes up, deselect dips, landing only grows). Scale follows.
     void GetPunch(out float lift, out float scale)
     {
         lift = 0f;
@@ -165,7 +160,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         scale = 1f + (punchPeakScale - 1f) * bump;
     }
 
-    // ---------- B3: the flight in from the deck ----------
+    // ---------- the flight in from the deck ----------
 
     // Along a curve that rises above the straight line, leaning the way it travels, growing to full size.
     // The root is already in its place (and clickable); only the Visual is still on its way.
@@ -229,7 +224,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         return 2f * (1f - t) * (control - a) + 2f * t * (b - control);
     }
 
-    // ---------- B4: dragging ----------
+    // ---------- dragging ----------
 
     bool IsDragged => settings.hand != null && settings.hand.DraggedCardId == view.CardId;
 
@@ -251,7 +246,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         wasDragged = dragged;
     }
 
-    // B2: while hovered, lean toward the mouse; otherwise ease back to flat
+    // while hovered, lean toward the mouse; otherwise ease back to flat
     void UpdateTilt()
     {
         Quaternion target = isHovered && !wasDragged && IsUsable ? settings.GetTiltTowardMouse(transform) : Quaternion.identity;

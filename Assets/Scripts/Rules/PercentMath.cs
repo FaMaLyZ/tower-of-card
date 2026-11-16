@@ -1,5 +1,5 @@
 /// Money-style maths for chips. Chips are whole numbers (long); percent maths uses decimal
-/// because float gives off-by-one chips (Master Plan 1.3).
+/// because float gives off-by-one chips.
 /// Round ONCE at the end of each formula, never in the middle.
 public static class PercentMath
 {

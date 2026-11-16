@@ -2,64 +2,41 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// Track B hand effects:
-///   B1 (juice-plan 1.1, 2.1, 2.2): hover shake, select punch, deselect pop.
-///   B2 (juice-plan 1.2): 3D tilt toward the mouse. (The fan spread is in HandManager's layout, so the
-///   click areas move with the cards.)
-///   Lock-in: when Play Hand is accepted the committed cards pop and the waiting cards dip as they drop.
-///   B4 (juice-plan 3.1 - 3.3): a dragged card follows the mouse with lag, leans the way it moves,
-///   and punches when dropped. (The neighbours already glide aside: HandManager eases every root.)
-///
-/// Put this on its own object in the scene. It gives every hand card a HandCardJuice and tells it
-/// when the selection changed. It only listens: HandChanged and SelectionChanged have already
-/// happened when it hears them, so it can never change what is selected.
-/// Delete this object and the hand plays exactly the same, just without these effects.
+/// Hand effects: hover shake, select punch, deselect pop, mouse tilt, lock-in pop, drag lag and lean.
+/// Put it on its own object. It gives every hand card a HandCardJuice and only listens to events,
+/// so deleting it leaves the hand working the same.
 public class HandJuice : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public HandManager hand;
     public GameFlowController flow;
 
     [Header("Hover shake")]
-    [Tooltip("How far the card wobbles each way (degrees).")]
     public float hoverShakeDegrees = 6f;
-    [Tooltip("Left-right wobbles in one shake.")]
     public float hoverShakeCycles = 2.5f;
     public float hoverShakeSeconds = 0.2f;
 
     [Header("Select punch / deselect pop")]
     public float punchSeconds = 0.15f;
-    [Tooltip("Extra lift at the top of the punch, as a part of the hand's Selected Lift (0.3 = goes 30% past the lifted spot).")]
     public float punchOvershoot = 0.3f;
-    [Tooltip("Size at the top of the select punch (1 = no change).")]
     public float selectPunchScale = 1.12f;
-    [Tooltip("Size at the bottom of the deselect pop (1 = no change).")]
     public float deselectPopScale = 0.92f;
 
-    [Header("Tilt toward the mouse (B2)")]
-    [Tooltip("Most the hovered card leans (degrees).")]
+    [Header("Tilt toward the mouse")]
     public float maxTiltDegrees = 10f;
-    [Tooltip("Mouse distance from the card centre (screen pixels) that gives the full tilt.")]
     public float tiltRadiusPixels = 120f;
-    [Tooltip("On = the side under the mouse dips away, like pressing the card. Off = it leans toward the mouse.")]
     public bool pressUnderMouse = true;
     public float tiltSpeed = 18f;
 
-    [Header("Play Hand accepted (lock-in)")]
-    [Tooltip("Size at the top of the committed cards' pop.")]
+    [Header("Play Hand accepted")]
     public float lockInPunchScale = 1.15f;
-    [Tooltip("Size at the bottom of the waiting cards' dip.")]
     public float waitingDipScale = 0.85f;
-    [Tooltip("Size at the top of the waiting cards' pop when they come back up for the next hand.")]
     public float waitingReturnScale = 1.1f;
     public float lockInPunchSeconds = 0.2f;
 
-    [Header("Dragging (B4)")]
-    [Tooltip("How fast the dragged card catches up with the mouse. Lower = more lag.")]
+    [Header("Dragging")]
     public float dragFollowSpeed = 20f;
-    [Tooltip("How fast a dropped card glides back into its place.")]
     public float dragReturnSpeed = 14f;
-    [Tooltip("Lean per screen pixel per second of sideways movement.")]
     public float dragLeanPerPixelSpeed = 0.02f;
     public float maxDragLeanDegrees = 25f;
     public float dragLeanSpeed = 12f;
@@ -87,7 +64,7 @@ public class HandJuice : MonoBehaviour
         return speed <= 0f ? 1f : 1f - Mathf.Exp(-speed * Time.deltaTime);
     }
 
-    /// B2: the lean for a hovered card, in its root's local space (so it rides along with the fan).
+    /// the lean for a hovered card, in its root's local space (so it rides along with the fan).
     public Quaternion GetTiltTowardMouse(Transform cardRoot)
     {
         if (cam == null) cam = Camera.main;
@@ -107,7 +84,7 @@ public class HandJuice : MonoBehaviour
         return Quaternion.Inverse(cardRoot.rotation) * worldTilt * cardRoot.rotation;
     }
 
-    /// B4: how far the Visual must move (root space) to sit under the mouse, on the card's own plane.
+    /// how far the Visual must move (root space) to sit under the mouse, on the card's own plane.
     public Vector3 GetDragOffset(Transform cardRoot, Vector3 visualRestPosition)
     {
         if (cam == null) cam = Camera.main;
@@ -121,7 +98,7 @@ public class HandJuice : MonoBehaviour
         return cardRoot.InverseTransformPoint(ray.GetPoint(distance)) - visualRestPosition;
     }
 
-    /// B4: lean from the Visual's sideways speed on screen (moving right leans right).
+    /// lean from the Visual's sideways speed on screen (moving right leans right).
     public float GetDragLean(Vector3 lastWorld, Vector3 nowWorld)
     {
         if (cam == null || Time.deltaTime <= 0f) return 0f;

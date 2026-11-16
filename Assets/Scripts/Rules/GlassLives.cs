@@ -1,8 +1,5 @@
-/// The Glass: the run's lives (Master Plan 1.1).
-///
-/// A failed blind cracks it once. A Boss win (and, from A4c, a Skip) repairs one crack.
-/// Repairs never go above the maximum. At 0 lives the Glass is shattered and the run is over.
-/// A worker: it keeps the number. It never decides when to crack or repair.
+/// The Glass: the run's lives. A failed blind cracks it; a Boss win or a Skip repairs one crack.
+/// At 0 lives the run is over. A worker: it never decides when to crack or repair.
 public class GlassLives
 {
     public int MaxLives { get; }

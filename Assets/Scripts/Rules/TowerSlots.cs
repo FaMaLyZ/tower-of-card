@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 
 /// The slot rules of the house of cards: which spots are open, and whether a number of cards
-/// can all be placed (Master Plan 3.2). Logic only: no Unity objects, no physics, so it can be tested.
+/// can all be placed. Logic only: no Unity objects, no physics, so it can be tested.
 ///
 /// A slot is named by (kind, level, index):
 ///   kind  = Left or Right half of a tent, or a Floor card lying across two tents

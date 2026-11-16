@@ -28,19 +28,15 @@ public class TowerBuilder : MonoBehaviour
     public float groundY = 0f;
 
     [Header("House of cards")]
-    [Range(5f, 45f)] public float tiltAngle = 20f;   // how far cards lean from vertical
-    public int maxBaseTents = 4;                     // tents on the bottom row (4 = 4 levels high)
+    [Range(5f, 45f)] public float tiltAngle = 20f;
+    public int maxBaseTents = 4;
 
     [Header("Fallen cards")]
-    [Tooltip("A placed card counts as fallen once it has slipped this far from the slot it was placed in (world units). Cards settle about 0.05, so keep this well above that.")]
     public float fallenDistance = 0.35f;
-    [Tooltip("...or once it has tipped this many degrees away from how it was placed. Cards settle about 7 degrees.")]
     public float fallenAngle = 35f;
 
     [Header("Physics")]
-    [Tooltip("During the shake, unfreeze all cards so gravity and collisions apply.")]
     public bool physicsOnEndTurn = true;
-    [Tooltip("When building starts again, freeze all cards where they are.")]
     public bool freezeWhenTurnBegins = true;
 
     const int LEFT = TowerSlots.Left, RIGHT = TowerSlots.Right;
@@ -142,7 +138,7 @@ public class TowerBuilder : MonoBehaviour
         if (freezeWhenTurnBegins) SetCardsFrozen(true);
     }
 
-    /// Can this many cards all be placed, in some order? Logic only, nothing is moved (Master Plan 3.2).
+    /// Can this many cards all be placed, in some order? Logic only, nothing is moved.
     public bool CanFit(int cardCount)
     {
         return ReadSlotRules().CanFit(cardCount);
@@ -255,7 +251,7 @@ public class TowerBuilder : MonoBehaviour
         }
     }
 
-    // ---------- The shake (Master Plan 3.3) ----------
+    // ---------- The shake ----------
 
     /// The whole shake: release physics, wait until the tower is quiet (never forever), work out
     /// what broke and what still stands, then freeze the survivors. Leaves ONE result in

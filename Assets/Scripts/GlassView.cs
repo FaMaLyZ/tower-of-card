@@ -1,19 +1,15 @@
 using TMPro;
 using UnityEngine;
 
-/// Shows the Glass (the run's lives), e.g. "Glass  ##-", and says what just changed.
-///
-/// A view: it reads the lives from the conductor every frame and listens to GlassChanged only for
-/// the short "cracked / repaired" note. It never cracks or repairs anything itself.
-/// Every field is optional.
+/// Shows the Glass (the run's lives), e.g. "Glass  ##-", and a short note when it changes.
+/// A view: it never cracks or repairs anything itself.
 public class GlassView : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
 
     [Header("UI")]
     public TMP_Text livesText;
-    [Tooltip("Optional: a short note after a crack or repair")]
     public TMP_Text changeText;
 
     [Header("Texts")]

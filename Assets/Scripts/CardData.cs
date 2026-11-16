@@ -24,15 +24,12 @@ public class CardData : ScriptableObject
     public int Weight => rank == CardRank.Ace ? 1 : Mathf.Min((int)rank, 10);
 
     [Header("3D models")]
-    [Tooltip("Model used for the card in the tower. Empty = a plain coloured box.")]
     public GameObject model;
-    [Tooltip("Optional model used for the card in the hand. Empty = HandManager's Card Prefab.")]
     public GameObject handModel;
 
     [Header("Physics")]
-    [Tooltip("Weight of this card in the tower. Each card can have a different mass.")]
     [Min(0.001f)] public float mass = 0.1f;
 
-    [Header("Fallback colour (only used when there is no model)")]
+    [Header("Fallback colour")]
     public Color tint = Color.white;
 }

@@ -1,25 +1,19 @@
 using TMPro;
 using UnityEngine;
 
-/// A small label above the hovered hand card: rank, suit, weight and chips (juice-plan 5.1, Track B5).
-///
-/// A view: it only reads the hand. The numbers are the real ones the game uses
-/// (CardData.Weight, the weight the player is shown, and PokerHandEvaluator.ChipValue).
-/// The fade is optional: set Fade Seconds to 0 and it simply appears.
-/// The same details are also in the HUD hint text, so nothing is lost if this is removed.
+/// A small label above the hovered hand card: rank, suit, weight and chips.
+/// A view: it only reads the hand.
 public class CardTooltip : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public HandManager hand;
     public Canvas canvas;
 
     [Header("UI")]
     public TMP_Text label;
-    [Tooltip("Optional: faded in and out. Without it the label just shows and hides.")]
     public CanvasGroup group;
 
     [Header("Placement")]
-    [Tooltip("Screen pixels above the card's centre.")]
     public Vector2 offsetPixels = new Vector2(0f, 140f);
 
     [Header("Text")]

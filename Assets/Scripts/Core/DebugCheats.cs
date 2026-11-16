@@ -2,9 +2,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// Developer shortcuts (Master Plan 7.3). Cheats change data through the workers or send a
-/// command to the conductor; they never start or skip a phase themselves.
-/// The conductor adds this component to itself, so it never has to be placed in a scene.
+/// Developer shortcuts. Cheats go through the workers or the conductor; they never skip a phase.
+/// The conductor adds this component to itself.
 ///
 ///   on-screen label  current phase and seconds in it
 ///   F1               push the tower over

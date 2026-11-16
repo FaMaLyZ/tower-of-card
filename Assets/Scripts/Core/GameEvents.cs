@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// The steps of one run. Only GameFlowController changes the phase (Master Plan rule 4).
+/// The steps of one run. Only GameFlowController changes the phase.
 public enum GamePhase
 {
     None,
@@ -50,9 +50,7 @@ public enum PotChangeReason
 }
 
 /// Announcements for the HUD, sound and juice. An event tells listeners what ALREADY
-/// happened; it never moves the game forward (Master Plan rule 3).
-///
-/// Add each event in the step that first needs it (see Master Plan section 2.6).
+/// happened; it never moves the game forward.
 public static class GameEvents
 {
     public static event Action<GamePhase> PhaseChanged;
@@ -150,7 +148,7 @@ public static class GameEvents
 
     public static void RaiseRunEnded(long runTotal, bool cleared) => RunEnded?.Invoke(runTotal, cleared);
 
-    /// Backstop for listeners that forgot to unsubscribe (Master Plan rule 8).
+    /// Backstop for listeners that forgot to unsubscribe.
     /// Runs once when the game starts, so a stale listener from the last Play session can't survive.
     /// Do NOT call this from StartNewRun(): it would remove listeners that just subscribed.
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

@@ -8,21 +8,17 @@ using System.Collections;
 [Serializable]
 public class CardModelSettings
 {
-    [Header("Card size in the tower (world units)")]
-    public float length = 1.5f;        // long side - the card stands on this
-    public float width = 1.07f;        // short side (depth of the tower)
-    public float thickness = 0.02f;    // physics thickness
+    [Header("Card size in the tower")]
+    public float length = 1.5f;
+    public float width = 1.07f;
+    public float thickness = 0.02f;
 
     [Header("Physics")]
-    [Tooltip("Multiplies every card's mass (CardData > Mass). Handy for making the whole tower heavier or lighter.")]
     public float massMultiplier = 1f;
 
     [Header("Model orientation")]
-    [Tooltip("Detects how the model was exported (longest side = length, thinnest = thickness).")]
     public bool autoOrientModel = true;
-    [Tooltip("Used when Auto Orient is off. Use multiples of 90.")]
     public Vector3 manualEuler = Vector3.zero;
-    [Tooltip("Turn this on if the card BACK is showing instead of the face.")]
     public bool flipFace = false;
 }
 
@@ -32,15 +28,11 @@ public class CardModelSettings
 public class Card : MonoBehaviour
 {
     [Header("Break on hard impact")]
-    [Tooltip("Destroy this card when it hits ANYTHING fast enough.")]
     public bool breakOnImpact = true;
-    [Tooltip("Impact speed (m/s) needed to destroy the card. Lower = more fragile.")]
     public float breakSpeed = 4f;
-    [Tooltip("Print every impact speed to the Console (helps you tune Break Speed).")]
     public bool logImpactSpeed = false;
 
     [Header("Shake")]
-    [Tooltip("Scales the end-of-turn shake. 1 = exactly what the clips author (lv1 ~1%, lv2 ~1.3%, lv3 ~3% of card length). Visual only - the collider never moves.")]
     [Range(0f, 3f)] public float shakeAmount = 1f;
 
     [Header("Card Break")]

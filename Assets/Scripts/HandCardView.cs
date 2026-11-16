@@ -1,19 +1,12 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// One card in the hand. HandManager builds it like this (the B0 hand contract):
+/// One card in the hand:
 ///
-///   HandCard #12 (Ace of Spades)   <- the ROOT: this script, the click collider, the real place in the hand
-///     Visual                       <- the model the player sees
+///   HandCard #12 (Ace of Spades)   <- ROOT: this script + click collider. Only HandManager moves it.
+///     Visual                       <- the model. Effects move only this, then call ResetVisualPose().
 ///
-/// The rule (Master Plan rule 7):
-///   - Only HandManager moves the ROOT. It is the card's true position and its click target.
-///   - Effects (hover, punch, tilt...) move the VISUAL child only, then call ResetVisualPose() when done.
-///   So an effect can never move where a card is clicked, and deleting every effect leaves the hand working.
-///
-/// For clicks to work:
-///   - UI cards (on a Canvas): the card needs an Image with Raycast Target on.
-///   - 3D cards: the Main Camera needs a Physics Raycaster component (the collider is added for you).
+/// Clicks need a Physics Raycaster on the Main Camera (3D) or an Image with Raycast Target (UI).
 public class HandCardView : MonoBehaviour, IPointerClickHandler, IPointerEnterHandler, IPointerExitHandler,
                             IBeginDragHandler, IDragHandler, IEndDragHandler
 {
@@ -116,7 +109,7 @@ public class HandCardView : MonoBehaviour, IPointerClickHandler, IPointerEnterHa
         if (hand != null) hand.ClickCard(this);
     }
 
-    // ---------- Drag to reorder (B4) ----------
+    // ---------- Drag to reorder ----------
     // A press that moves past the EventSystem's Drag Threshold (10 px) is a drag, not a click.
 
     public void OnBeginDrag(PointerEventData eventData)

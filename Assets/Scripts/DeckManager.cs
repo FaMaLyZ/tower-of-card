@@ -20,20 +20,18 @@ public class DeckManager : MonoBehaviour
     public class DeckEntry
     {
         public CardData card;
-        [Min(1)] public int count = 1;      // how many copies of this card
+        [Min(1)] public int count = 1;
     }
 
     [Header("Starting deck")]
     public List<DeckEntry> startingDeck = new List<DeckEntry>();
     public bool shuffleOnStart = true;
 
-    [Header("Card set (quick way to build a standard 52-card deck)")]
-    [Tooltip("Drag many CardData here at once, or use the menu CardTower > 3. Fill Selected DeckManager.")]
+    [Header("Card set")]
     public CardData[] cardSet;
     [Min(0)] public int copiesOfEachCard = 1;
 
     [Header("Rules")]
-    [Tooltip("When the draw pile is empty, shuffle the discard pile back into it.")]
     public bool reshuffleDiscardWhenEmpty = true;
 
     // The END of the list is the TOP of the pile (cheapest to remove from)

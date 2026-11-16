@@ -1,25 +1,18 @@
 using System.Collections;
 using UnityEngine;
 
-/// The conductor: the ONLY script that decides what happens next (Master Plan rule 4).
+/// The conductor: the ONLY script that decides what happens next.
+/// Input sends commands here (RequestXxx); the conductor checks the phase, asks a worker, and moves on.
 ///
-///   Input sends commands here (RequestXxx). The conductor checks the phase,
-///   asks a worker to do the job, and moves to the next phase.
-///
-/// One hand is: Draw, Swap, Commit, Build, Score, Shake (A2).
-/// Each hand's score goes into the Pot; the shake cuts it or empties it.
-/// If the tower survives, the player Banks (Pot becomes Safe Points, tower cleared) or Rides.
-/// A3c: the game is one blind with a fixed target and a few hands. The last hand banks by itself.
-/// A4a: a Bank that reaches the target with hands left offers Continue / Leave Table.
-/// A4b: a run is Small, Big, Boss for each Ante. A fail cracks the Glass, a Boss win repairs it.
-/// The run ends Cleared (final Boss won) or Shattered (no lives).
-/// A4c: before each blind the blind menu: Select plays it, Skip (Small / Big only) repairs one crack.
+///   Hand:  Draw, Swap, Commit, Build, Score, Shake, then Bank or Ride.
+///   Blind: a target and a few hands; the last hand banks by itself. Early target -> Continue / Leave.
+///   Run:   Small, Big, Boss per Ante. A fail cracks the Glass; a Boss win or a Skip repairs it.
 public class GameFlowController : MonoBehaviour
 {
     [Header("Settings")]
     [RequiredField] public GameConfig config;
 
-    [Header("Workers (auto-found if empty)")]
+    [Header("Workers")]
     public HandManager hand;
     public DeckManager deck;
     public SwapManager swap;

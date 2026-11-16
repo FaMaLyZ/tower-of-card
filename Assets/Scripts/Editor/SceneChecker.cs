@@ -9,7 +9,7 @@ using UnityEngine.SceneManagement;
 /// Scans the open scene for the two things that break a scene silently:
 ///   - Missing Scripts (a component whose script file was deleted or renamed outside Unity)
 ///   - empty required fields (Inspector references marked [RequiredField])
-/// It also checks there is exactly one conductor. Run it after every step of the Master Plan.
+/// It also checks there is exactly one conductor.
 public static class SceneChecker
 {
     [MenuItem("CardTower/5. Check Open Scene")]

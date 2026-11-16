@@ -2,21 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// Track B5 (juice-plan 6.2): the deck reacts.
-///   - Hover while a swap is possible: a short wobble ("you can click me").
-///   - Every card drawn: a wobble and a small squash, timed with each card leaving (DrawJuice spacing).
-///   - Cards swapped back in: a bump and a white flash.
-///   - A refused click: a sideways shake and a red flash. (The HUD also says why, in words.)
-///
-/// Put it on the deck object (next to SwapZone). It moves and tints every child of the deck together,
-/// as one piece around the deck's centre, but never the SwapZone root itself (SwapZone scales that on hover).
-/// The deck has no physics, so moving its click box for a moment is harmless.
-/// It only listens to things that already happened. Delete it and the deck works the same.
+/// Deck effects: hover wobble, a squash per card drawn, a flash on swap-in, a red shake on a refused click.
+/// Put it on the deck object. It moves the deck's children, never the SwapZone root.
+/// Listen-only: delete it and the deck works the same.
 public class DeckJuice : MonoBehaviour, IPointerEnterHandler
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
-    [Tooltip("The parts that move and flash together. Empty = every child of the deck that has a Renderer.")]
     public List<Transform> parts = new List<Transform>();
 
     [Header("Hover wobble")]
@@ -25,20 +17,16 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
     public float wobbleSeconds = 0.25f;
 
     [Header("Cards in / out")]
-    [Tooltip("Wobble once for every card drawn, not once per draw.")]
     public bool wobbleForEachCardDrawn = true;
-    [Tooltip("Seconds between those wobbles. Empty DrawJuice = use this; with DrawJuice its Card Interval is used, so the wobble matches each card leaving.")]
     public float drawInterval = 0.1f;
     public DrawJuice drawJuice;
     public float arrivePunchScale = 1.15f;
     public float departPunchScale = 0.88f;
     public float punchSeconds = 0.12f;
-    [Tooltip("Colour the deck flashes toward when cards come back. Above 1 = brighter than the material.")]
     [ColorUsage(false, true)] public Color arriveFlashColor = new Color(2f, 2f, 2f, 1f);
     public float flashSeconds = 0.2f;
 
     [Header("Refused click")]
-    [Tooltip("Sideways shake, as a part of the deck's width.")]
     public float rejectShakeAmount = 0.06f;
     public float rejectShakeCycles = 4f;
     public float rejectShakeSeconds = 0.3f;

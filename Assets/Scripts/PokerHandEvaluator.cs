@@ -11,8 +11,9 @@ public enum PokerHand
 public class PokerHandResult
 {
     public PokerHand hand;
-    public string displayName;                                  // "Pair", "Royal Flush"...
-    public List<int> scoringIndices = new List<int>();          // which of the played cards score (played order)
+    public string displayName;
+    public string shapeName;
+    public List<int> scoringIndices = new List<int>();
 }
 
 /// Works out which poker hand a group of cards makes, and which cards score.
@@ -32,6 +33,23 @@ public static class PokerHandEvaluator
             case PokerHand.FullHouse:     return "Full House";
             case PokerHand.FourOfAKind:   return "Four of a Kind";
             default:                      return "Straight Flush";
+        }
+    }
+
+    /// The tower-themed name shown beside the poker name. Flavour only: it changes no rules.
+    public static string GetShapeName(PokerHand hand)
+    {
+        switch (hand)
+        {
+            case PokerHand.HighCard:      return "Loose Cards";
+            case PokerHand.Pair:          return "Brace";
+            case PokerHand.TwoPair:       return "Double Brace";
+            case PokerHand.ThreeOfAKind:  return "Trestle";
+            case PokerHand.Straight:      return "Staircase";
+            case PokerHand.Flush:         return "Facade";
+            case PokerHand.FullHouse:     return "House";
+            case PokerHand.FourOfAKind:   return "Tower Block";
+            default:                      return "Spire";
         }
     }
 
@@ -85,11 +103,14 @@ public static class PokerHandEvaluator
         else if (largest == 2) hand = PokerHand.Pair;
         else hand = PokerHand.HighCard;
 
-        var result = new PokerHandResult { hand = hand, displayName = GetName(hand) };
+        var result = new PokerHandResult { hand = hand, displayName = GetName(hand), shapeName = GetShapeName(hand) };
 
         // A-K-Q-J-10 of one suit has its own name
         if (hand == PokerHand.StraightFlush && byRank.ContainsKey(1) && byRank.ContainsKey(13))
+        {
             result.displayName = "Royal Flush";
+            result.shapeName = "Palace";
+        }
 
         // Which cards score (kickers do not score, just like Balatro)
         var scoring = result.scoringIndices;

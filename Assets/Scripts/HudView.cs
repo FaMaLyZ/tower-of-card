@@ -3,74 +3,65 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
-/// The plain HUD (was GameUI; same script file ID, so the scene keeps every wired text).
-/// It fills in texts, shows the main button and Undo, and opens the end panel when the run is over.
-///
-/// A view: it only reads the conductor and the workers, and sends button clicks as commands.
-/// Every field is optional: leave one empty and that part of the HUD is skipped.
-/// The other screens have their own views: BankRideView, ContinueLeaveView, GlassView,
-/// BlindMenuView, RunEndView and SnapMarkerView.
+/// The plain HUD: texts, the main button, Undo, and the end panel when the run is over.
+/// A view: it only reads the game and sends clicks to the conductor. Empty fields are skipped.
 public class HudView : MonoBehaviour
 {
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
-    public TowerPlacementInput placement;       // the placing hint
-    public HandManager handManager;             // the card to describe in the hint
+    public TowerPlacementInput placement;
+    public HandManager handManager;
     public DeckManager deckManager;
     [FormerlySerializedAs("discardManager")]
     public SwapManager swapManager;
     public ScoreManager scoreManager;
 
     [Header("Run end")]
-    [Tooltip("Opened while the run is over (Cleared or Shattered). RunEndView sits on it.")]
     [FormerlySerializedAs("gameOverPanel")]
     public GameObject runEndPanel;
 
     [Header("Turn info texts")]
-    public TMP_Text turnText;                   // "Hand 1 / 4   Target 150"
-    [Tooltip("Optional: the run line, e.g. \"Ante 1 / 4  Small blind   Run 320   Reward x1.2\"")]
+    public TMP_Text turnText;
     public TMP_Text runText;
-    public TMP_Text cardsText;                  // "Cards: 2 / 5" (placed / committed)
-    public TMP_Text stateText;                  // what to do now, or why Play Hand is refused
-    public TMP_Text hintText;                   // card details, or the placing hint
+    public TMP_Text cardsText;
+    public TMP_Text stateText;
+    public TMP_Text hintText;
 
-    [Header("Deck info (optional)")]
-    public TMP_Text deckText;                   // "Deck: 12"
-    public TMP_Text discardText;                // "Discard: 3" (the used cards)
+    [Header("Deck info")]
+    public TMP_Text deckText;
+    public TMP_Text discardText;
     [FormerlySerializedAs("discardsLeftText")]
-    public TMP_Text swapsLeftText;              // "Swaps left: 1"
+    public TMP_Text swapsLeftText;
 
-    [Header("Score (optional)")]
-    public TMP_Text handNameText;               // "Pair" (live while selecting, then the scored hand)
-    public TMP_Text chipsText;                  // "Chips: 25"
-    public TMP_Text multText;                   // "Mult: x2"
-    public TMP_Text turnScoreText;              // "Turn score: 50"
-    public TMP_Text totalScoreText;             // "Safe: 120" (points that were banked)
+    [Header("Score")]
+    public TMP_Text handNameText;
+    public TMP_Text chipsText;
+    public TMP_Text multText;
+    public TMP_Text turnScoreText;
+    public TMP_Text totalScoreText;
 
-    [Header("Pot (optional)")]
-    [Tooltip("Shows the Pot, what a Bank would pay now, and what the last shake did. Needs room for 3 lines.")]
+    [Header("Pot")]
     public TMP_Text potText;
 
-    [Header("Banner (big center text)")]
+    [Header("Banner")]
     public TMP_Text bannerText;
 
     [Header("Buttons")]
-    [Tooltip("The main button. Its label changes with the phase: Done Swapping, then Play Hand.")]
     public Button endTurnButton;
-    [Tooltip("Optional: takes back the last card placed this hand (right-click does the same).")]
     public Button undoButton;
 
-    [Header("Text formats  ({0}, {1} are replaced by numbers)")]
-    [Tooltip("Shown in the Hint text for the card under the mouse (or the selected card). {0} = rank, {1} = suit, {2} = weight (Ace 1, 2-10 face value, J/Q/K 10). Use a new line for separate lines.")]
+    [Header("Text formats")]
+    [Tooltip("{0} = rank, {1} = suit, {2} = weight")]
     [TextArea(1, 4)]
     public string cardDetailFormat = "Rank: {0}   Suit: {1}   Weight: {2}";
-    [Tooltip("When no card is hovered or selected, show the placing hint instead.")]
     public bool showInstructionsWhenNoCard = true;
     [Tooltip("{0} = hand number, {1} = hands per blind, {2} = Safe Points, {3} = target")]
     public string turnFormat = "Hand {0} / {1}   Target {3:N0}";
     public string cardsFormat = "Cards: {0} / {1}";
     public string deckFormat = "Deck: {0}";
     public string discardFormat = "Discard: {0}";
+    [Tooltip("{0} = shape name (House), {1} = poker name (Full House)")]
+    public string handNameFormat = "{0} <size=70%>({1})</size>";
     public string chipsFormat = "Chips: {0:0}";
     public string multFormat = "Mult: x{0:0.##}";
     public string turnScoreFormat = "Turn score: {0:N0}";
@@ -81,10 +72,10 @@ public class HudView : MonoBehaviour
     public string bannerEndFormat = "Turn {0} complete";
     public string blindWonLabel = "Blind won!";
     public string blindFailedLabel = "Blind failed";
-    [Tooltip("Banner between blinds. {0} = blind (Small / Big / Boss), {1} = won / failed label, {2} = blind score, {3} = target")]
+    [Tooltip("{0} = blind (Small / Big / Boss), {1} = won / failed label, {2} = blind score, {3} = target")]
     [TextArea(1, 3)]
     public string blindResultFormat = "{0}: {1}\n{2:N0} / {3:N0}";
-    [Tooltip("Added to the banner when the player left the table. {0} = the bonus")]
+    [Tooltip("{0} = the bonus")]
     public string leaveBonusFormat = "\nLeft the table: +{0:N0}";
     [Tooltip("{0} = Ante, {1} = Antes per run, {2} = blind, {3} = Run Total, {4} = reward multiplier, {5} = retry label")]
     public string runFormat = "Ante {0} / {1}  {2} blind{5}   Run {3:N0}   Reward x{4:0.##}";
@@ -107,7 +98,7 @@ public class HudView : MonoBehaviour
     public string commitStateLabel = "Press Play Hand";
     public string buildStateFormat = "Place your cards: {0} left";
 
-    [Header("Deck click refused (shown in the state text)")]
+    [Header("Deck click refused")]
     [Min(0f)] public float swapRejectSeconds = 2f;
     public string swapNotNowText = "You can only swap at the start of a hand";
     public string swapNothingPickedText = "Pick the cards to swap first, then click the deck";
@@ -228,7 +219,9 @@ public class HudView : MonoBehaviour
         if (scoreManager == null) return;
 
         bool showHand = scoreManager.HasResult;
-        string handName = showHand ? scoreManager.HandName : GetCommitHandName();
+        string handName = showHand
+            ? FormatHandName(scoreManager.HandShapeName, scoreManager.HandName)
+            : GetCommitHandName();
 
         ShowText(handNameText, handName, handName != "");
         ShowText(chipsText, string.Format(chipsFormat, scoreManager.CurrentChips), showHand);
@@ -369,7 +362,15 @@ public class HudView : MonoBehaviour
     {
         if (!GameRunning || flow.Commit.Preview == null) return "";
         if (flow.Phase != GamePhase.Commit && flow.Phase != GamePhase.Build) return "";
-        return flow.Commit.Preview.displayName;
+        PokerHandResult preview = flow.Commit.Preview;
+        return FormatHandName(preview.shapeName, preview.displayName);
+    }
+
+    string FormatHandName(string shapeName, string pokerName)
+    {
+        if (string.IsNullOrEmpty(pokerName)) return "";
+        if (string.IsNullOrEmpty(shapeName)) return pokerName;
+        return string.Format(handNameFormat, shapeName, pokerName);
     }
 
     // Menu, result banner and end screen: no hand is being played, so the Play Hand button hides

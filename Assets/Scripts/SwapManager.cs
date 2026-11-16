@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-/// Swapping cards (was DiscardManager; same script file ID, so scenes keep it).
+/// Swapping cards.
 ///
 ///   1. The player selects one or more cards in the hand (each card costs one swap).
 ///   2. The player clicks a Swap Zone (any 3D object with a SwapZone component, e.g. the deck).
@@ -11,16 +11,13 @@ using UnityEngine;
 /// How many swaps the player gets each hand comes from GameConfig (the conductor passes it in).
 public class SwapManager : MonoBehaviour
 {
-    [Header("References (auto-found if empty)")]
+    [Header("References")]
     public HandManager handManager;
     public DeckManager deckManager;
 
     [Header("Rules")]
-    [Tooltip("Where a swapped card goes in the deck.")]
     public DeckReturn returnToDeck = DeckReturn.ShuffleIn;
-
-    [Tooltip("On = the new cards are drawn BEFORE the swapped cards go back, so the player never gets the same card straight back.\n" +
-             "Off = the cards go back first, then the player draws (the same card is possible).")]
+    // Draw before the swapped cards go back, so the same card can't come straight back.
     public bool drawReplacementFirst = true;
 
     // ---------- Read-only info ----------

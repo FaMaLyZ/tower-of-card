@@ -5,10 +5,9 @@ public enum BlindResult
     Failed
 }
 
-/// The blind being played: its target, the hands left and the points that are already safe (Master Plan 2.4).
-///
-/// A4a adds Leave Table: once the target is met with hands left, the player may leave for a bonus.
-/// A worker: it keeps the numbers and returns results. It never starts the next blind and never cracks the Glass.
+/// The blind being played: its target, the hands left and the Safe Points.
+/// Once the target is met with hands left, the player may Leave Table for a bonus.
+/// A worker: it never starts the next blind or cracks the Glass.
 public class BlindManager
 {
     readonly int handsPerBlind;
@@ -76,7 +75,7 @@ public class BlindManager
         return IsTargetReached() && HandsLeft > 0 && !HasLeftTable;
     }
 
-    /// floor(target x leaveBonusRate x HandsLeft). No height or reward multiplier (Master Plan 1.2).
+    /// floor(target x leaveBonusRate x HandsLeft). No height or reward multiplier.
     public long GetLeaveTableBonus()
     {
         decimal rate = PercentMath.ToRate(leaveBonusPercent);
@@ -101,7 +100,7 @@ public class BlindManager
         return IsTargetReached() ? BlindResult.Won : BlindResult.Failed;
     }
 
-    /// floor(base x growth^(ante - 1)), always from the base value, rounded once (Master Plan 1.3).
+    /// floor(base x growth^(ante - 1)), always from the base value, rounded once.
     public static long CalculateTarget(long baseTarget, int ante, int growthPercent)
     {
         decimal growth = PercentMath.ToRate(growthPercent);

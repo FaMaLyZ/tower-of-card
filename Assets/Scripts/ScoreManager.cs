@@ -29,12 +29,12 @@ public class HandTypeScore
 public class ScoreStep
 {
     public string label;
-    public CardData cardData;       // set when the step is a scoring card
-    public Card card;               // the card in the tower (may be null / destroyed)
+    public CardData cardData;
+    public Card card;
     public float chipsAdded;
     public float multAdded;
     public float multFactor = 1f;
-    public float chipsAfter;        // running totals after this step
+    public float chipsAfter;
     public float multAfter;
 }
 
@@ -42,7 +42,7 @@ public class ScoreStep
 public class ScoreContext
 {
     public PokerHandResult result;
-    public List<CardData> cards;            // the cards that were played
+    public List<CardData> cards;
     public List<Card> cardObjects;
     public float chips;
     public float mult = 1f;
@@ -93,28 +93,27 @@ public class ScoreContext
 /// The result is revealed step by step so the UI can animate it.
 public class ScoreManager : MonoBehaviour
 {
-    [Header("References (auto-found if empty)")]
+    [Header("References")]
     public TowerBuilder tower;
 
     [Header("Hand values")]
     public List<HandTypeScore> handTypes = DefaultTable();
 
     [Header("Rules")]
-    [Tooltip("A poker hand has at most this many cards. If a turn places more, the best group of this size scores.")]
     public int maxScoringCards = 5;
 
     [Header("Reveal animation")]
-    [Tooltip("Seconds between steps. 0 = instant. If the next hand starts first, the result is shown at once.")]
     public float stepDelay = 0.35f;
 
     // ---------- Events (subscribe from other scripts / UI) ----------
-    public event Action<ScoreContext> OnApplyEffects;       // add jokers / bonuses here
-    public event Action<ScoreStep> OnScoreStep;             // every revealed step
-    public event Action<ScoreContext> OnTurnScored;         // the whole turn has been scored
+    public event Action<ScoreContext> OnApplyEffects;
+    public event Action<ScoreStep> OnScoreStep;
+    public event Action<ScoreContext> OnTurnScored;
 
     // ---------- Read-only info (UI reads these) ----------
     public long TurnScore { get; private set; }
     public string HandName { get; private set; } = "";
+    public string HandShapeName { get; private set; } = "";
     public float CurrentChips { get; private set; }
     public float CurrentMult { get; private set; }
     public bool IsScoring { get; private set; }
@@ -254,6 +253,7 @@ public class ScoreManager : MonoBehaviour
         IsScoring = true;
         HasResult = true;
         HandName = ctx.result.displayName;
+        HandShapeName = ctx.result.shapeName;
         CurrentChips = 0f;
         CurrentMult = 0f;
         TurnScore = 0;
@@ -295,6 +295,7 @@ public class ScoreManager : MonoBehaviour
     {
         HasResult = false;
         HandName = "";
+        HandShapeName = "";
         CurrentChips = 0f;
         CurrentMult = 0f;
         TurnScore = 0;

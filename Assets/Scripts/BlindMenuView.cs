@@ -3,12 +3,9 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// The blind menu: the three blinds of this Ante side by side (Master Plan 3.1).
-///
-/// Only the current blind can be chosen: Select plays it, Skip (Small / Big only) repairs one crack.
-/// The other two are previews with their target and reward, or what happened to them.
-/// A view: it reads the conductor and sends Select / Skip as commands. It never changes the run itself.
-/// Every field is optional; build the panel in the editor and drag the pieces in.
+/// The blind menu: the three blinds of this Ante side by side.
+/// Only the current blind can be chosen (Select, or Skip for Small / Big).
+/// A view: sends the click to the conductor.
 public class BlindMenuView : MonoBehaviour
 {
     // One column of the menu (Small, Big or Boss)
@@ -18,23 +15,19 @@ public class BlindMenuView : MonoBehaviour
         public TMP_Text nameText;
         public TMP_Text targetText;
         public TMP_Text rewardText;
-        [Tooltip("\"Current\", \"Upcoming\", \"Won\", \"Skipped\"...")]
         public TMP_Text statusText;
-        [Tooltip("Optional: tinted to show which blind is current")]
         public Image background;
         public Button selectButton;
         public Button skipButton;
         public TMP_Text skipLabel;
     }
 
-    [Header("Game references (auto-found if empty)")]
+    [Header("Game references")]
     public GameFlowController flow;
 
     [Header("UI")]
-    [Tooltip("Shown only while the player is choosing a blind")]
     public GameObject panel;
     public TMP_Text headerText;
-    [Tooltip("Small, Big, Boss - in that order")]
     public BlindColumnUI[] columns = new BlindColumnUI[3];
 
     [Header("Colours")]

@@ -1,4 +1,4 @@
-/// The Pot: points that are NOT safe yet (Master Plan 1.3).
+/// The Pot: points that are NOT safe yet.
 ///
 ///   hand score  -> added to the Pot
 ///   shake       -> each broken card cuts the Pot by the break rate; a collapse empties it

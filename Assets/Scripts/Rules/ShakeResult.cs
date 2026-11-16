@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-/// What one shake did to the tower (Master Plan 3.3). There is exactly one of these per shake,
+/// What one shake did to the tower. There is exactly one of these per shake,
 /// and the Pot is updated from it exactly once. After it is made, nothing may change the payout.
 public class ShakeResult
 {
