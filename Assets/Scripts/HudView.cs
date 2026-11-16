@@ -18,7 +18,6 @@ public class HudView : MonoBehaviour
     public HandManager handManager;             // the card to describe in the hint
     public DeckManager deckManager;
     [FormerlySerializedAs("discardManager")]
-    public SwapManager swapManager;
     public ScoreManager scoreManager;
 
     [Header("Run end")]
@@ -165,7 +164,6 @@ public class HudView : MonoBehaviour
         if (placement == null) placement = FindAnyObjectByType<TowerPlacementInput>();
         if (handManager == null) handManager = FindAnyObjectByType<HandManager>();
         if (deckManager == null) deckManager = FindAnyObjectByType<DeckManager>();
-        if (swapManager == null) swapManager = FindAnyObjectByType<SwapManager>();
         if (scoreManager == null) scoreManager = FindAnyObjectByType<ScoreManager>();
     }
 
@@ -259,8 +257,8 @@ public class HudView : MonoBehaviour
 
     void RefreshSwapsLeft()
     {
-        if (swapManager == null) return;
-        SetText(swapsLeftText, string.Format(swapsLeftFormat, swapManager.SwapsLeft));
+        if (deckManager == null) return;
+        SetText(swapsLeftText, string.Format(swapsLeftFormat, deckManager.SwapsLeft));
     }
 
     // The hint text shows the details of the card under the mouse (or the selected card)
@@ -355,7 +353,7 @@ public class HudView : MonoBehaviour
             case GamePhase.RunEnd: return runEndStateLabel;
             case GamePhase.BlindMenu: return blindMenuStateLabel;
             case GamePhase.Draw:   return startingLabel;
-            case GamePhase.Swap:   return string.Format(swapStateFormat, swapManager != null ? swapManager.SwapsLeft : 0);
+            case GamePhase.Swap:   return string.Format(swapStateFormat, deckManager != null ? deckManager.SwapsLeft : 0);
             case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
             case GamePhase.Build:  return string.Format(buildStateFormat, flow.Commit.UnplacedCount);
             case GamePhase.BankOrRide: return bankOrRideStateLabel;

@@ -22,7 +22,6 @@ public class GameFlowController : MonoBehaviour
     [Header("Workers (auto-found if empty)")]
     public HandManager hand;
     public DeckManager deck;
-    public SwapManager swap;
     public TowerBuilder tower;
     public TowerPlacementInput placement;
     public ScoreManager score;
@@ -119,7 +118,7 @@ public class GameFlowController : MonoBehaviour
     /// The hand order is only for the player's eyes, so it may change whenever the hand can be clicked.
     /// Reordering is for Swap and Commit. In Build a drag picks the card up to place it instead.
     public bool CanReorderHand => IsSwapping || IsCommitting;
-    public bool CanSwapSelectedCard => IsSwapping && swap != null && swap.CanSwap;
+    public bool CanSwapSelectedCard => IsSwapping && deck != null && deck.CanSwap;
     public bool CanPlayHand => IsCommitting && Commit.Problem == "";
     public bool CanUndo => IsBuilding && CardsPlacedThisHand > 0;
 
@@ -162,7 +161,6 @@ public class GameFlowController : MonoBehaviour
     {
         if (hand == null) hand = FindAnyObjectByType<HandManager>();
         if (deck == null) deck = FindAnyObjectByType<DeckManager>();
-        if (swap == null) swap = FindAnyObjectByType<SwapManager>();
         if (tower == null) tower = FindAnyObjectByType<TowerBuilder>();
         if (placement == null) placement = FindAnyObjectByType<TowerPlacementInput>();
         if (score == null) score = FindAnyObjectByType<ScoreManager>();
@@ -214,7 +212,6 @@ public class GameFlowController : MonoBehaviour
         ok &= CheckExists(tower, "TowerBuilder");
         ok &= CheckExists(placement, "TowerPlacementInput (add it next to the TowerBuilder)");
         ok &= CheckExists(score, "ScoreManager");
-        if (swap == null) Debug.LogWarning("GameFlowController: no SwapManager in the scene, so swapping is off.", this);
         return ok;
     }
 
@@ -257,8 +254,8 @@ public class GameFlowController : MonoBehaviour
     // Swap: pick as many cards as there are swaps left. Clicking a picked card again puts it down.
     void PickCardToSwap(int cardId)
     {
-        if (swap == null) return;
-        hand.ToggleSelected(cardId, swap.SwapsLeft);
+        if (deck == null) return;
+        hand.ToggleSelected(cardId, deck.SwapsLeft);
     }
 
     // Commit: add the card to the selection or take it out, then refresh the hand name
@@ -276,7 +273,7 @@ public class GameFlowController : MonoBehaviour
     /// The deck (swap zone) was clicked: swap every picked card for a new one, in one go.
     public void RequestSwapSelectedCard()
     {
-        if (!IsReady || swap == null) return;
+        if (!IsReady || deck == null) return;
 
         if (!CanSwapSelectedCard)
         {
@@ -285,13 +282,13 @@ public class GameFlowController : MonoBehaviour
         }
 
         int cardCount = hand.GetSelectedCardIds().Count;
-        if (swap.TrySwapSelected()) GameEvents.RaiseCardsSwapped(cardCount);
+        if (deck.TrySwapSelected()) GameEvents.RaiseCardsSwapped(cardCount);
     }
 
     SwapRejectReason GetSwapRejectReason()
     {
         if (!IsSwapping) return SwapRejectReason.NotSwapPhase;
-        if (swap.SwapsLeft <= 0) return SwapRejectReason.NoSwapsLeft;
+        if (deck.SwapsLeft <= 0) return SwapRejectReason.NoSwapsLeft;
         int picked = hand.GetSelectedCardIds().Count;
         if (picked == 0) return SwapRejectReason.NothingPicked;
         return SwapRejectReason.TooManyPicked;
@@ -505,7 +502,7 @@ public class GameFlowController : MonoBehaviour
             GameEvents.RaiseGlassChanged(oldLives, run.Glass.LivesRemaining, GlassChangeReason.Skipped);
     }
 
-    /// The table is already clear (the blind menu did it).
+    ///RequestUndoenu did it).
     IEnumerator PlayBlind()
     {
         StartBlind();
@@ -602,7 +599,7 @@ public class GameFlowController : MonoBehaviour
         SetPhase(GamePhase.Draw);
         score.ClearLastHand();
         Commit.Clear();
-        if (swap != null) swap.ResetSwaps(config.swapsPerHand);
+        if (deck != null) deck.ResetSwaps(config.swapsPerHand);
         hand.DrawCardsUntilHandHas(config.handSize);
         yield return new WaitForSeconds(config.drawPauseSeconds);
         yield return PresentationGate.WaitUntilClear(config.maxPresentationWait);   // a draw effect still flying
@@ -623,7 +620,7 @@ public class GameFlowController : MonoBehaviour
 
     bool HasSwapsLeft()
     {
-        return swap != null && swap.SwapsLeft > 0;
+        return deck != null && deck.SwapsLeft > 0;
     }
 
     /// Ends when Play Hand is accepted. That locks the committed cards.

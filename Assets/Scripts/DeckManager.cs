@@ -50,10 +50,33 @@ public class DeckManager : MonoBehaviour
     public int DiscardCount => discardPile.Count;
     public int TotalCards => drawPile.Count + discardPile.Count;
 
+    // ---------- Swap -----------
+    public HandManager handManager;
+
+    [Header("Rules")]
+    [Tooltip("Where a swapped card goes in the deck.")]
+    public DeckReturn returnToDeck = DeckReturn.ShuffleIn;
+
+    [Tooltip("On = the new cards are drawn BEFORE the swapped cards go back, so the player never gets the same card straight back.\n" +
+             "Off = the cards go back first, then the player draws (the same card is possible).")]
+    public bool drawReplacementFirst = true;
+
+    // ---------- Read-only info ----------
+    public int SwapsUsed { get; private set; }
+    public int SwapsLeft => Mathf.Max(0, swapsThisHand - SwapsUsed);
+
+    int swapsThisHand;
+
+    /// True when the rules allow swapping the selected cards (the conductor checks the phase).
+    public bool CanSwap =>handManager != null && SelectedCount > 0 &&SelectedCount <= SwapsLeft;
+
+    int SelectedCount => handManager.GetSelectedCardIds().Count;
+
     // ---------- Lifecycle ----------
 
     void Awake()
     {
+        if (handManager == null) handManager = FindAnyObjectByType<HandManager>();
         ResetDeck();
     }
 
@@ -153,5 +176,67 @@ public class DeckManager : MonoBehaviour
         drawPile.AddRange(discardPile);
         discardPile.Clear();
         Shuffle();
+    }
+
+    // ---------- swap method --------
+    public void ResetSwaps(int swapsAllowed)
+    {
+        swapsThisHand = swapsAllowed;
+        SwapsUsed = 0;
+    }
+
+    /// Swaps every selected card in one go. Returns true if it worked. (Called by the conductor.)
+    public bool TrySwapSelected()
+    {
+        if (!CanSwap) return false;
+
+        // take the cards out of the hand (they do NOT go to the discard pile)
+        List<CardInstance> swappedOut = RemoveSelectedCardsFromHand();
+        if (swappedOut.Count == 0) return false;
+
+        if (drawReplacementFirst) DrawThenReturn(swappedOut);
+        else ReturnThenDraw(swappedOut);
+
+        SwapsUsed += swappedOut.Count;
+        SwapSound();
+        return true;
+    }
+
+    List<CardInstance> RemoveSelectedCardsFromHand()
+    {
+        var removed = new List<CardInstance>();
+        foreach (int cardId in handManager.GetSelectedCardIds())
+        {
+            CardInstance card = handManager.RemoveCardById(cardId);
+            if (card != null) removed.Add(card);
+        }
+        return removed;
+    }
+
+    // New cards first, so the player can't get a swapped card straight back
+    void DrawThenReturn(List<CardInstance> swappedOut)
+    {
+        int drawn = handManager.DrawCards(swappedOut.Count);
+        ReturnCardsToDeck(swappedOut);
+
+        // the deck ran out before every card was replaced: draw the rest now that cards are back
+        if (drawn < swappedOut.Count) handManager.DrawCards(swappedOut.Count - drawn);
+    }
+
+    void ReturnThenDraw(List<CardInstance> swappedOut)
+    {
+        ReturnCardsToDeck(swappedOut);
+        handManager.DrawCards(swappedOut.Count);
+    }
+
+    void ReturnCardsToDeck(List<CardInstance> cards)
+    {
+        foreach (CardInstance card in cards)
+            ReturnToDeck(card, returnToDeck);
+    }
+
+    public void SwapSound()
+    {
+        AudioManager.SFX(SoundType.UnselectCard);
     }
 }

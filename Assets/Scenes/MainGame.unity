@@ -1848,6 +1848,15 @@ MonoBehaviour:
   moveSpeed: 12
   selectedLift: 0.4
   selectedScale: 1.5
+  selectedForward: 0.05
+  hoverForward: 0.08
+  hoverGap: 0.15
+  hoverGapCards: 2
+  lockedInLift: 0.1
+  waitingDrop: 0.35
+  waitingScale: 0.75
+  waitingBrightness: 0.5
+  waitingSpacing: 0.75
   allCardLeft: 0
 --- !u!1 &365901236
 GameObject:
@@ -2819,7 +2828,6 @@ MonoBehaviour:
   config: {fileID: 11400000, guid: 5b36710a70424f342b59afcf15ddac0f, type: 2}
   hand: {fileID: 332459159}
   deck: {fileID: 1908267859}
-  swap: {fileID: 1894643685}
   tower: {fileID: 195017821}
   placement: {fileID: 0}
   score: {fileID: 1007714718}
@@ -3538,7 +3546,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8e0a3d3a338835e4f9044a1ada03ae01, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DiscardZone
-  flow: {fileID: 0}
+  flow: {fileID: 466649124}
   hoverScale: 1.1
 --- !u!114 &672158921
 MonoBehaviour:
@@ -5885,7 +5893,7 @@ Light:
   m_RenderMode: 0
   m_CullingMask:
     serializedVersion: 2
-    m_Bits: 4294967295
+    m_Bits: 151
   m_RenderingLayerMask: 1
   m_Lightmapping: 4
   m_LightShadowCasterMode: 0
@@ -5910,13 +5918,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1192043422}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.69674355, y: -0, z: -0, w: -0.7173204}
+  m_LocalRotation: {x: -0.60391223, y: -0, z: -0, w: -0.79705083}
   m_LocalPosition: {x: 0, y: 6.62, z: -9.24}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 271.667, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 434.301, y: 0, z: 0}
 --- !u!114 &1192043425
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6454,8 +6462,7 @@ MonoBehaviour:
   flow: {fileID: 0}
   placement: {fileID: 0}
   handManager: {fileID: 332459159}
-  deckManager: {fileID: 1908267859}
-  swapManager: {fileID: 0}
+  deckManager: {fileID: 0}
   scoreManager: {fileID: 1007714718}
   runEndPanel: {fileID: 2133716170}
   turnText: {fileID: 1912519958}
@@ -8847,54 +8854,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1869502553}
   m_CullTransparentMesh: 1
---- !u!1 &1894643684
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1894643686}
-  - component: {fileID: 1894643685}
-  m_Layer: 0
-  m_Name: SwapManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1894643685
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1894643684}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3d503a2c19eacf545b5a1d364421fd3c, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::DiscardManager
-  handManager: {fileID: 332459159}
-  deckManager: {fileID: 1908267859}
-  returnToDeck: 0
-  drawReplacementFirst: 1
---- !u!4 &1894643686
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1894643684}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.72909, y: -5.29468, z: -3.36515}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1908267857
 GameObject:
   m_ObjectHideFlags: 0
@@ -8996,6 +8955,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 4c10c5b827f2e3d4b9b795b796aee6ba, type: 2}
   copiesOfEachCard: 1
   reshuffleDiscardWhenEmpty: 0
+  handManager: {fileID: 332459159}
+  returnToDeck: 0
+  drawReplacementFirst: 1
 --- !u!1 &1912519956
 GameObject:
   m_ObjectHideFlags: 0
@@ -10328,9 +10290,10 @@ MonoBehaviour:
   tiltRadiusPixels: 16
   pressUnderMouse: 1
   tiltSpeed: 18
-  spreadAmount: 0.35
-  spreadRadiusCards: 2
-  spreadSpeed: 14
+  lockInPunchScale: 1.15
+  waitingDipScale: 0.85
+  waitingReturnScale: 1.1
+  lockInPunchSeconds: 0.2
   dragFollowSpeed: 20
   dragReturnSpeed: 14
   dragLeanPerPixelSpeed: 0.02
@@ -10387,7 +10350,6 @@ SceneRoots:
   - {fileID: 899604213}
   - {fileID: 1352556864}
   - {fileID: 1007714719}
-  - {fileID: 1894643686}
   - {fileID: 745742810}
   - {fileID: 989166575}
   - {fileID: 1400221178}
