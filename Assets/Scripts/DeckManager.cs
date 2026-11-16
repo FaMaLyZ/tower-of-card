@@ -16,15 +16,6 @@ public enum DeckReturn
 ///   discard pile -> cards that were played; reshuffled into the draw pile when it runs out
 public class DeckManager : MonoBehaviour
 {
-    [Serializable]
-    public class DeckEntry
-    {
-        public CardData card;
-        [Min(1)] public int count = 1;      // how many copies of this card
-    }
-
-    [Header("Starting deck")]
-    public List<DeckEntry> startingDeck = new List<DeckEntry>();
     public bool shuffleOnStart = true;
 
     [Header("Card set (quick way to build a standard 52-card deck)")]
@@ -87,12 +78,6 @@ public class DeckManager : MonoBehaviour
         drawPile.Clear();
         discardPile.Clear();
         nextCardId = 0;
-
-        foreach (var entry in startingDeck)
-        {
-            if (entry == null || entry.card == null) continue;
-            for (int i = 0; i < entry.count; i++) AddNewCardToDrawPile(entry.card);
-        }
 
         if (cardSet != null)
         {

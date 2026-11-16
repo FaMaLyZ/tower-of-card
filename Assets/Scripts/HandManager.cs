@@ -39,7 +39,7 @@ public class HandManager : MonoBehaviour
 
     [Header("Drawing")]
     [Tooltip("The hand never holds more cards than this.")]
-    public int maxHandSize = 10;
+    public int maxHandSize = 8;
 
     [Header("Smoothing")]
     [Tooltip("How fast cards glide to a new place when the hand changes. Higher = snappier, 0 = instant (no smoothing). " +
@@ -670,16 +670,6 @@ public class HandManager : MonoBehaviour
             view.SetDim(Mathf.MoveTowards(view.DimAmount, GetDimTarget(i), t), waitingBrightness);
         }
     }    
-    public int GetAllCardCount()
-    {
-        return countAllCardLeft();
-    }
-    public int countAllCardLeft()
-    {
-        allCardLeft = deckManager.DrawPileCount + cardsInHand.Count;
-        return allCardLeft;
-    }
-
     //for fillykung
     public void DarwSound()
     {
