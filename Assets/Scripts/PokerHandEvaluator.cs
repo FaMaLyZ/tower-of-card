@@ -42,11 +42,11 @@ public static class PokerHandEvaluator
         switch (hand)
         {
             case PokerHand.HighCard:      return "Loose Cards";
-            case PokerHand.Pair:          return "Brace";
-            case PokerHand.TwoPair:       return "Double Brace";
-            case PokerHand.ThreeOfAKind:  return "Trestle";
+            case PokerHand.Pair:          return "Tent";
+            case PokerHand.TwoPair:       return "Twin Tents";
+            case PokerHand.ThreeOfAKind:  return "Tripod";
             case PokerHand.Straight:      return "Staircase";
-            case PokerHand.Flush:         return "Facade";
+            case PokerHand.Flush:         return "Wall";
             case PokerHand.FullHouse:     return "House";
             case PokerHand.FourOfAKind:   return "Tower Block";
             default:                      return "Spire";

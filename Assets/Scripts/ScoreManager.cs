@@ -44,6 +44,8 @@ public class ScoreContext
     public PokerHandResult result;
     public List<CardData> cards;
     public List<Card> cardObjects;
+    public float baseChips;                 // from the hand type alone (Pair = 10)
+    public float cardChips;                 // added by the scoring cards (kickers add nothing)
     public float chips;
     public float mult = 1f;
     public long finalScore;
@@ -114,7 +116,9 @@ public class ScoreManager : MonoBehaviour
     public long TurnScore { get; private set; }
     public string HandName { get; private set; } = "";
     public string HandShapeName { get; private set; } = "";
-    public float CurrentChips { get; private set; }
+    public float CurrentChips { get; private set; }         // base chips + card chips so far
+    public float BaseChips { get; private set; }            // the hand type's chips (the plaque's first chip)
+    public float CurrentCardChips { get; private set; }     // card chips so far (counts up during the reveal)
     public float CurrentMult { get; private set; }
     public bool IsScoring { get; private set; }
     public bool HasResult { get; private set; }             // a hand is being / has been shown this turn
@@ -155,7 +159,7 @@ public class ScoreManager : MonoBehaviour
             objects.Add(tower != null ? tower.FindTowerCard(card.Id) : null);
         }
 
-        ScoreContext ctx = BuildScore(data, objects);
+        ScoreContext ctx = BuildScore(data, objects, applyEffects: true);
         if (ctx == null) return null;
 
         LastContext = ctx;
@@ -163,11 +167,23 @@ public class ScoreManager : MonoBehaviour
         return ctx;
     }
 
+    /// What these cards would score if played now, for the live preview in the Commit phase.
+    /// Pure: no reveal, no events, nothing stored. Bonus effects (OnApplyEffects) are not run,
+    /// because they may need the cards on the tower. Returns null for no cards.
+    public ScoreContext PreviewHand(IReadOnlyList<CardData> cards)
+    {
+        if (cards == null || cards.Count == 0) return null;
+
+        var data = new List<CardData>(cards);
+        var noObjects = new List<Card>(new Card[data.Count]);
+        return BuildScore(data, noObjects, applyEffects: false);
+    }
+
     // =====================================================================
     //  Score calculation
     // =====================================================================
 
-    ScoreContext BuildScore(List<CardData> data, List<Card> objects)
+    ScoreContext BuildScore(List<CardData> data, List<Card> objects, bool applyEffects)
     {
         // too many cards for one poker hand: keep the best group
         if (data.Count > maxScoringCards)
@@ -187,6 +203,7 @@ public class ScoreManager : MonoBehaviour
             result = result,
             cards = data,
             cardObjects = objects,
+            baseChips = entry.chips,
             chips = entry.chips,
             mult = entry.mult
         };
@@ -198,11 +215,12 @@ public class ScoreManager : MonoBehaviour
         foreach (int i in result.scoringIndices)
         {
             int chipValue = PokerHandEvaluator.ChipValue(data[i].rank);
+            ctx.cardChips += chipValue;
             ctx.AddChips(chipValue, data[i].cardName, data[i], objects[i]);
         }
 
         // step 3: bonuses from other scripts (jokers, tower height, ...)
-        OnApplyEffects?.Invoke(ctx);
+        if (applyEffects) OnApplyEffects?.Invoke(ctx);
 
         ctx.finalScore = (long)Math.Floor((double)ctx.chips * ctx.mult);
         return ctx;
@@ -238,6 +256,7 @@ public class ScoreManager : MonoBehaviour
     double EstimateScore(List<CardData> cards)
     {
         PokerHandResult r = PokerHandEvaluator.Evaluate(cards);
+        if (r == null) return 0;
         HandTypeScore e = GetEntry(r.hand);
         double chips = e.chips;
         foreach (int i in r.scoringIndices) chips += PokerHandEvaluator.ChipValue(cards[i].rank);
@@ -255,6 +274,8 @@ public class ScoreManager : MonoBehaviour
         HandName = ctx.result.displayName;
         HandShapeName = ctx.result.shapeName;
         CurrentChips = 0f;
+        BaseChips = ctx.baseChips;
+        CurrentCardChips = 0f;
         CurrentMult = 0f;
         TurnScore = 0;
 
@@ -263,6 +284,7 @@ public class ScoreManager : MonoBehaviour
             if (stepDelay > 0f) yield return new WaitForSeconds(stepDelay);
             ScoreCulSound();
             CurrentChips = step.chipsAfter;
+            CurrentCardChips = step.chipsAfter - ctx.baseChips;
             CurrentMult = step.multAfter;
             OnScoreStep?.Invoke(step);
         }
@@ -285,6 +307,8 @@ public class ScoreManager : MonoBehaviour
         IsScoring = false;
 
         CurrentChips = ctx.chips;
+        BaseChips = ctx.baseChips;
+        CurrentCardChips = ctx.chips - ctx.baseChips;
         CurrentMult = ctx.mult;
         TurnScore = ctx.finalScore;
 
@@ -297,6 +321,8 @@ public class ScoreManager : MonoBehaviour
         HandName = "";
         HandShapeName = "";
         CurrentChips = 0f;
+        BaseChips = 0f;
+        CurrentCardChips = 0f;
         CurrentMult = 0f;
         TurnScore = 0;
     }

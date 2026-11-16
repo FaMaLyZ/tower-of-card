@@ -7,15 +7,17 @@ public class CommitManager
 {
     readonly HandManager hand;
     readonly TowerBuilder tower;
+    readonly ScoreManager scorer;
     readonly int maxCommitCards;
 
     readonly List<CardInstance> committedCards = new List<CardInstance>();
     readonly List<CardInstance> unplacedCards = new List<CardInstance>();
 
-    public CommitManager(HandManager hand, TowerBuilder tower, int maxCommitCards)
+    public CommitManager(HandManager hand, TowerBuilder tower, ScoreManager scorer, int maxCommitCards)
     {
         this.hand = hand;
         this.tower = tower;
+        this.scorer = scorer;
         this.maxCommitCards = maxCommitCards;
     }
 
@@ -28,6 +30,10 @@ public class CommitManager
     /// The poker hand the selected cards make (null = nothing selected).
     public PokerHandResult Preview { get; private set; }
 
+    /// What the selected cards would score: base chips, card chips, mult and total (null = nothing selected).
+    /// Worked out by the scorer, so the HUD shows it without doing any maths.
+    public ScoreContext PreviewScore { get; private set; }
+
     /// Why Play Hand would be refused right now ("" = the commit is fine).
     public string Problem { get; private set; } = "";
 
@@ -39,7 +45,9 @@ public class CommitManager
     {
         List<CardInstance> selected = hand.GetSelectedCards();
 
-        Preview = selected.Count > 0 ? PokerHandEvaluator.Evaluate(GetCardData(selected)) : null;
+        List<CardData> data = GetCardData(selected);
+        Preview = selected.Count > 0 ? PokerHandEvaluator.Evaluate(data) : null;
+        PreviewScore = selected.Count > 0 && scorer != null ? scorer.PreviewHand(data) : null;
         Problem = FindProblem(selected.Count);
         return Preview;
     }
@@ -99,6 +107,7 @@ public class CommitManager
         committedCards.Clear();
         unplacedCards.Clear();
         Preview = null;
+        PreviewScore = null;
         Problem = "";
     }
 

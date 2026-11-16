@@ -268,17 +268,17 @@ The normal HUD always shows the evaluated hand during Commit. Architectural name
 | Selection example | Optional shape name | Poker name |
 |---|---|---|
 | 1 card, or unmatched cards with no stronger hand | Loose Cards | High Card |
-| 2 matching ranks | Brace | Pair |
-| 4 cards forming two pairs | Double Brace | Two Pair |
-| 3 matching ranks | Trestle | Three of a Kind |
+| 2 matching ranks | Tent | Pair |
+| 4 cards forming two pairs | Twin Tents | Two Pair |
+| 3 matching ranks | Tripod | Three of a Kind |
 | 5 consecutive ranks | Staircase | Straight |
-| 5 cards of one suit | Facade | Flush |
+| 5 cards of one suit | Wall | Flush |
 | 5 cards: three of one rank and two of another | House | Full House |
 | 4 matching ranks | Tower Block | Four of a Kind |
 | 5 consecutive ranks of one suit | Spire | Straight Flush |
 | Same-suit 10–J–Q–K–A | Palace | Royal Flush |
 
-"Tent" is avoided on purpose: in the tower a tent is two cards leaning together, so a Pair called "Tent" would suggest it must be built as one.
+The names are flavour only. A Pair is called "Tent" even though it does not have to be built as a tent on the tower (names changed 2026-11-17, see [HUD Design.md](HUD%20Design.md) §4).
 
 The evaluator decides the strongest hand and scoring-card indices. Extra non-scoring cards do not become chip contributions because of an animation. Zero selected cards shows **"Select 1–5 cards"** rather than a fabricated hand.
 

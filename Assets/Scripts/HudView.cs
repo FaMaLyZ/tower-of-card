@@ -36,6 +36,10 @@ public class HudView : MonoBehaviour
     [Header("Score")]
     public TMP_Text handNameText;
     public TMP_Text chipsText;
+    [Tooltip("Optional: the hand type's chips alone (the plaque's dark chip)")]
+    public TMP_Text baseChipsText;
+    [Tooltip("Optional: chips from the scoring cards (the plaque's blue chip)")]
+    public TMP_Text cardChipsText;
     public TMP_Text multText;
     public TMP_Text turnScoreText;
     public TMP_Text totalScoreText;
@@ -63,6 +67,8 @@ public class HudView : MonoBehaviour
     [Tooltip("{0} = shape name (House), {1} = poker name (Full House)")]
     public string handNameFormat = "{0} <size=70%>({1})</size>";
     public string chipsFormat = "Chips: {0:0}";
+    public string baseChipsFormat = "{0:0}";
+    public string cardChipsFormat = "{0:0}";
     public string multFormat = "Mult: x{0:0.##}";
     public string turnScoreFormat = "Turn score: {0:N0}";
     public string totalScoreFormat = "Safe: {0:N0}";
@@ -163,7 +169,7 @@ public class HudView : MonoBehaviour
     // Texts must not block mouse clicks on the game (TowerPlacementInput ignores clicks over UI)
     void PreventTextsFromBlockingClicks()
     {
-        foreach (var t in new[] { turnText, runText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, multText, turnScoreText, totalScoreText, swapsLeftText, potText })
+        foreach (var t in new[] { turnText, runText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, baseChipsText, cardChipsText, multText, turnScoreText, totalScoreText, swapsLeftText, potText })
             if (t != null) t.raycastTarget = false;
     }
 
@@ -224,10 +230,38 @@ public class HudView : MonoBehaviour
             : GetCommitHandName();
 
         ShowText(handNameText, handName, handName != "");
-        ShowText(chipsText, string.Format(chipsFormat, scoreManager.CurrentChips), showHand);
-        ShowText(multText, string.Format(multFormat, scoreManager.CurrentMult), showHand);
+        if (showHand) ShowScoredChips();
+        else ShowPreviewChips(GetCommitPreviewScore());
         ShowText(turnScoreText, string.Format(turnScoreFormat, scoreManager.TurnScore), showHand && !scoreManager.IsScoring);
         SetText(totalScoreText, string.Format(totalScoreFormat, flow != null && flow.IsReady ? flow.SafePoints : 0));
+    }
+
+    // The hand being scored, counting up step by step
+    void ShowScoredChips()
+    {
+        ShowChips(scoreManager.BaseChips, scoreManager.CurrentCardChips, scoreManager.CurrentChips, scoreManager.CurrentMult, true);
+    }
+
+    // Commit: what the selected cards would score, updated on every pick. Build: the locked hand. (null = hide the chips)
+    void ShowPreviewChips(ScoreContext preview)
+    {
+        if (preview == null) ShowChips(0f, 0f, 0f, 0f, false);
+        else ShowChips(preview.baseChips, preview.cardChips, preview.chips, preview.mult, true);
+    }
+
+    void ShowChips(float baseChips, float cardChips, float totalChips, float mult, bool visible)
+    {
+        ShowText(baseChipsText, string.Format(baseChipsFormat, baseChips), visible);
+        ShowText(cardChipsText, string.Format(cardChipsFormat, cardChips), visible);
+        ShowText(chipsText, string.Format(chipsFormat, totalChips), visible);
+        ShowText(multText, string.Format(multFormat, mult), visible);
+    }
+
+    ScoreContext GetCommitPreviewScore()
+    {
+        if (!GameRunning) return null;
+        if (flow.Phase != GamePhase.Commit && flow.Phase != GamePhase.Build) return null;
+        return flow.Commit.PreviewScore;
     }
 
     // The Pot: raw chips while a shake can still change it, then the Bank quote with its breakdown

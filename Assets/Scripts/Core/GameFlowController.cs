@@ -165,7 +165,7 @@ public class GameFlowController : MonoBehaviour
     void CreatePlainWorkers()
     {
         int maxCommitCards = config != null ? config.maxCommitCards : 5;
-        Commit = new CommitManager(hand, tower, maxCommitCards);
+        Commit = new CommitManager(hand, tower, score, maxCommitCards);
 
         int breakPercent = config != null ? config.breakPercent : 10;
         int heightPercent = config != null ? config.heightPercent : 10;
