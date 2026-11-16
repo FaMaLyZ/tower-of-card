@@ -1,7 +1,6 @@
 # Neo Tower of Cards — HUD Design
 
-> **Status:** Agreed design from the clickable mockup (2026-11-17). Replaces the layout in [HUD Summary.md](HUD%20Summary.md), which stays as the record of what exists today.
-> **Mockup:** https://claude.ai/artifact/5sbRmxB3G6RhVnQ9VMZyaz (use the phase bar at the top to step through every phase).
+> **Status:** Agreed design (2026-11-17). Replaces the layout in [HUD Summary.md](HUD%20Summary.md), which stays as the record of what exists today.
 > **Purpose:** Step 3 of the juice order in [juice-plan.md](juice-plan.md). Build these displays plain and instant first; Track C (C1, C2, C5, C6, C7) animates them afterwards.
 > **Rules this design keeps:**
 > 1. The HUD only *shows* the game. Every number comes from `GameFlowController` or a worker. The HUD never redoes rule maths.
@@ -152,7 +151,7 @@ Panel focus (§12) lights it fully in Commit, Score and Bank / Ride. In other ph
 **Look**
 - A marquee sign: gold frame with a ring of small white bulbs, dark navy inside.
 - On the left, written on two lines: **RUN** on top, **SCORE** under it, in gold Cinzel Decorative.
-- On the right, the number, big (about 44 px in the mockup), in cream pixel font with a soft glow.
+- On the right, the number, big (about 44 px in the example), in cream pixel font with a soft glow.
 
 **What it shows**
 - The **Run total**: every point banked in the whole run, including from blinds you failed. This is the final score.
@@ -180,7 +179,7 @@ Panel focus (§12) lights it fully in Commit, Score and Bank / Ride. In other ph
 - Shows **–** until the hand is scored.
 
 **When it changes**
-- **Score phase:** shows the final hand score (260 in the mockup) once the count finishes. A green **+260** floats up from the right edge and flies to the Pot sign (§11).
+- **Score phase:** shows the final hand score (260 in the example) once the count finishes. A green **+260** floats up from the right edge and flies to the Pot sign (§11).
 - Stays visible through Shake and Bank / Ride so the player remembers what the last hand earned.
 - **Next Draw:** back to **–**.
 
@@ -238,7 +237,7 @@ They can be used in any phase. The game does not advance while either panel is o
 - **Cracked:** dark wine red, no glow, faint shine, and a white zig-zag crack across it.
 
 **What it shows**
-- Lives. 3 stars = 3 lives. A cracked star is a lost life. The mockup shows 1 cracked.
+- Lives. 3 stars = 3 lives. A cracked star is a lost life. The example shows 1 cracked.
 
 **When it changes**
 - **Blind failed:** the rightmost whole star cracks.
@@ -461,7 +460,7 @@ In Bank / Ride the big number is the **Bank payout** (`BankQuote`), not the raw 
 **By phase**
 - Before the shake: shows the previous shake's result (usually "none").
 - **Shake:** each card that breaks pops in as an icon and flickers until the shake settles. The penalty updates at the end, once the result is final.
-- **Bank / Ride:** the final count (1 card, −10% in the mockup).
+- **Bank / Ride:** the final count (1 card, −10% in the example).
 
 **Animation (Track C3):** each icon pops in with a small burst of card fragments, timed with the break particles on the tower.
 
@@ -531,9 +530,9 @@ Lv 1  *  +10%            *                       *                       o
 
 | Phase | Dots |
 |---|---|
-| Draw … Score (after a Ride) | The levels that survived last time (1 in the mockup) |
+| Draw … Score (after a Ride) | The levels that survived last time (1 in the example) |
 | **Shake** | Confirmed levels lit, the next one **flickers**, label reads **"settling..."** |
-| Bank / Ride | Final levels (2 in the mockup), label **Level 2 / +20% height** |
+| Bank / Ride | Final levels (2 in the example), label **Level 2 / +20% height** |
 | Collapse | All dots go dark, one after another, top to bottom |
 | Bank (tower cleared), blind menu, results | All dark, the ladder dims |
 
@@ -604,10 +603,10 @@ A small dark pill with a gold rim, floating above the tower: **◎ 52**. It show
 
 ```
  Swap / Commit                               Build
-        ___                                   [8h][10h][2h][4h][6h]   <- committed tray
-   ___ |8h | ___                                 ^dim ^dim ^next(gold ring)
+        ___                                    ___ ___ ___
+   ___ |8h | ___                              |2h||4h||6h|   <- committed cards still to place
   |Kc ||   ||4h |  ... 8 cards in a fan          ___ ___ ___
-  picked card lifts up                           |Kc||8s||Qd|   <- rest of hand, dimmed
+  picked card lifts up                           |Kc||8s||Qd|   <- rest of hand: lower, smaller, dimmed
   (blue ring in Swap, gold in Commit)
         [ Done swapping ]  /  [ Play hand ]                  [ Undo ]
 
@@ -638,9 +637,10 @@ On hover (Swap and Commit), a small dark box with a gold rim appears just above 
 
 This is today's `CardTooltip`. The bottom `HintText` card details are removed (the HUD Summary flagged them as duplicates).
 
-### 9.4 Build: the committed tray
-- After **Play Hand**, the committed cards leave the fan and line up in a small tray just above it. The rest of the hand stays in the fan, dimmed (they can't be placed this hand).
-- In the tray, already-placed cards are dimmed, and the **next card to place has a gold ring**.
+### 9.4 Build: the hand after Play Hand (keep today's layout)
+No tray. `HandManager` already splits the hand into two rows, and the hand juice is tuned for it:
+- **Committed cards** stay in the top row, slightly lifted (`lockedInLift`). A card leaves the row when it is placed on the tower, and comes back on Undo.
+- **The rest of the hand** waits in a lower row: lower (`waitingDrop`), smaller (`waitingScale` 75%), closer together (`waitingSpacing`) and dimmed to 50% (`waitingBrightness`). These cards ignore hover and clicks.
 - The tower shows snap markers: a **green glowing dot** where the card will land, and white dots for other free slots.
 
 ### 9.5 Action buttons
@@ -761,7 +761,7 @@ Brightness key: **On** = full, **Dim** = about 70% (panels) or 50–60% (plaque)
 - On accept, one Hands pip goes dark.
 
 ### Build
-- Committed cards move to the tray. The rest of the hand dims.
+- Committed cards stay in the top row. The rest of the hand drops to a smaller, dimmed row (§9.4).
 - Instruction: "Place your cards: 3 left". Snap markers on the tower (green = where it will land).
 - Plaque shows the locked hand (85%). **Undo** button shown.
 - Hand area **On**, the others dim.
@@ -817,7 +817,7 @@ Moving and reskinning needs no code (every text is its own object and every word
 | `TurnText` (hand / target) | Removed: hands → Hands pips (§3.4), target → blind plaque |
 | `StateText` | Instruction line (§7.1) |
 | `HintText` | **Removed.** Card details only in `CardTooltip`. Placing hint goes in the instruction line |
-| `CardsText` | Removed: the instruction line says "N left" and the tray shows it |
+| `CardsText` | Removed: the instruction line says "N left" and the committed row shows it |
 | `DeckText` | Deck count badge (§8) |
 | `DiscardText` | Deck hover tooltip (§8) |
 | `PotText` | Split into Pot sign label / number / line (§5.3), Broken strip (§5.4), breakdown rows (§5.5) |
@@ -865,7 +865,6 @@ Still to add (listed in the juice plan): `HandCommitted`, `HandScored`, `TowerCo
 This design adds no other events: the Pot count-down after breaks uses `ShakeResolved` / `PotChanged`, and the Bank flight uses `PotBanked`.
 
 ### 13.4 Work outside the HUD views
-- **Committed tray in Build (§9.4):** a hand layout change in `HandManager`, not only a view.
 - **Pause while Run Info / Options is open (§3.5):** needs a pause in the game flow.
 - **Pot tag on the tower (§7.3):** a new script that follows the top of the tower.
 - **Fonts:** Cinzel, Cinzel Decorative and Pixelify Sans need TextMeshPro font assets.
