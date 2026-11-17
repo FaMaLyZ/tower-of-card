@@ -48,6 +48,9 @@ public class DeckManager : MonoBehaviour
     public int DiscardCount => discardPile.Count;
     public int TotalCards => drawPile.Count + discardPile.Count;
 
+    /// Every card in the deck when it was built (52), wherever each card is now: the "/ 52" on the deck badge.
+    public int DeckSize { get; private set; }
+
     // ---------- Lifecycle ----------
 
     void Awake()
@@ -78,6 +81,7 @@ public class DeckManager : MonoBehaviour
             }
         }
 
+        DeckSize = drawPile.Count;
         if (drawPile.Count == 0)
             Debug.LogWarning("DeckManager: the Starting Deck is empty - add some cards to it.", this);
 

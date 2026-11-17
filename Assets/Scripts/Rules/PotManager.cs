@@ -37,6 +37,13 @@ public class PotManager
         PotChips = PercentMath.FloorToChips(PotChips * GetShareKeptAfterBreaks(shake.BrokenCount));
     }
 
+    /// The share of the Pot that this many breaks take away, as a percent: 1 break = 10, 2 breaks = 19.
+    /// For the Broken strip on screen. Breaks multiply, so this is not "10 x broken cards".
+    public decimal GetBreakLossPercent(int brokenCount)
+    {
+        return (1m - GetShareKeptAfterBreaks(brokenCount)) * 100m;
+    }
+
     // (1 - break rate) multiplied once per broken card: 2 breaks at 10% keep 0.81
     decimal GetShareKeptAfterBreaks(int brokenCount)
     {

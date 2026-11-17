@@ -3,20 +3,26 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-/// The blind menu: the three blinds of this Ante side by side.
-/// Only the current blind can be chosen (Select, or Skip for Small / Big).
+/// The blind menu (HUD Design §10.1): the three blinds of this Ante side by side, each with its status,
+/// a big chip in the blind's colour with the target, and the reward. Only the current blind can be chosen
+/// (Select, or Skip for Small / Big). Upcoming blinds stay fully bright; their status says they are upcoming.
 /// A view: sends the click to the conductor.
 public class BlindMenuView : MonoBehaviour
 {
-    // One column of the menu (Small, Big or Boss)
+    // One card of the menu (Small, Big or Boss)
     [Serializable]
     public class BlindColumnUI
     {
-        public TMP_Text nameText;
-        public TMP_Text targetText;
-        public TMP_Text rewardText;
         public TMP_Text statusText;
-        public Image background;
+        public TMP_Text nameText;
+        [Tooltip("Tinted with the blind's colour")]
+        public Image chip;
+        [Tooltip("The target, inside the chip")]
+        public TMP_Text targetText;
+        public TMP_Text scoreLineText;
+        public TMP_Text rewardText;
+        [Tooltip("Shown on blinds that are not current: whether they can be skipped")]
+        public TMP_Text noteText;
         public Button selectButton;
         public Button skipButton;
         public TMP_Text skipLabel;
@@ -24,33 +30,34 @@ public class BlindMenuView : MonoBehaviour
 
     [Header("Game references")]
     public GameFlowController flow;
+    public HudTheme theme;
 
     [Header("UI")]
     public GameObject panel;
     public TMP_Text headerText;
     public BlindColumnUI[] columns = new BlindColumnUI[3];
 
-    [Header("Colours")]
-    public Color currentColor = new Color(0.15f, 0.35f, 0.6f, 0.95f);
-    public Color previewColor = new Color(0.15f, 0.15f, 0.15f, 0.8f);
-
     [Header("Texts")]
     [Tooltip("{0} = Ante, {1} = Antes per run, {2} = retry label")]
     public string headerFormat = "Ante {0} / {1}{2}";
-    public string retryLabel = " - Final Boss retry";
+    public string retryLabel = " · Final Boss retry";
     public string smallName = "Small Blind";
     public string bigName = "Big Blind";
     public string bossName = "Boss Blind";
-    public string targetFormat = "Target {0:N0}";
+    public string targetFormat = "{0:N0}";
+    [Tooltip("{0} = target")]
+    public string scoreLineFormat = "Score at least {0:N0}";
     [Tooltip("{0} = reward as a multiplier, e.g. 1.2")]
-    public string rewardFormat = "Reward x{0:0.##}";
+    public string rewardFormat = "Reward ×{0:0.0#}";
     public string currentLabel = "Current";
     public string upcomingLabel = "Upcoming";
     public string wonLabel = "Won";
     public string failedLabel = "Failed";
     public string skippedLabel = "Skipped";
-    public string skipRepairText = "Skip (repair 1 crack)";
+    public string skipRepairText = "Skip · repair 1 crack";
     public string skipGlassFullText = "Skip (Glass is whole)";
+    public string canSkipNote = "Can be skipped";
+    public string bossNote = "No skip · win repairs 1 crack";
 
     void Awake()
     {
@@ -71,7 +78,7 @@ public class BlindMenuView : MonoBehaviour
     void Update()
     {
         bool choosing = flow != null && flow.IsReady && flow.IsChoosingBlind;
-        if (panel != null) panel.SetActive(choosing);
+        PanelSlideJuice.Show(panel, choosing);
         if (!choosing) return;
 
         RefreshHeader();
@@ -90,13 +97,34 @@ public class BlindMenuView : MonoBehaviour
         if (column == null) return;
 
         bool isCurrent = kind == flow.CurrentBlind;
+        long target = flow.GetBlindTarget(kind);
+
         SetText(column.nameText, GetBlindName(kind));
-        SetText(column.targetText, string.Format(targetFormat, flow.GetBlindTarget(kind)));
-        SetText(column.rewardText, string.Format(rewardFormat, flow.GetBlindRewardPercent(kind) / 100f));
-        SetText(column.statusText, GetStatusLabel(kind, isCurrent));
-        if (column.background != null) column.background.color = isCurrent ? currentColor : previewColor;
+        SetText(column.targetText, string.Format(targetFormat, target));
+        SetText(column.scoreLineText, string.Format(scoreLineFormat, target));
+        SetText(column.rewardText, string.Format(rewardFormat, flow.GetBlindReward(kind)));
+        ShowStatus(column, kind, isCurrent);
+        ShowNote(column, kind, isCurrent);
+        if (column.chip != null && theme != null) column.chip.color = theme.GetBlindColor(kind);
 
         RefreshButtons(column, kind, isCurrent);
+    }
+
+    void ShowStatus(BlindColumnUI column, BlindKind kind, bool isCurrent)
+    {
+        if (column.statusText == null) return;
+        BlindRecord record = flow.GetBlindRecord(kind);
+        column.statusText.text = GetStatusLabel(record, isCurrent);
+        if (theme != null) column.statusText.color = GetStatusColor(record, isCurrent);
+    }
+
+    // Upcoming blinds say whether they can be skipped; the current one has buttons instead
+    void ShowNote(BlindColumnUI column, BlindKind kind, bool isCurrent)
+    {
+        if (column.noteText == null) return;
+        bool upcoming = !isCurrent && flow.GetBlindRecord(kind) == BlindRecord.NotPlayed;
+        column.noteText.gameObject.SetActive(upcoming);
+        if (upcoming) column.noteText.text = kind == BlindKind.Boss ? bossNote : canSkipNote;
     }
 
     // Select on the current blind only; Skip on the current blind only, and never on the Boss
@@ -125,16 +153,28 @@ public class BlindMenuView : MonoBehaviour
         }
     }
 
-    string GetStatusLabel(BlindKind kind, bool isCurrent)
+    string GetStatusLabel(BlindRecord record, bool isCurrent)
     {
         if (isCurrent) return currentLabel;
 
-        switch (flow.GetBlindRecord(kind))
+        switch (record)
         {
             case BlindRecord.Won: return wonLabel;
             case BlindRecord.Failed: return failedLabel;
             case BlindRecord.Skipped: return skippedLabel;
             default: return upcomingLabel;
+        }
+    }
+
+    Color GetStatusColor(BlindRecord record, bool isCurrent)
+    {
+        if (isCurrent) return theme.safe;
+
+        switch (record)
+        {
+            case BlindRecord.Won: return theme.goldText;
+            case BlindRecord.Failed: return theme.danger;
+            default: return theme.creamMuted;
         }
     }
 

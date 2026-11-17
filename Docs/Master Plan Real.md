@@ -1,7 +1,7 @@
 # Neo Tower of Cards — Master Plan
 
 > **Read this first.** It is the build order and the code shape for the new prototype.
-> **Date:** 2026-11-15 · **Revision 5** — A3 split into playable parts, lower P1 target; revision 4 cut Boss twists; revision 3 merged the two revision-2 drafts (see [§10 Change log](#10-change-log)).
+> **Date:** 2026-11-16 · **Revision 6** — §2 synced with the code after A6; revision 5 split into playable parts, lower P1 target; revision 4 cut Boss twists; revision 3 merged the two revision-2 drafts (see [§10 Change log](#10-change-log)).
 > **Related docs:** [Core Gameplay Loop.md](Core%20Gameplay%20Loop.md) (player rules) · [juice-plan.md](juice-plan.md) (visual and audio details)
 > **Who owns what:** Core Gameplay Loop owns the player rules. This plan owns the code and the work order. The juice plan owns the effects. Keep the three in step. Older GDDs describe the old prototype and do not override these.
 > **Marks:** **⚙** = a number to tune. **Assumption** = a rule added to make the prototype buildable, not yet proven by play.
@@ -115,30 +115,37 @@ The earlier height bonus was never stored: the second payout starts from 244, no
 Instead, `GameFlowController` (the **conductor**) is the only script that decides what happens next. It still reads like a chain, and every jump is visible in one place:
 
 ```csharp
-IEnumerator PlayBlind(BlindDefinition definition)
+IEnumerator PlayBlind()
 {
-    StartBlind(definition);
-    while (blind.HandsLeft > 0 && !leftTable)
+    StartBlind();                                    // kind = run.CurrentBlind, target from GameConfig
+    while (blind.HandsLeft > 0 && !blind.HasLeftTable)
+    {
         yield return PlayOneHand();
+        if (NothingLeftToPlay()) break;              // jump: deck and hand are both empty
+    }
+    yield return WaitForScoreReveal();
     FinishBlind();          // win or fail, reward or crack, where to go next
 }
 
 IEnumerator PlayOneHand()
 {
     yield return DrawPhase();        // fill the hand to 8
+    if (hand.Count == 0) yield break;                           // jump: nothing to play
     yield return SwapPhase();        // until "Done Swapping"
     yield return CommitPhase();      // until "Play Hand" is accepted (the hand is spent here)
     yield return BuildPhase();       // until every committed card is placed
-    yield return ScorePhase();       // score → Pot
+    ScorePhase();                    // score → Pot
     yield return ShakePhase();       // physics → one ShakeResult → Pot updated once
 
-    if (lastShake.Collapsed)   { LoseThePot(); yield break; }   // jump: tower fell
+    if (LastShake.Collapsed)   yield break;                     // jump: tower fell, the Pot is already lost
     if (blind.HandsLeft == 0)  { BankThePot(); yield break; }   // jump: last hand auto-banks
 
     yield return BankOrRidePhase();  // Ride is disabled if the tower is full
+    if (bankOrRideChoice == BankOrRideChoice.Ride) yield break;
 
-    if (bankedThisHand && blind.IsTargetReached())
-        yield return ContinueOrLeavePhase();                    // Leave sets leftTable = true
+    BankThePot();
+    if (blind.CanLeaveTable())
+        yield return ContinueOrLeavePhase();                    // Leave ends the blind early
 }
 ```
 
@@ -235,15 +242,15 @@ IEnumerator RevealScore(ScoreContext result)     // juice, started from the Hand
 | Class | Owns | Must not own |
 |---|---|---|
 | `GameFlowController` | The phase, the run/blind/hand loops, accepting commands, the order of things | Poker maths, slot geometry, tweens |
-| `RunState` + `GlassLives` (plain C#) | Ante and blind index, `RunTotal`, reward multiplier, lives | Phase changes, UI |
-| `GameConfig` (ScriptableObject) | All ⚙ numbers | Anything that changes during a run |
-| `BlindDefinition` (ScriptableObject) | Name, base target, reward, can-skip | Progress of the blind being played |
-| `BlindManager` (plain C#) | `BlindScore`, `HandsLeft`, target, win/fail result, leave bonus | Starting the next blind, cracking the Glass |
+| `RunState` + `GlassLives` (plain C#) | Ante and blind index (`CurrentBlind` as a `BlindKind`), `RunTotal`, reward multiplier, lives, can-skip, run outcome | Phase changes, UI |
+| `GameConfig` (ScriptableObject) | All ⚙ numbers, including each `BlindKind`'s base target and reward percent | Anything that changes during a run |
+| `BlindManager` (plain C#) | `BlindScore`, `HandsLeft`, target, win/fail result, leave bonus, has-left-table | Starting the next blind, cracking the Glass |
 | `DeckManager` | The 52 card instances, draw pile, reset, shuffle | Phase changes |
 | `HandManager` | Cards in hand, selection, basic layout, reorder | Draw animation, totals |
 | `SwapManager` | Swapping the selected cards, swaps left | Phase changes |
-| `CommitManager` | Hand preview, the locked committed set, which are still unplaced | Spending the hand, animation |
-| `TowerBuilder` | Placement, slots and support, the shake, `ShakeResult`, sweep | Game over, score penalties, UI calls |
+| `CommitManager` (plain C#) | Hand preview, the locked committed set, which are still unplaced | Spending the hand, animation |
+| `TowerBuilder` | Placement, the shake, `ShakeResult`, sweep | Game over, score penalties, UI calls |
+| `TowerSlots` (plain C#) | Which slots are taken, support, open slots, `CanFit`, standing levels | Card objects, physics |
 | `ScoreManager` + `PokerHandEvaluator` | The score of one hand | The Pot, safe totals, the reveal animation |
 | `PotManager` (plain C#) | Raw `PotChips`, applying a `ShakeResult`, quoting and paying a Bank | Glass, blind progress |
 | Views | Show state, show which actions are legal, send commands | Changing core fields directly |
@@ -257,26 +264,40 @@ classDiagram
 
     class GameFlowController {
         -RunState run
-        -GamePhase currentPhase
-        -ShakeResult lastShake
+        -BlindManager blind
+        -PotManager pot
+        +GamePhase Phase
+        +CommitManager Commit
+        +ShakeResult LastShake
         +StartNewRun()
-        +RequestSwap(int cardId)
+        +RequestSelectCardById(int cardId)
+        +RequestMoveCard(int cardId, int newIndex)
+        +RequestSwapSelectedCard()
         +RequestDoneSwapping()
         +RequestPlayHand()
-        +RequestPlace(int cardId, int slotId)
+        +RequestPlaceHeldCard()
+        +RequestDropHeldCard()
         +RequestUndo()
-        +ChooseBlind()
-        +ChooseSkip()
-        +ChooseBank()
-        +ChooseRide()
-        +ChooseContinue()
-        +ChooseLeaveTable()
+        +RequestSelectBlind()
+        +RequestSkipBlind()
+        +RequestBank()
+        +RequestRide()
+        +RequestContinue()
+        +RequestLeaveTable()
+        +RequestRestartRun()
         -PlayRun() IEnumerator
-        -PlayBlind(BlindDefinition) IEnumerator
+        -BlindMenuPhase() IEnumerator
+        -PlayBlind() IEnumerator
         -PlayOneHand() IEnumerator
+        -DrawPhase() IEnumerator
+        -SwapPhase() IEnumerator
+        -CommitPhase() IEnumerator
+        -BuildPhase() IEnumerator
+        -ShakePhase() IEnumerator
+        -BankOrRidePhase() IEnumerator
+        -ContinueOrLeavePhase() IEnumerator
         -SetPhase(GamePhase)
         -BankThePot()
-        -LoseThePot()
         -FinishBlind()
     }
 
@@ -290,21 +311,28 @@ classDiagram
 
     class RunState {
         <<plain>>
-        +int anteNumber
-        +int blindIndex
+        +int AnteNumber
+        +int BlindIndex
+        +BlindKind CurrentBlind
         +long RunTotal
         +decimal RewardMultiplier
-        +GlassLives glass
+        +RunOutcome Outcome
+        +GlassLives Glass
+        +StartBlind()
         +AddToRunTotal(long)
-        +ApplyBlindReward(decimal)
+        +RecordBlindWon(int rewardPercent) bool
+        +RecordBlindFailed() bool
+        +SkipBlind() bool
+        +GetRecord(BlindKind) BlindRecord
     }
 
     class GlassLives {
         <<plain>>
+        +int MaxLives
         +int LivesRemaining
-        +Crack()
-        +Repair()
-        +IsShattered() bool
+        +bool IsShattered
+        +Crack() bool
+        +Repair() bool
     }
 
     class BlindManager {
@@ -312,12 +340,16 @@ classDiagram
         +long BlindScore
         +long Target
         +int HandsLeft
-        +StartBlind(BlindDefinition, int ante)
-        +UseOneHand()
+        +bool HasLeftTable
+        +StartBlind(long baseTarget, int ante)
+        +UseOneHand() bool
         +AddSafePoints(long)
         +IsTargetReached() bool
+        +CanLeaveTable() bool
         +GetLeaveTableBonus() long
+        +LeaveTable() long
         +GetResult() BlindResult
+        +CalculateTarget(long, int, int)$ long
     }
 
     class PotManager {
@@ -325,58 +357,85 @@ classDiagram
         +long PotChips
         +AddHandScore(long)
         +ApplyShakeResult(ShakeResult)
+        +QuoteHeightValue(int levels) long
         +QuoteBankPayout(int levels, decimal reward) long
         +BankPot(int levels, decimal reward) long
+        +Clear()
     }
 
     class ShakeResult {
         <<plain>>
         +int ShakeId
-        +List~int~ BrokenCardIds
+        +IReadOnlyList~int~ BrokenCardIds
         +int StandingLevels
         +bool Collapsed
         +bool TimedOut
     }
 
     class TowerBuilder {
+        +ShakeResult LastShakeResult
+        +StartHandPlacements()
         +CanFit(int cardCount) bool
         +HasLegalPlacement() bool
-        +EnablePlacement(List~CardData~)
-        +TryPlace(int cardId, int slotId) bool
-        +UndoLastPlacement() bool
-        +ResolveShake() IEnumerator
-        +ShakeResult LastShakeResult
+        +FindOpenSlots() List~OpenSlot~
+        +PlaceFirstCard(Vector3, CardInstance)
+        +PlaceCard(slotKey, CardInstance)
+        +UndoLastPlacement() CardInstance
+        +ResolveShake(GameConfig) IEnumerator
         +SweepTower()
     }
 
+    class TowerSlots {
+        <<plain>>
+        +Place(slotKey)
+        +Remove(slotKey)
+        +CanFit(int cardCount) bool
+        +FindOpenSlots() List
+        +FindUnsupportedCards() List
+        +CountStandingLevels() int
+    }
+
     class CommitManager {
-        +List~CardData~ CommittedCards
-        +PreviewSelectedHand() HandResult
+        <<plain>>
+        +PokerHandResult Preview
+        +string Problem
+        +PreviewSelectedHand() PokerHandResult
         +TryCommitSelectedCards() bool
         +HasUnplacedCards() bool
+        +FindUnplacedCard(int cardId) CardInstance
+        +MarkPlaced(CardInstance)
+        +MarkUnplaced(CardInstance)
+        +Clear()
     }
 
     class HandManager {
-        +DrawCardsUntilHandIsFull()
+        +DrawCardsUntilHandHas(int handSize) int
         +GetSelectedCardIds() List~int~
-        +RemoveCards(List~int~)
+        +GetSelectedCards() List~CardInstance~
+        +ToggleSelected(int cardId, int max) bool
+        +MoveCard(int cardId, int newIndex) bool
+        +RemoveCardById(int cardId) CardInstance
+        +ReturnCardToHand(CardInstance)
+        +EmptyHand()
     }
 
     class SwapManager {
-        +int SwapsLeft
-        +ResetSwaps()
-        +TrySwap(int cardId) bool
+        +int SwapsUsed
+        +ResetSwaps(int swapsAllowed)
+        +TrySwapSelected() bool
     }
 
     class DeckManager {
         +ResetDeck()
-        +Draw() CardData
-        +ReturnToDeck(CardData)
+        +Draw() CardInstance
+        +Discard(CardInstance)
+        +ReturnToDeck(CardInstance, DeckReturn)
         +Shuffle()
     }
 
     class ScoreManager {
-        +ScoreHand(List~CardData~) ScoreContext
+        +ScoreHand(IReadOnlyList~CardInstance~) ScoreContext
+        +ResetScore()
     }
 
     GameFlowController --> RunState
@@ -389,13 +448,16 @@ classDiagram
     GameFlowController --> ScoreManager
     GameFlowController ..> PresentationGate
     RunState *-- GlassLives
+    TowerBuilder ..> TowerSlots
     TowerBuilder ..> ShakeResult
     PotManager ..> ShakeResult
     HandManager --> DeckManager
+    HandManager ..> GameFlowController : flow (back reference)
     SwapManager --> HandManager
     SwapManager --> DeckManager
     CommitManager --> HandManager
-    CommitManager ..> TowerBuilder : CanFit
+    CommitManager --> TowerBuilder : CanFit
+    ScoreManager --> TowerBuilder
 ```
 
 ### 2.6 Events
@@ -409,10 +471,10 @@ classDiagram
 |---|---|
 | `PhaseChanged` | new phase |
 | `HandChanged`, `HandReordered` | card IDs in order |
-| `SelectionChanged` | selected IDs, live `HandResult` preview |
+| `SelectionChanged` | selected IDs, live `PokerHandResult` preview |
 | `CardDrawn` | card, hand index |
 | `CardSwapped` | old card, new card |
-| `HandCommitted` | cards, `HandResult` |
+| `HandCommitted` | cards, `PokerHandResult` |
 | `CardPlaced` | card, world position |
 | `HandScored` | `ScoreContext` (fixed breakdown) |
 | `CardBroken` | card, world position (for local effects only) |
@@ -420,8 +482,9 @@ classDiagram
 | `TowerCollapsed` | — |
 | `PotChanged` | old chips, new chips, reason, current Bank quote |
 | `PotBanked` | payout, new `BlindScore`, new `RunTotal` |
-| `BlindOffered`, `BlindStarted` | `BlindDefinition`, target |
-| `BlindWon`, `BlindFailed`, `BlindSkipped` | blind score, target |
+| `BlindOffered`, `BlindStarted` | `BlindKind`, ante, target |
+| `BlindWon`, `BlindFailed` | blind score, target |
+| `BlindSkipped` | `BlindKind`, ante |
 | `GlassChanged` | old lives, new lives, reason |
 | `RunEnded` | `RunTotal`, cleared or shattered |
 
@@ -589,7 +652,7 @@ The first playtest (P1) answers one question: *is Bank vs Ride interesting?* Bui
 > 1. **One `ShakeResult` per shake, one Pot update per shake** (rule 15). The break count comes from a `HashSet` of card IDs; `Card.Broken` can fire twice for one card. Fallen cards are counted at the end of the shake, never at the next draw.
 > 2. **Pot maths is `decimal`, rounded once** ([§1.3](#13-score-maths-exact)). The height bonus is never written back into the Pot. Test the example: Pot 244, quote 351, then 426 after a Ride.
 > 3. **`ResolveShake` replaces `oldLoopShakeSeconds` and `oldLoopTurnsPerRun`.** Count time in `FixedUpdate` steps; a timeout is not a collapse. Remove the old `GameConfig` fields in the same commit that stops using them, so there is no dead setting.
-> 4. **Only the conductor changes the phase.** `BankThePot()`, `LoseThePot()` and the Bank / Ride choice live in `GameFlowController`; `PotManager` only does the maths and returns a result. Commands go through `RequestBank()` / `RequestRide()` with a phase check (rule 5).
+> 4. **Only the conductor changes the phase.** `BankThePot()`, losing the Pot on a collapse, and the Bank / Ride choice live in `GameFlowController`; `PotManager` only does the maths and returns a result. Commands go through `RequestBank()` / `RequestRide()` with a phase check (rule 5).
 > 5. **Bank must sweep the tower after the payout is final.** Sweeping never counts as a break. `TowerBuilder.SweepTower()` already exists; `Card.Break` must not be called on swept cards.
 > 6. **The full-tower rule uses `HasLegalPlacement()`**, which already exists from A2. Delete `SweepTowerIfFull()` in the conductor in A3b; a full tower is not game over.
 > 7. **Already built in A2, do not redo:** `CanFit`, undo, the Commit phase, the multi-card swap (up to 3 cards per hand, each card costs one swap), `CommitManager`, `TowerSlots`. The old `TurnManager.cs` stays an empty shell until A6.
@@ -748,6 +811,8 @@ One script, `DebugCheats`, inside `#if UNITY_EDITOR || DEVELOPMENT_BUILD`. Cheat
 ---
 
 ## 10. Change log
+
+**Revision 6 (2026-11-16).** Synced §2.1, §2.4, §2.5 and §2.6 with the code after A6. `BlindDefinition` was never built: blinds are a `BlindKind` with numbers in `GameConfig`. Code now passes `CardInstance` (not `CardData`). `CommitManager` is plain C#. Added `TowerSlots`. Renamed the requests (`Choose…` → `Request…`, place/swap work on the held/selected card). No `LoseThePot()`: a collapse just ends the hand. Diagram shows the `HandManager → GameFlowController` and `ScoreManager → TowerBuilder` references.
 
 **Revision 5 (2026-11-15).** A1, B0 and A2 done. A2 swap rule changed: select up to 3 cards and swap them in one go (each card costs one swap). A3 split into A3a Pot and shake, A3b Bank and Ride, A3c Blind, each playable. Bank clears the whole tower. P1 target lowered to 150. Added a checklist note for Fable under §6.2.
 

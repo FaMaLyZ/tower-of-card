@@ -82,4 +82,15 @@ public class PotManagerTests
         Assert.AreEqual(quote, payout);
         Assert.AreEqual(0L, pot.PotChips);
     }
+
+    [Test]
+    public void BreakLossPercent_BreaksMultiply()
+    {
+        PotManager pot = MakePot();
+
+        Assert.AreEqual(0m, pot.GetBreakLossPercent(0));
+        Assert.AreEqual(10m, pot.GetBreakLossPercent(1));
+        Assert.AreEqual(19m, pot.GetBreakLossPercent(2));    // 1 - 0.9 x 0.9
+        Assert.AreEqual(27.1m, pot.GetBreakLossPercent(3));  // 1 - 0.9 x 0.9 x 0.9
+    }
 }

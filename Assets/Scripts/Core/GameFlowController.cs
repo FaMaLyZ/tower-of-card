@@ -40,9 +40,12 @@ public class GameFlowController : MonoBehaviour
     public int AnteNumber => run.AnteNumber;
     public int AntesPerRun => run.AntesPerRun;
     public BlindKind CurrentBlind => run.CurrentBlind;
+    public int BlindNumber => (int)run.CurrentBlind + 1;       // 1 = Small, 2 = Big, 3 = Boss (for "Blind 1/3")
+    public int BlindsPerAnte => RunState.BlindsPerAnte;
     public bool IsRetry => run.IsRetry;
     public long RunTotal => run.RunTotal;
     public decimal RewardMultiplier => run.RewardMultiplier;
+    public decimal RewardMultiplierBeforeLastWin => run.RewardMultiplierBeforeLastWin;
     public int GlassLives => run.Glass.LivesRemaining;
     public int GlassMaxLives => run.Glass.MaxLives;
     public RunOutcome RunOutcome => run.Outcome;
@@ -53,6 +56,9 @@ public class GameFlowController : MonoBehaviour
     public bool CanSkipBlind => IsChoosingBlind && run.CanSkipCurrentBlind;
     public BlindRecord GetBlindRecord(BlindKind kind) => run.GetRecord(kind);
     public int GetBlindRewardPercent(BlindKind kind) => config.GetRewardPercent(kind);
+
+    /// The multiplier a win of this blind gives, e.g. 1.2 (the blind plaque's "Reward x1.2").
+    public decimal GetBlindReward(BlindKind kind) => PercentMath.ToRate(config.GetRewardPercent(kind));
 
     /// What a blind of the current Ante needs (the same formula BlindManager uses when it starts).
     public long GetBlindTarget(BlindKind kind) =>
@@ -70,11 +76,30 @@ public class GameFlowController : MonoBehaviour
     public int StandingLevels => LastShake != null ? LastShake.StandingLevels : 0;
     public long BankQuote => pot.QuoteBankPayout(StandingLevels, RewardMultiplier);
 
+    /// The height bonus a Bank would get now, as a percent: 2 standing levels at 10% = 20.
+    public int HeightBonusPercent => config.heightPercent * StandingLevels;
+
+    /// The share of the Pot the last shake's breaks took, as a percent (0 when nothing broke or it collapsed).
+    public decimal LastShakeLossPercent =>
+        LastShake != null && !LastShake.Collapsed ? pot.GetBreakLossPercent(LastShake.BrokenCount) : 0m;
+
     /// False from the moment a hand is scored until its shake is resolved: the Pot can still change.
     public bool IsPotSettled { get; private set; } = true;
 
     /// Points that are already safe. A collapse never touches them.
     public long SafePoints => blind.BlindScore;
+
+    /// What Safe Points would be after a Bank now (the Safe bar preview and the drawer receipt).
+    public long SafeAfterBank => blind.BlindScore + BankQuote;
+
+    /// True once Safe Points meet the blind's target (the Safe bar turns gold).
+    public bool IsTargetReached => blind.IsTargetReached();
+
+    /// True if a Bank now would meet the blind's target (the receipt's tick).
+    public bool BankReachesTarget => SafeAfterBank >= blind.Target;
+
+    /// Safe Points above the target ("+36 over"); 0 while the target is not met.
+    public long PointsOverTarget => blind.BlindScore > blind.Target ? blind.BlindScore - blind.Target : 0;
 
     // The Bank / Ride choice
     public bool IsChoosingBankOrRide => Phase == GamePhase.BankOrRide && bankOrRideChoice == BankOrRideChoice.None;
@@ -94,6 +119,9 @@ public class GameFlowController : MonoBehaviour
     /// True if the blind just ended through Leave Table (the end screen can say so).
     public bool LeftTable => blind.HasLeftTable;
     public long LeaveBonusPaid => blind.LeaveBonusPaid;
+
+    /// Safe Points that came from Banks this blind (Safe Points without the leave bonus), for the result panel.
+    public long BankedThisBlind => blind.BlindScore - blind.LeaveBonusPaid;
 
     enum ContinueOrLeaveChoice { None, Continue, Leave }
     ContinueOrLeaveChoice continueOrLeaveChoice;

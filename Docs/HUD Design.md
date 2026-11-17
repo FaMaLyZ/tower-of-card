@@ -1,7 +1,8 @@
 # Neo Tower of Cards — HUD Design
 
 > **Status:** Agreed design (2026-11-17). Replaces the layout in [HUD Summary.md](HUD%20Summary.md), which stays as the record of what exists today.
-> **Purpose:** Step 3 of the juice order in [juice-plan.md](juice-plan.md). Build these displays plain and instant first; Track C (C1, C2, C5, C6, C7) animates them afterwards.
+> **Art brief:** [HUD Art Assets.md](HUD%20Art%20Assets.md) lists every sprite for the artist.
+> **Purpose:** Step 5 of the juice order in [juice-plan.md](juice-plan.md). Build these displays plain and instant first; Track C (C1, C2, C5, C6, C7) animates them afterwards.
 > **Rules this design keeps:**
 > 1. The HUD only *shows* the game. Every number comes from `GameFlowController` or a worker. The HUD never redoes rule maths.
 > 2. Buttons send commands. Displays never look like buttons (see §2.4).
@@ -91,6 +92,8 @@ There is **no top strip** any more. Everything it used to hold (Ante, hands, run
 | Labels ("TURN SCORE", "ANTE", "Broken") | **Cinzel**, Bold, small caps feel, letter-spaced |
 | All numbers and buttons | **Pixelify Sans** (pixel font, like the NEO logo and Balatro) |
 
+The font assets are in `Assets/Fonts` and set on `Assets/ScriptableObject/HudTheme.asset`. They hold Latin characters only, so on-screen text uses **»** for an arrow (no →), the words **TARGET MET** instead of a tick (no ✓), and the `chip_icon` sprite instead of ◎. × − · … are fine.
+
 ### 2.3 Panel frame (left HUD, right HUD, pop-up panels)
 
 - Arched top: the top corners are wide ovals (the Art Nouveau arch), the bottom corners are small rounded corners.
@@ -144,7 +147,7 @@ Marquee bulb boxes (Run Score, the Pot) are **signs**, not buttons: gold frame w
 
 A tall arched panel on the left, top to bottom: Run Score, Turn Score, Ante | Blind, Hands, Run Info | Options, Glass.
 
-Panel focus (§12) lights it fully in Commit, Score and Bank / Ride. In other phases it dims to about 70% so the active area stands out. Numbers must stay readable when dimmed (Rule 3), so never go lower.
+The panel is always fully bright. There is no dimming anywhere in the HUD (decided 2026-11-17).
 
 ### 3.1 Run Score
 
@@ -259,7 +262,7 @@ They can be used in any phase. The game does not advance while either panel is o
 ```
  ______________________________________________________________
 | Your hand                    ( - )  +  ( - )  x  ( - )        |   Draw / Swap
-| Select 1-5 cards                                              |   (dim)
+| Select 1-5 cards                                              |
  --------------------------------------------------------------
                                v   Commit, cards picked (live)
  ______________________________________________________________
@@ -310,15 +313,21 @@ Card chips: 2–10 give their number, J / Q / K give 10, Ace gives 11. Only scor
 
 **By phase**
 
-| Phase | Shows | Brightness |
-|---|---|---|
-| Draw, Swap | "Your hand" / "Select 1-5 cards", chips show **–** | Dim (50%) |
-| Commit, 0 cards picked | Same as above | Full |
-| Commit, cards picked | Live preview: updates instantly on every pick and unpick | Full |
-| Build | The committed hand, locked | 85% |
-| Score | The committed hand plus **= 260** | Full |
-| Shake, Bank / Ride | The last scored hand plus **= 260** | Dim (60%) |
-| Blind menu, results, run end | Hidden | — |
+| Phase | Shows |
+|---|---|
+| Draw, Swap | "Your hand" / "Select 1-5 cards", chips show **–** |
+| Commit, 0 cards picked | Same as above |
+| Commit, cards picked | Live preview: updates instantly on every pick and unpick |
+| Build | The committed hand, locked |
+| Score | The committed hand plus **= 260** |
+| Shake, Bank / Ride | The last scored hand plus **= 260** |
+| Blind menu, Continue / Leave, results, run end | Hidden |
+
+The plaque is never dimmed: it is fully bright whenever it is shown (decided 2026-11-17 after play-testing H3).
+
+**The three chips:** dark = **base chips** from the hand type (Pair = 10), blue = **card chips**, the face values of the scoring cards (2-10 their number, J/Q/K 10, Ace 11), red = **mult**.
+
+**Kickers** follow real poker: picked cards that are not part of the hand (the 3 in a 4-high High Card) only break ties, so they add no chips. The poker-name line says how many there are, e.g. **High Card · 1 kicker**, so a blue chip that ignores a card never looks broken.
 
 **Animation (Track C1 / C2)**
 - Name change (Commit): the old name shrinks out, the new one pops in with a small overshoot and a click sound. The plain text updates at once even if the effect is off.
@@ -355,7 +364,7 @@ Pot sign (changes every phase):
  ___________________        ___________________        ___________________
 |Riding on the tower|      |        POT        |      |  POT (unsettled)  |
 |        52         |  >   |        312        |  >   |        312        |
-| Rode from Hand 1  |      |52 + 260 this hand |      |  settling...      |
+| Rode from the last hand  |      |52 + 260 this hand |      |  settling...      |
  -------------------        -------------------        -------------------
    Draw ... Build               Score                      Shake
                                                                v
@@ -396,7 +405,7 @@ Cashier drawer (Bank / Ride only):
 
 A tall arched panel on the right, top to bottom: Blind plaque, Safe bar, Pot sign, Broken strip, Breakdown. The cashier drawer (§5.6) slides out under it.
 
-It is fully lit in Score, Shake and Bank / Ride, and dims in the other phases. In Bank / Ride it also gets a warm gold glow around the frame.
+It is always fully bright. In Bank / Ride it gets a warm gold glow around the frame to show the decision is here.
 
 ### 5.1 Blind plaque
 
@@ -420,7 +429,7 @@ It is fully lit in Score, Shake and Bank / Ride, and dims in the other phases. I
 **What it shows:** the Blind score, which is points banked in *this* blind and the only score that counts toward the target.
 
 **Details**
-- **Bank / Ride:** a striped green "ghost" fill shows where the bar *would* reach after Bank (Safe after Bank).
+- **Bank / Ride:** a striped green "ghost" fill shows where the bar *would* reach after Bank, and the number reads **0 » 850 / 337** (Safe now » Safe after Bank / target).
 - **Target met:** the bar turns gold and a small **"+186 over"** tag appears when Safe goes past the target.
 - **New blind:** resets to 0.
 
@@ -438,8 +447,8 @@ It is fully lit in Score, Shake and Bank / Ride, and dims in the other phases. I
 | Phase | Label | Number | Explanation line |
 |---|---|---|---|
 | Blind menu | Pot | 0 | Tower cleared |
-| Draw, Swap, Commit, Build (after a Ride) | Riding on the tower | 52 | Rode from Hand 1 |
-| Draw … Build (fresh tower) | Pot | 0 | Tower cleared |
+| Draw, Swap, Commit, Build (after a Ride) | Riding on the tower | 52 | Rode from the last hand |
+| Draw … Build (fresh tower) | Pot | 0 | Says where the last Pot went: **Banked 164 into Safe** after a Bank, **The tower collapsed** after a collapse, **Tower cleared** at the start of a blind |
 | Score | Pot | 312 | 52 + 260 from this hand |
 | Shake | Pot (unsettled) | 312 | The tower is settling... |
 | Bank / Ride | **Bank now** | **336** | 312 − 1 broken card = 280 |
@@ -483,7 +492,7 @@ The Bank / Ride rows explain the payout: `floor(280 × (1 + 20%) × 1.0) = 336`.
 - A cash-register drawer that hangs below the right HUD panel.
 - Outside: red lacquer (`#B5352B` → `#7A1F19`), gold trim, a deep rounded bottom, two brass rivets and a small **CASHIER** plate across the top.
 - Inside: a cream tray with an inner shadow, holding:
-  - A **receipt strip** between two dashed lines: `SAFE 0 → 336 ✓ TARGET` (dark brown pixel font).
+  - A **receipt strip** between two dashed lines: `SAFE 0 » 336  TARGET MET` (dark brown pixel font).
   - Two chunky **register keys** side by side:
     - Gold key: **BANK** / **336**.
     - Red key: **RIDE** / **build higher**.
@@ -495,7 +504,7 @@ The Bank / Ride rows explain the payout: `floor(280 × (1 + 20%) × 1.0) = 336`.
 
 **States**
 - **Tower full:** the Ride key is greyed out and its second line reads **"Tower full"**, and the receipt reads **"Tower full — Bank to continue"**.
-- **Target not met after this Bank:** the receipt shows `SAFE 0 → 100 / 150` with no tick.
+- **Target not met after this Bank:** the receipt shows `SAFE 0 » 100 / 150` with no TARGET MET.
 
 **Animation (Track C5):** Bank = drawer bell "ding", chips fly from the Pot sign to the Safe bar and the Run Score, then the drawer closes. Ride = the drawer closes and the tower ladder bulbs pulse once.
 
@@ -534,7 +543,7 @@ Lv 1  *  +10%            *                       *                       o
 | **Shake** | Confirmed levels lit, the next one **flickers**, label reads **"settling..."** |
 | Bank / Ride | Final levels (2 in the example), label **Level 2 / +20% height** |
 | Collapse | All dots go dark, one after another, top to bottom |
-| Bank (tower cleared), blind menu, results | All dark, the ladder dims |
+| Bank (tower cleared), blind menu, results | All dark |
 
 ---
 
@@ -656,7 +665,7 @@ Raised buttons centred under the hand. Only the ones that apply are shown:
 
 ## 10. Full-screen panels
 
-All use the arched panel frame (§2.3) over a dark see-through backdrop.
+All use the arched panel frame (§2.3). **They slide up from the bottom of the screen and rest on its bottom edge, between the left and right HUD. Nothing is darkened behind them: the rest of the HUD stays fully visible** (decided 2026-11-17 after play-testing H7). Run Info and Options keep an invisible click-blocker so the table cannot be clicked behind them; none of the panels pause the game.
 
 ### 10.1 Blind menu (before every blind)
 - Title **Ante 1 / 4** (gold Cinzel Decorative, glowing).
@@ -666,7 +675,7 @@ All use the arched panel frame (§2.3) over a dark see-through backdrop.
   - A big casino chip in the blind's colour with the target inside (**150**, **225**, **300** at Ante 1).
   - "Score at least 150", then **Reward ×1.2**.
   - Current blind: **Select** (gold) and **Skip · repair 1 crack** (navy) buttons. If the glass is whole, Skip reads "Skip (Glass is whole)".
-  - Upcoming blinds are dimmed (75%) with a note: "Can be skipped" or "No skip · win repairs 1 crack" (Boss).
+  - Upcoming blinds stay fully bright (no dimming anywhere) with a note: "Can be skipped" or "No skip · win repairs 1 crack" (Boss).
 - Animation (C6): slides up from the bottom.
 
 ### 10.2 Continue / Leave (after a Bank that reaches the target with hands left)
@@ -679,8 +688,8 @@ All use the arched panel frame (§2.3) over a dark see-through backdrop.
 - Small label with the blind name, then **Won!** (gold, glowing) or **Failed** (salmon).
 - **366 / 150**
 - "Banked 336 · Left the table +30"
-- **Reward ×1.0 → ×1.2** (on a win), or the glass crack (on a fail).
-- Button **Next blind**.
+- **Reward ×1.0 » ×1.2** (on a win), or the glass crack (on a fail).
+- Footer **Next blind...**: the game moves on by itself after `blindEndPauseSeconds` (decided 2026-11-17; a Next blind button would need the conductor to wait for a click).
 
 ### 10.4 Run end
 - **Run cleared** or **Glass shattered**.
@@ -690,7 +699,7 @@ All use the arched panel frame (§2.3) over a dark see-through backdrop.
 
 ### 10.5 Run Info
 - Title **Run Info**.
-- Section **Poker hands**: one row per hand, with the building name (gold), poker name (white), a blue chip with base chips, **×**, and a red chip with mult (the table in §4).
+- Section **Poker hands**: one row per hand, with the building name (gold), poker name (white), a dark chip with base chips (same colour as the plaque), **×**, and a red chip with mult (the table in §4). Read from the scorer's table, so it always matches the real scoring.
 - A note: "Cards add chips too: 2-10 their number, J/Q/K 10, Ace 11. Kickers add nothing."
 - Button **Back**.
 - Later, it can also list the three blinds of this ante and the discard pile.
@@ -735,42 +744,40 @@ There are five scores. Points flow in one direction:
 
 ## 12. Phase by phase
 
-Brightness key: **On** = full, **Dim** = about 70% (panels) or 50–60% (plaque). Dimmed numbers must still be readable.
+Nothing in the HUD dims: every panel stays fully bright in every phase. The notes below say what each area shows.
 
 ### Blind menu
 - Blind menu panel open (§10.1). Everything behind it is dimmed by the backdrop.
-- Left HUD dim, showing the new Ante / Blind values. Right HUD dim, Pot 0. Plaque hidden. Ladder dim.
+- Left HUD shows the new Ante / Blind values. Right HUD shows Pot 0. Plaque hidden. Ladder dark.
 
 ### Draw
 - Banner **Hand 2**. Instruction: "Dealing your hand..."
 - Cards fly in one by one from the deck (B3) until there are 8.
-- Hand area **On**. Left and right HUD dim. Plaque dim with "Your hand".
-- Turn Score back to **–**. If the player rode, the Pot sign shows **Riding on the tower 52 / Rode from Hand 1** and the tower tag shows ◎ 52.
+- Plaque shows "Your hand".
+- Turn Score back to **–**. If the player rode, the Pot sign shows **Riding on the tower 52 / Rode from the last hand** and the tower tag shows ◎ 52.
 
 ### Swap
 - Instruction: "Swap: pick up to 3 cards, then click the deck."
 - Picked cards lift with a blue ring. The deck glows blue once something is picked.
 - Clicking the deck exchanges them. Swap pips go dark and the deck count drops.
-- Hand area **On**. Others dim. **Done swapping** button shown.
+- **Done swapping** button shown.
 
 ### Commit
 - Instruction: "Pick 1-5 cards for your poker hand" / "Play hand to commit 5 cards".
 - Picked cards lift with a gold ring. The **hand plaque updates live** (name, building name, base + cards × mult).
-- Hand area and left HUD **On**. Plaque **On**. **Play hand** shown (greyed with 0 cards).
+- **Play hand** shown (greyed with 0 cards).
 - If the commit is refused, the reason appears in the instruction line and no hand is spent.
 - On accept, one Hands pip goes dark.
 
 ### Build
 - Committed cards stay in the top row. The rest of the hand drops to a smaller, dimmed row (§9.4).
 - Instruction: "Place your cards: 3 left". Snap markers on the tower (green = where it will land).
-- Plaque shows the locked hand (85%). **Undo** button shown.
-- Hand area **On**, the others dim.
+- Plaque shows the locked hand. **Undo** button shown.
 
 ### Score
-- Plaque **On**: base chip → card chips → mult → **= 260**.
+- Plaque: base chip → card chips → mult → **= 260**.
 - Turn Score shows **260**, and **+260** floats away to the Pot.
 - Pot: **Pot 312 / 52 + 260 from this hand**.
-- Left and right HUD **On**. Hand area dim.
 
 ### Shake
 - Banner **Hand 2 complete**. Instruction: "The tower shakes!"
@@ -778,16 +785,15 @@ Brightness key: **On** = full, **Dim** = about 70% (panels) or 50–60% (plaque)
 - Breakdown: **Breaks −10% each**, **Collapse lose all**.
 - Broken strip: icons pop in and flicker as cards break, and a broken card lies on the table.
 - Ladder: the next level flickers, "settling...".
-- Right HUD **On**, the others dim.
 
 ### Bank / Ride
-- Right HUD **On** with a gold glow. Left HUD **On** (so Safe and Run Score sit side by side with the decision).
+- Right HUD gets a gold glow around its frame.
 - Pot sign: **Bank now 336 / 312 − 1 broken card = 280**.
 - Broken strip: 1 cracked card, **−10%**.
 - Breakdown: **Raw pot 280**, **Height (2 levels) +20%**, **Reward ×1.0**.
 - Safe bar shows the striped preview to 336.
 - Ladder: **Level 2 / +20% height**.
-- **Cashier drawer slides out**: receipt `SAFE 0 → 336 ✓ TARGET`, keys **BANK 336** and **RIDE**.
+- **Cashier drawer slides out**: receipt `SAFE 0 » 336  TARGET MET`, keys **BANK 336** and **RIDE**.
 - Instruction (gold): "Bank the pot to make it safe, or Ride and build higher".
 - Not shown after the last hand: that hand Banks automatically.
 
@@ -845,13 +851,15 @@ Moving and reskinning needs no code (every text is its own object and every word
 | Base chips vs card chips | `ScoreManager.BaseChips`, `CurrentCardChips`, `CurrentMult` | **Done.** `CurrentCardChips` counts up during the reveal. `HudView` has optional `baseChipsText` / `cardChipsText` fields |
 | Live preview in Commit | `Commit.PreviewScore` (`baseChips`, `cardChips`, `chips`, `mult`, `finalScore`) | **Done.** The scorer works it out on every pick, using the same code as the real score. It stays up through Build as the locked hand. Bonus effects are not in the preview (none exist yet) |
 | Pot explanation lines ("52 + 260", "312 − 1 broken = 280") | Old and new Pot from the `PotChanged` event | The HUD shows the two numbers the event gives; it never subtracts |
-| "Rode from Hand 1" | **New:** the hand number of the last Ride | Not tracked today. Could simply read "Rode from the last hand" instead |
-| Blind result "Reward ×1.0 → ×1.2" | **New:** the reward multiplier before the win | Not kept today |
+| "Rode from the last hand" | Phase and `PotChips` | **Decided:** the line reads "Rode from the last hand"; no hand number is tracked |
+| Blind result "Reward ×1.0 » ×1.2" | `RewardMultiplierBeforeLastWin` → `RewardMultiplier` | **Done (H1)** |
 | Hands pips | `HandsLeft`, `HandsPerBlind` (already exist) | Read `HandsLeft`, so the pip goes dark the moment Play Hand is accepted |
 | Swap pips | `SwapManager.SwapsLeft` | |
 | Ladder (§6) | `StandingLevels` (already exists) | Max levels = 4 (see §14) |
-| Broken strip (§5.4) | `ShakeResult.BrokenCount`, `breakPercent` (already exist) | Combined penalty for N breaks must come from the core, not be computed in the HUD |
-| Safe-after-Bank preview and receipt | **New:** `GameFlowController` should expose `SafeAfterBank` | The HUD must not add Safe + BankQuote itself |
+| Broken strip (§5.4) | `LastShake.BrokenCount`, `LastShakeLossPercent` (10, 19, 27.1…) | **Done (H1).** Breaks multiply; the HUD never works it out |
+| Safe-after-Bank preview and receipt | `SafeAfterBank`, `BankReachesTarget` (the tick) | **Done (H1)** |
+| "+N over" tag | `PointsOverTarget` | **Done (H1)** |
+| Height breakdown row "+20%" | `HeightBonusPercent` | **Done (H1).** `HudView` used to multiply this itself; it now reads it |
 | Bank breakdown "Raw pot" | `PotChips` (already exists) | |
 | Blind plaque reward | The blind's reward factor from config | |
 | Blind number 1/3 | `CurrentBlind` | |

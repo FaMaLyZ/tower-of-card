@@ -31,7 +31,7 @@ public enum RunOutcome
 /// or ends the run. It never changes a phase and never touches the table.
 public class RunState
 {
-    const int BlindsPerAnte = 3;
+    public const int BlindsPerAnte = 3;
 
     public int AntesPerRun { get; }
     public GlassLives Glass { get; }
@@ -49,6 +49,9 @@ public class RunState
 
     /// Multiplies future Banks. Starts at x1; each won blind multiplies it by that blind's reward.
     public decimal RewardMultiplier { get; private set; } = 1m;
+
+    /// The reward multiplier just before the last won blind applied its reward (for "x1.0 -> x1.2").
+    public decimal RewardMultiplierBeforeLastWin { get; private set; } = 1m;
 
     public RunOutcome Outcome { get; private set; } = RunOutcome.Playing;
     public bool IsOver => Outcome != RunOutcome.Playing;
@@ -147,6 +150,7 @@ public class RunState
 
     void ApplyBlindReward(int rewardPercent)
     {
+        RewardMultiplierBeforeLastWin = RewardMultiplier;
         RewardMultiplier *= PercentMath.ToRate(rewardPercent);
     }
 

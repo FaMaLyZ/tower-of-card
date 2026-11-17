@@ -37,6 +37,9 @@ public class CommitManager
     /// Why Play Hand would be refused right now ("" = the commit is fine).
     public string Problem { get; private set; } = "";
 
+    /// How many hand cards are picked for the commit right now.
+    public int SelectedCount { get; private set; }
+
     // ---------- Before Play Hand ----------
 
     /// Works out the hand name and the problem (if any) for the cards selected right now.
@@ -45,6 +48,7 @@ public class CommitManager
     {
         List<CardInstance> selected = hand.GetSelectedCards();
 
+        SelectedCount = selected.Count;
         List<CardData> data = GetCardData(selected);
         Preview = selected.Count > 0 ? PokerHandEvaluator.Evaluate(data) : null;
         PreviewScore = selected.Count > 0 && scorer != null ? scorer.PreviewHand(data) : null;
@@ -109,6 +113,7 @@ public class CommitManager
         Preview = null;
         PreviewScore = null;
         Problem = "";
+        SelectedCount = 0;
     }
 
     static List<CardData> GetCardData(List<CardInstance> cards)

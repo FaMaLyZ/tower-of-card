@@ -261,4 +261,29 @@ public class RunStateTests
         Assert.AreEqual(BlindRecord.NotPlayed, run.GetRecord(BlindKind.Small));
         Assert.AreEqual(BlindRecord.NotPlayed, run.GetRecord(BlindKind.Big));
     }
+
+    [Test]
+    public void RemembersTheRewardBeforeTheLastWin()
+    {
+        RunState run = MakeRun();
+        Assert.AreEqual(1m, run.RewardMultiplierBeforeLastWin);
+
+        WinBlind(run, 120);
+        Assert.AreEqual(1m, run.RewardMultiplierBeforeLastWin);
+        Assert.AreEqual(1.2m, run.RewardMultiplier);
+
+        WinBlind(run, 140);
+        Assert.AreEqual(1.2m, run.RewardMultiplierBeforeLastWin);
+        Assert.AreEqual(1.68m, run.RewardMultiplier);
+    }
+
+    [Test]
+    public void AFailDoesNotChangeTheRewardBeforeTheLastWin()
+    {
+        RunState run = MakeRun();
+        WinBlind(run, 120);
+        FailBlind(run);
+
+        Assert.AreEqual(1m, run.RewardMultiplierBeforeLastWin);
+    }
 }

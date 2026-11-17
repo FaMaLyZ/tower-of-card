@@ -293,10 +293,34 @@ Agreed order after A6 (2026-11-16). The [Master Plan](Master%20Plan%20Real.md) s
 | Order | Work | Why here |
 |---|---|---|
 | 1 | Revise this plan | Done (revision 2). |
-| 2 | **Track B** (B1–B5), **C3** break particles, **C4** collapse camera shake | They animate cards and the camera, not the HUD, so a HUD change cannot break them. |
-| 3 | **HUD update**, planned and built with plain (instant) displays | The HUD-bound effects need to know which elements exist and where they sit. |
-| 4 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
+| 2 | **Track B** (B1–B5) | Done (2026-11-16). |
+| 3 | **HUD design** | Done: [HUD Design.md](HUD%20Design.md). Building names and the live Commit preview are already in the code. |
+| 4 | **C3** break particles, **C4** collapse camera shake | They animate the tower and the camera, not the HUD. Can be slotted in any time before step 6. |
+| 5 | **HUD rebuild** with plain placeholder art, area by area (H1–H7 below) | The HUD-bound effects need to know which elements exist and where they sit. |
+| 6 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
+| Alongside 5–6 | **Artist replaces placeholder art** | Brief: [HUD Art Assets.md](HUD%20Art%20Assets.md). Art drops into fixed slots, so it never blocks code work. |
 | Later | **C8** run intro | Needs the full run and a `RunIntro` step in the conductor. |
+
+### HUD rebuild steps (step 5)
+
+| # | Area | Contents |
+|---|---|---|
+| H1 | Missing game values | ✅ Done (2026-11-17): `SafeAfterBank`, `BankReachesTarget`, `PointsOverTarget`, `HeightBonusPercent`, `LastShakeLossPercent`, `RewardMultiplierBeforeLastWin` (HUD Design §13.2) |
+| H2 | Style setup | ✅ Done (2026-11-17): TMP font assets in `Assets/Fonts`, `HudTheme` asset (colours, fonts, dimming), 59 placeholder sprites in `Assets/Images/HUD` (menu: Tower of Cards > HUD > Make Missing Placeholders; never overwrites) |
+| H3 | Left HUD + hand plaque | ✅ Done (2026-11-17): `LeftHudView`, `HandPlaqueView`, `GlassStarsView`, `PipRow` (in `Assets/Scripts/Hud`). Old `ScoresPanel`, `RunText`, `GlassText` deleted. The plaque never dims |
+| H4 | Right HUD | ✅ Done (2026-11-17): `BlindPlaqueView`, `SafeBarView`, `PotSignView`, `BrokenStripView`, `BreakdownView`, `LadderView`, `RightHudView`. Old `TurnText`, `TotalScoreText`, `PotText` and the card-details `HintText` deleted. Hand centred at the bottom; deck moved to the bottom-right corner below the right HUD. Bank / Ride / Continue / Leave / main button sit left of the panel until H5 / H6 |
+| H5 | Centre + deck + buttons | ✅ Done (2026-11-17): instruction line and banner pills (`HudView`), `PotTagView`, `DeckHudView` (count badge, swap pips, blue glow, hover tooltip), Play hand / Done swapping and Undo buttons under the hand. Hand raised slightly to make room. Old `StateText`, `CardsText`, `DeckText`, `DiscardText`, `BannerText`, `EndTurnButton` deleted |
+| H6 | Cashier drawer | ✅ Done (2026-11-17): drawer under the right HUD (`BankRideView` rewired: receipt line, BANK / RIDE keys, "Tower full"). Appears instantly; the slide is C5. Old `BankButton` / `RideButton` deleted |
+| H7 | Full-screen panels | 🔶 Built 2026-11-17, waiting for play-test: Blind menu (`BlindMenuView`, upcoming blinds not dimmed), Continue / Leave (`ContinueLeaveView`), Blind result (`BlindResultView`, keeps the auto timer, no Next button), Run end (`RunEndView` texts inside the existing marquee art), Run Info (`RunInfoView`), Options mock-up (Back only). Run Info / Options use `HudPopup`: they block table clicks but do not pause. Panels slide up from the bottom (`PanelSlideJuice`) with no dark backdrop |
+| ~~H8~~ | ~~Panel focus~~ | Dropped 2026-11-17: no dimming anywhere in the HUD |
+
+**Rules for the rebuild:**
+- **Replace one area at a time, never the whole HUD at once.** Build the new area beside the old texts, play and check the numbers, then delete the old texts it replaces and commit. The game stays playable after every step.
+- **Code never depends on the art.** Each element is a prefab with fixed child names (for example `PotSign/Frame`, `PotSign/Label`, `PotSign/Number`, `PotSign/Line`). Scripts reference texts and roots, never a sprite, so the artist swaps the sprite in `Frame` and nothing else changes.
+- **Animations move a wrapper, not the art.** Effects tween a `Visual` child (the same rule as the hand cards), so new art inside it cannot break a tween.
+- **Placeholders use the final sizes** from [HUD Art Assets.md](HUD%20Art%20Assets.md), with stretchable sprites (9-slice), so swapping the art does not move the layout.
+- **Small views, not one big `HudView`:** for example `LeftHudView`, `HandPlaqueView`, `PotPanelView`, `CashierView`, `DeckHudView`, `LadderView`. `HudView` keeps the instruction line, banners and main buttons.
+- **Done when:** every juice component is off and a full run still shows every number correctly.
 
 Track B notes: B4 needs plain drag-to-reorder input (a `HandManager` reorder command) before any reorder effect. B3 is the first effect that holds `PresentationGate`, so it also adds the conductor's wait on the gate after a draw (the gate exists but nothing waits on it yet).
 
@@ -311,8 +335,8 @@ Effects listen to `GameEvents`. Each missing event is added by the step that fir
 | `ShakeResolved`, `PotChanged`, `PotBanked`, `TableLeft` | ✅ exists | C3, C5 | — |
 | `BlindOffered`, `BlindSkipped`, `BlindStarted`, `BlindWon`, `BlindFailed`, `RunEnded` | ✅ exists | C6 | — |
 | `GlassChanged` | ✅ exists | C7 | — |
-| `CardsDrawn(card IDs)` | ❌ missing: `HandChanged` gives the new list, not which cards came from the deck | B3, 6.2 | B3 |
-| `SwapRejected(reason)` | ❌ missing: a bad deck click is ignored silently | 6.2 | B5 |
+| `CardsDrawn(card IDs)` | ✅ exists (B3) | B3, 6.2 | B3 |
+| `SwapRejected(reason)` | ✅ exists (B5) | 6.2 | B5 |
 | `TowerCollapsed` | ❌ missing: `ShakeResolved.Collapsed` covers it until then | C4, C3 Pot shatter | C4 |
 | `HandCommitted(card IDs, hand)` | ❌ missing | C1 | C1 |
 | `HandScored(score result)` | ❌ missing: only `ScoreManager.OnScoreStep` / `OnTurnScored` | C2 | C2 |
@@ -345,6 +369,11 @@ Names are implementation suggestions. Combine small presentation helpers when th
 ---
 
 # Revision notes
+
+**Revision 3 (2026-11-17), after the HUD design.**
+- Track B and the HUD design marked done. Building names changed to Tent, Twin Tents, Tripod, Wall.
+- Implementation order now has the HUD rebuild steps (H1–H8), the replace-one-area-at-a-time rule, and the artist working alongside from [HUD Art Assets.md](HUD%20Art%20Assets.md).
+- `CardsDrawn` and `SwapRejected` marked as existing.
 
 **Revision 2 (2026-11-16), after A6.**
 - Swap is up to 3 cards in one deck click (built in A2), not one card at a time. Phase 2 and rule 2.2 rewritten.

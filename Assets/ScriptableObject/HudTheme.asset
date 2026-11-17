@@ -1,0 +1,46 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b7827a0bc8b7df74aac56eb4295c8308, type: 3}
+  m_Name: HudTheme
+  m_EditorClassIdentifier: Assembly-CSharp::HudTheme
+  titleFont: {fileID: 11400000, guid: fdaf7c6407b267449a592e4325056c7b, type: 2}
+  labelFont: {fileID: 11400000, guid: e335ae44bfef7fc4ebc09cafda4851fe, type: 2}
+  numberFont: {fileID: 11400000, guid: dc96f2195299c4d4080c75c6018f695a, type: 2}
+  numberBoldFont: {fileID: 11400000, guid: f1677866e404f6a4ab417622c1d07510, type: 2}
+  tableBackground: {r: 0.050980393, g: 0.047058824, b: 0.11372549, a: 1}
+  feltGlow: {r: 0.12156863, g: 0.2901961, b: 0.27450982, a: 1}
+  panelTop: {r: 0.13333334, g: 0.1254902, b: 0.24705882, a: 1}
+  panelBottom: {r: 0.09803922, g: 0.09019608, b: 0.1882353, a: 1}
+  wellFill: {r: 0.0627451, g: 0.05490196, b: 0.13333334, a: 1}
+  gold: {r: 0.8509804, g: 0.6431373, b: 0.25490198, a: 1}
+  goldLight: {r: 0.9490196, g: 0.8352941, b: 0.5411765, a: 1}
+  goldText: {r: 1, g: 0.8901961, b: 0.627451, a: 1}
+  cream: {r: 0.95686275, g: 0.9019608, b: 0.78431374, a: 1}
+  creamMuted: {r: 0.84705883, g: 0.76862746, b: 0.60784316, a: 1}
+  creamDim: {r: 0.7490196, g: 0.654902, b: 0.47843137, a: 1}
+  baseChips: {r: 0.10980392, g: 0.101960786, b: 0.2, a: 1}
+  cardChips: {r: 0.18431373, g: 0.43529412, b: 0.8392157, a: 1}
+  mult: {r: 0.84705883, g: 0.27058825, b: 0.18431373, a: 1}
+  plaqueTop: {r: 0.19215687, g: 0.28235295, b: 0.7411765, a: 1}
+  plaqueBottom: {r: 0.11372549, g: 0.16470589, b: 0.47058824, a: 1}
+  safe: {r: 0.49019608, g: 1, b: 0.7137255, a: 1}
+  safeDark: {r: 0.18431373, g: 0.6509804, b: 0.41568628, a: 1}
+  danger: {r: 1, g: 0.6117647, b: 0.56078434, a: 1}
+  glassWhole: {r: 0.84705883, g: 0.19607843, b: 0.16470589, a: 1}
+  glassCracked: {r: 0.2901961, g: 0.08235294, b: 0.07058824, a: 1}
+  swapSelection: {r: 0.35686275, g: 0.6117647, b: 1, a: 1}
+  commitSelection: {r: 1, g: 0.8117647, b: 0.3019608, a: 1}
+  smallBlind: {r: 0.18431373, g: 0.43529412, b: 0.8392157, a: 1}
+  bigBlind: {r: 0.78431374, g: 0.5647059, b: 0.18431373, a: 1}
+  bossBlind: {r: 0.78431374, g: 0.19607843, b: 0.16862746, a: 1}
+  dimmedPanelAlpha: 0.7
+  dimmedPlaqueAlpha: 0.5

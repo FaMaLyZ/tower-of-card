@@ -3,106 +3,61 @@ using UnityEngine;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
 
-/// The plain HUD: texts, the main button, Undo, and the end panel when the run is over.
+/// The centre of the HUD: the instruction line, the banner, the action buttons under the hand
+/// (Done swapping / Play hand, Undo), and the end panel when the run is over (HUD Design §7, §9.5).
+/// The other areas have their own views (LeftHudView, HandPlaqueView, the right HUD, DeckHudView).
 /// A view: it only reads the game and sends clicks to the conductor. Empty fields are skipped.
 public class HudView : MonoBehaviour
 {
     [Header("Game references")]
     public GameFlowController flow;
+    [Tooltip("Gives the placing tip shown in the Build phase")]
     public TowerPlacementInput placement;
-    public HandManager handManager;
-    public DeckManager deckManager;
     [FormerlySerializedAs("discardManager")]
     public SwapManager swapManager;
-    public ScoreManager scoreManager;
+    public HudTheme theme;
 
     [Header("Run end")]
     [FormerlySerializedAs("gameOverPanel")]
     public GameObject runEndPanel;
 
-    [Header("Turn info texts")]
-    public TMP_Text turnText;
-    public TMP_Text runText;
-    public TMP_Text cardsText;
-    public TMP_Text stateText;
-    public TMP_Text hintText;
-
-    [Header("Deck info")]
-    public TMP_Text deckText;
-    public TMP_Text discardText;
-    [FormerlySerializedAs("discardsLeftText")]
-    public TMP_Text swapsLeftText;
-
-    [Header("Score")]
-    public TMP_Text handNameText;
-    public TMP_Text chipsText;
-    [Tooltip("Optional: the hand type's chips alone (the plaque's dark chip)")]
-    public TMP_Text baseChipsText;
-    [Tooltip("Optional: chips from the scoring cards (the plaque's blue chip)")]
-    public TMP_Text cardChipsText;
-    public TMP_Text multText;
-    public TMP_Text turnScoreText;
-    public TMP_Text totalScoreText;
-
-    [Header("Pot")]
-    public TMP_Text potText;
+    [Header("Instruction line")]
+    [Tooltip("The pill behind the instruction; hidden when there is nothing to say")]
+    public GameObject instructionRoot;
+    [FormerlySerializedAs("stateText")]
+    public TMP_Text instructionText;
 
     [Header("Banner")]
+    [Tooltip("The pill behind the banner; shown and hidden with it")]
+    public GameObject bannerRoot;
     public TMP_Text bannerText;
 
     [Header("Buttons")]
     public Button endTurnButton;
     public Button undoButton;
 
-    [Header("Text formats")]
-    [Tooltip("{0} = rank, {1} = suit, {2} = weight")]
-    [TextArea(1, 4)]
-    public string cardDetailFormat = "Rank: {0}   Suit: {1}   Weight: {2}";
-    public bool showInstructionsWhenNoCard = true;
-    [Tooltip("{0} = hand number, {1} = hands per blind, {2} = Safe Points, {3} = target")]
-    public string turnFormat = "Hand {0} / {1}   Target {3:N0}";
-    public string cardsFormat = "Cards: {0} / {1}";
-    public string deckFormat = "Deck: {0}";
-    public string discardFormat = "Discard: {0}";
-    [Tooltip("{0} = shape name (House), {1} = poker name (Full House)")]
-    public string handNameFormat = "{0} <size=70%>({1})</size>";
-    public string chipsFormat = "Chips: {0:0}";
-    public string baseChipsFormat = "{0:0}";
-    public string cardChipsFormat = "{0:0}";
-    public string multFormat = "Mult: x{0:0.##}";
-    public string turnScoreFormat = "Turn score: {0:N0}";
-    public string totalScoreFormat = "Safe: {0:N0}";
-    [FormerlySerializedAs("discardsLeftFormat")]
-    public string swapsLeftFormat = "Swaps left: {0}";
-    public string bannerStartFormat = "Turn {0}";
-    public string bannerEndFormat = "Turn {0} complete";
-    public string blindWonLabel = "Blind won!";
-    public string blindFailedLabel = "Blind failed";
-    [Tooltip("{0} = blind (Small / Big / Boss), {1} = won / failed label, {2} = blind score, {3} = target")]
-    [TextArea(1, 3)]
-    public string blindResultFormat = "{0}: {1}\n{2:N0} / {3:N0}";
-    [Tooltip("{0} = the bonus")]
-    public string leaveBonusFormat = "\nLeft the table: +{0:N0}";
-    [Tooltip("{0} = Ante, {1} = Antes per run, {2} = blind, {3} = Run Total, {4} = reward multiplier, {5} = retry label")]
-    public string runFormat = "Ante {0} / {1}  {2} blind{5}   Run {3:N0}   Reward x{4:0.##}";
-    public string retryLabel = " (retry)";
-    public string runEndStateLabel = "Run over";
-    public string blindMenuStateLabel = "Choose your blind";
-    public string startingLabel = "Get ready...";
-    public string turnEndedLabel = "Turn ended";
-    public string potUnsettledFormat = "Pot: {0:N0} (unsettled)";
-    [Tooltip("{0} = Pot chips, {1} = what Bank pays, {2} = height bonus percent, {3} = standing levels")]
-    public string potSettledFormat = "Pot: {0:N0}\nBank now: {1:N0} (+{2}% height, {3} levels)";
-    [Tooltip("{0} = cards broken in the last shake, {1} = Pot percent lost to them")]
-    public string lastShakeFormat = "\nLast shake: {0} broken (-{1}% each)";
-    public string collapsedLabel = "\nThe tower collapsed: the Pot is lost";
-    public string bankOrRideStateLabel = "Bank the Pot, or Ride to keep building";
-    public string continueOrLeaveStateLabel = "Target reached! Continue, or Leave Table for a bonus";
-    public string doneSwappingLabel = "Done Swapping";
-    public string playHandLabel = "Play Hand";
-    public string swapStateFormat = "Swap: pick up to {0} cards, then click the deck";
-    public string commitStateLabel = "Press Play Hand";
-    public string buildStateFormat = "Place your cards: {0} left";
+    [Header("Instructions (HUD Design §7.1)")]
+    public string drawText = "Dealing your hand...";
+    [Tooltip("{0} = swaps left")]
+    public string swapFormat = "Swap: pick up to {0} cards, then click the deck";
+    [Tooltip("{0} = most cards a hand can use")]
+    public string commitNothingPickedFormat = "Pick 1-{0} cards for your poker hand";
+    [Tooltip("{0} = cards picked")]
+    public string commitReadyFormat = "Play hand to commit {0} cards";
+    public string commitReadyOneCard = "Play hand to commit 1 card";
+    [Tooltip("{0} = cards still to place, {1} = the placing tip")]
+    public string buildFormat = "Place your cards: {0} left\n<size=75%>{1}</size>";
+    public string scoreText = "Scoring...";
+    public string shakeText = "The tower shakes!";
+    public string bankOrRideText = "Bank the pot to make it safe, or Ride and build higher";
+
+    [Header("Banner texts")]
+    public string bannerStartFormat = "Hand {0}";
+    public string bannerEndFormat = "Hand {0} complete";
+
+    [Header("Button labels")]
+    public string doneSwappingLabel = "Done swapping";
+    public string playHandLabel = "Play hand";
 
     [Header("Deck click refused")]
     [Min(0f)] public float swapRejectSeconds = 2f;
@@ -110,6 +65,8 @@ public class HudView : MonoBehaviour
     public string swapNothingPickedText = "Pick the cards to swap first, then click the deck";
     public string swapNoneLeftText = "No swaps left this hand";
     public string swapTooManyText = "Too many cards picked for the swaps left";
+
+    enum Tone { Normal, Refusal, Decision }
 
     TMP_Text mainButtonLabel;
     bool isRunEndPanelOpen;
@@ -160,16 +117,13 @@ public class HudView : MonoBehaviour
     {
         if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
         if (placement == null) placement = FindAnyObjectByType<TowerPlacementInput>();
-        if (handManager == null) handManager = FindAnyObjectByType<HandManager>();
-        if (deckManager == null) deckManager = FindAnyObjectByType<DeckManager>();
         if (swapManager == null) swapManager = FindAnyObjectByType<SwapManager>();
-        if (scoreManager == null) scoreManager = FindAnyObjectByType<ScoreManager>();
     }
 
     // Texts must not block mouse clicks on the game (TowerPlacementInput ignores clicks over UI)
     void PreventTextsFromBlockingClicks()
     {
-        foreach (var t in new[] { turnText, runText, cardsText, stateText, hintText, bannerText, deckText, discardText, handNameText, chipsText, baseChipsText, cardChipsText, multText, turnScoreText, totalScoreText, swapsLeftText, potText })
+        foreach (var t in new[] { instructionText, bannerText })
             if (t != null) t.raycastTarget = false;
     }
 
@@ -185,12 +139,7 @@ public class HudView : MonoBehaviour
 
     void Update()
     {
-        RefreshTurnInfo();
-        RefreshHint();
-        RefreshDeckInfo();
-        RefreshScore();
-        RefreshPot();
-        RefreshSwapsLeft();
+        RefreshInstruction();
         RefreshBanner();
         RefreshMainButton();
         RefreshUndoButton();
@@ -201,103 +150,17 @@ public class HudView : MonoBehaviour
     //  REFRESH (every frame) - one method per part of the HUD
     // =====================================================================
 
-    void RefreshTurnInfo()
+    void RefreshInstruction()
     {
         if (!GameRunning) return;
 
-        SetText(turnText, string.Format(turnFormat, flow.HandNumber, flow.HandsPerBlind, flow.SafePoints, flow.Target));
-        SetText(runText, string.Format(runFormat, flow.AnteNumber, flow.AntesPerRun, flow.CurrentBlind,
-                                       flow.RunTotal, flow.RewardMultiplier, flow.IsRetry ? retryLabel : ""));
-        SetText(cardsText, string.Format(cardsFormat, flow.CardsPlacedThisHand, flow.Commit.CommittedCards.Count));
-        SetText(stateText, GetStateLabel());
-    }
+        string text = GetInstruction(out Tone tone);
+        bool visible = !string.IsNullOrEmpty(text);
+        if (instructionRoot != null) instructionRoot.SetActive(visible);
+        if (instructionText == null || !visible) return;
 
-    void RefreshDeckInfo()
-    {
-        if (deckManager == null) return;
-        SetText(deckText, string.Format(deckFormat, deckManager.DrawPileCount));
-        SetText(discardText, string.Format(discardFormat, deckManager.DiscardCount));
-    }
-
-    // Balatro-style score display: hand name, chips, mult, then the turn score
-    void RefreshScore()
-    {
-        if (scoreManager == null) return;
-
-        bool showHand = scoreManager.HasResult;
-        string handName = showHand
-            ? FormatHandName(scoreManager.HandShapeName, scoreManager.HandName)
-            : GetCommitHandName();
-
-        ShowText(handNameText, handName, handName != "");
-        if (showHand) ShowScoredChips();
-        else ShowPreviewChips(GetCommitPreviewScore());
-        ShowText(turnScoreText, string.Format(turnScoreFormat, scoreManager.TurnScore), showHand && !scoreManager.IsScoring);
-        SetText(totalScoreText, string.Format(totalScoreFormat, flow != null && flow.IsReady ? flow.SafePoints : 0));
-    }
-
-    // The hand being scored, counting up step by step
-    void ShowScoredChips()
-    {
-        ShowChips(scoreManager.BaseChips, scoreManager.CurrentCardChips, scoreManager.CurrentChips, scoreManager.CurrentMult, true);
-    }
-
-    // Commit: what the selected cards would score, updated on every pick. Build: the locked hand. (null = hide the chips)
-    void ShowPreviewChips(ScoreContext preview)
-    {
-        if (preview == null) ShowChips(0f, 0f, 0f, 0f, false);
-        else ShowChips(preview.baseChips, preview.cardChips, preview.chips, preview.mult, true);
-    }
-
-    void ShowChips(float baseChips, float cardChips, float totalChips, float mult, bool visible)
-    {
-        ShowText(baseChipsText, string.Format(baseChipsFormat, baseChips), visible);
-        ShowText(cardChipsText, string.Format(cardChipsFormat, cardChips), visible);
-        ShowText(chipsText, string.Format(chipsFormat, totalChips), visible);
-        ShowText(multText, string.Format(multFormat, mult), visible);
-    }
-
-    ScoreContext GetCommitPreviewScore()
-    {
-        if (!GameRunning) return null;
-        if (flow.Phase != GamePhase.Commit && flow.Phase != GamePhase.Build) return null;
-        return flow.Commit.PreviewScore;
-    }
-
-    // The Pot: raw chips while a shake can still change it, then the Bank quote with its breakdown
-    void RefreshPot()
-    {
-        if (potText == null || !GameRunning) return;
-        potText.text = BuildPotText();
-    }
-
-    string BuildPotText()
-    {
-        if (!flow.IsPotSettled) return string.Format(potUnsettledFormat, flow.PotChips);
-
-        int heightBonusPercent = flow.config.heightPercent * flow.StandingLevels;
-        string text = string.Format(potSettledFormat, flow.PotChips, flow.BankQuote, heightBonusPercent, flow.StandingLevels);
-
-        ShakeResult shake = flow.LastShake;
-        if (shake == null) return text;
-        if (shake.Collapsed) return text + collapsedLabel;
-        return text + string.Format(lastShakeFormat, shake.BrokenCount, flow.config.breakPercent);
-    }
-
-    void RefreshSwapsLeft()
-    {
-        if (swapManager == null) return;
-        SetText(swapsLeftText, string.Format(swapsLeftFormat, swapManager.SwapsLeft));
-    }
-
-    // The hint text shows the details of the card under the mouse (or the selected card)
-    void RefreshHint()
-    {
-        if (hintText == null) return;
-
-        CardData card = handManager != null ? handManager.InspectedCard : null;
-        if (card != null) hintText.text = string.Format(cardDetailFormat, card.rank, card.suit, card.Weight);
-        else hintText.text = showInstructionsWhenNoCard && placement != null ? placement.HintText : "";
+        instructionText.text = text;
+        instructionText.color = GetToneColor(tone);
     }
 
     void RefreshBanner()
@@ -305,19 +168,23 @@ public class HudView : MonoBehaviour
         if (bannerText == null) return;
 
         string text = GetBannerText();
-        ShowText(bannerText, text, !string.IsNullOrEmpty(text));
+        bool visible = !string.IsNullOrEmpty(text);
+        if (bannerRoot != null) bannerRoot.SetActive(visible);
+        else bannerText.gameObject.SetActive(visible);
+        bannerText.text = text;
     }
 
-    // One button, two jobs: "Done Swapping" in the Swap phase, "Play Hand" in the Commit phase
+    // One button, two jobs: "Done swapping" in the Swap phase, "Play hand" in the Commit phase.
+    // Shown only in those two phases, so it never sits next to Undo or the Bank / Ride choice.
     void RefreshMainButton()
     {
         if (endTurnButton == null) return;
 
-        bool show = GameRunning && !IsBetweenBlinds();
-        endTurnButton.gameObject.SetActive(show);
-        if (!show) return;
+        bool swapping = GameRunning && flow.Phase == GamePhase.Swap;
+        bool committing = GameRunning && flow.Phase == GamePhase.Commit;
+        endTurnButton.gameObject.SetActive(swapping || committing);
+        if (!swapping && !committing) return;
 
-        bool swapping = flow.Phase == GamePhase.Swap;
         endTurnButton.interactable = swapping ? flow.IsSwapping : flow.CanPlayHand;
         if (mainButtonLabel != null) mainButtonLabel.text = swapping ? doneSwappingLabel : playHandLabel;
     }
@@ -369,62 +236,62 @@ public class HudView : MonoBehaviour
     }
 
     // =====================================================================
-    //  HELPERS
+    //  INSTRUCTION TEXT
     // =====================================================================
 
-    string GetStateLabel()
+    // What to do now, or why the last action was refused
+    string GetInstruction(out Tone tone)
     {
-        if (Time.time < swapRejectHideTime) return swapRejectText;
+        tone = Tone.Normal;
+        if (Time.time < swapRejectHideTime)
+        {
+            tone = Tone.Refusal;
+            return swapRejectText;
+        }
 
         switch (flow.Phase)
         {
-            case GamePhase.BlindEnd: return GetBlindResultLabel();
-            case GamePhase.RunEnd: return runEndStateLabel;
-            case GamePhase.BlindMenu: return blindMenuStateLabel;
-            case GamePhase.Draw:   return startingLabel;
-            case GamePhase.Swap:   return string.Format(swapStateFormat, swapManager != null ? swapManager.SwapsLeft : 0);
-            case GamePhase.Commit: return flow.Commit.Problem != "" ? flow.Commit.Problem : commitStateLabel;
-            case GamePhase.Build:  return string.Format(buildStateFormat, flow.Commit.UnplacedCount);
-            case GamePhase.BankOrRide: return bankOrRideStateLabel;
-            case GamePhase.ContinueOrLeave: return continueOrLeaveStateLabel;
-            default:               return turnEndedLabel;
+            case GamePhase.Draw:       return drawText;
+            case GamePhase.Swap:       return string.Format(swapFormat, swapManager != null ? swapManager.SwapsLeft : 0);
+            case GamePhase.Commit:     return GetCommitInstruction(out tone);
+            case GamePhase.Build:      return string.Format(buildFormat, flow.Commit.UnplacedCount, placement != null ? placement.HintText : "");
+            case GamePhase.Score:      return scoreText;
+            case GamePhase.Shake:      return shakeText;
+            case GamePhase.BankOrRide: tone = Tone.Decision; return bankOrRideText;
+            default:                   return "";     // the full-screen panels (blind menu, result, Continue / Leave, run end) say it
         }
     }
 
-    // The hand the selected (or committed) cards make, while there is no scored result to show yet
-    string GetCommitHandName()
+    // Nothing picked: what to do. Picked but refused: why (in salmon). Picked and fine: how many will be played.
+    string GetCommitInstruction(out Tone tone)
     {
-        if (!GameRunning || flow.Commit.Preview == null) return "";
-        if (flow.Phase != GamePhase.Commit && flow.Phase != GamePhase.Build) return "";
-        PokerHandResult preview = flow.Commit.Preview;
-        return FormatHandName(preview.shapeName, preview.displayName);
+        tone = Tone.Normal;
+        int picked = flow.Commit.SelectedCount;
+        int maxCards = flow.config != null ? flow.config.maxCommitCards : 5;
+
+        if (picked == 0) return string.Format(commitNothingPickedFormat, maxCards);
+        if (flow.Commit.Problem != "")
+        {
+            tone = Tone.Refusal;
+            return flow.Commit.Problem;
+        }
+        return picked == 1 ? commitReadyOneCard : string.Format(commitReadyFormat, picked);
     }
 
-    string FormatHandName(string shapeName, string pokerName)
+    Color GetToneColor(Tone tone)
     {
-        if (string.IsNullOrEmpty(pokerName)) return "";
-        if (string.IsNullOrEmpty(shapeName)) return pokerName;
-        return string.Format(handNameFormat, shapeName, pokerName);
+        if (theme == null) return Color.white;
+        switch (tone)
+        {
+            case Tone.Refusal:  return theme.danger;
+            case Tone.Decision: return theme.goldText;
+            default:            return theme.cream;
+        }
     }
 
-    // Menu, result banner and end screen: no hand is being played, so the Play Hand button hides
-    bool IsBetweenBlinds()
-    {
-        return flow.Phase == GamePhase.BlindMenu || flow.Phase == GamePhase.BlindEnd || flow.Phase == GamePhase.RunEnd;
-    }
-
-    string GetBlindResultLabel()
-    {
-        return flow.LastBlindResult == BlindResult.Won ? blindWonLabel : blindFailedLabel;
-    }
-
-    // "Small: Blind won!  160 / 150" (+ the leave bonus), shown between blinds
-    string BuildBlindResultBanner()
-    {
-        string text = string.Format(blindResultFormat, flow.LastBlindKind, GetBlindResultLabel(), flow.SafePoints, flow.Target);
-        if (flow.LeftTable) text += string.Format(leaveBonusFormat, flow.LeaveBonusPaid);
-        return text;
-    }
+    // =====================================================================
+    //  BANNER TEXT
+    // =====================================================================
 
     string GetBannerText()
     {
@@ -432,23 +299,9 @@ public class HudView : MonoBehaviour
 
         switch (flow.Phase)
         {
-            case GamePhase.BlindEnd: return BuildBlindResultBanner();
             case GamePhase.Draw:   return string.Format(bannerStartFormat, flow.HandNumber);
-            case GamePhase.Score:
             case GamePhase.Shake:  return string.Format(bannerEndFormat, flow.HandNumber);
             default:               return "";    // the menu, end panel and choice buttons speak for themselves
         }
-    }
-
-    static void SetText(TMP_Text text, string value)
-    {
-        if (text != null) text.text = value;
-    }
-
-    static void ShowText(TMP_Text text, string value, bool visible)
-    {
-        if (text == null) return;
-        text.gameObject.SetActive(visible);
-        text.text = value;
     }
 }

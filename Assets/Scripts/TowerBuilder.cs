@@ -78,6 +78,21 @@ public class TowerBuilder : MonoBehaviour
     // The point the camera looks at when there is no tower (game start, or after the tower is gone)
     public Vector3 StartFocusPoint => new Vector3(0, groundY + 1f, 0);
 
+    /// Above the middle of the tower, at its highest card (for HUD tags that float over the tower).
+    /// The start point when there are no cards.
+    public Vector3 TopPoint
+    {
+        get
+        {
+            float top = float.MinValue;
+            foreach (var c in cards.Values)
+                if (c != null) top = Mathf.Max(top, c.transform.position.y);
+
+            Vector3 middle = FocusPoint;
+            return top > float.MinValue ? new Vector3(middle.x, top, middle.z) : StartFocusPoint;
+        }
+    }
+
     // Middle of the tower, or the start point when there are no cards
     public Vector3 FocusPoint
     {

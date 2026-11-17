@@ -51,6 +51,9 @@ public class ScoreContext
     public long finalScore;
     public readonly List<ScoreStep> steps = new List<ScoreStep>();
 
+    /// Played cards that are not part of the poker hand. Like real poker kickers, they add no chips.
+    public int KickerCount => cards != null && result != null ? cards.Count - result.scoringIndices.Count : 0;
+
     public void AddChips(float amount, string label, CardData data = null, Card card = null)
     {
         chips += amount;
