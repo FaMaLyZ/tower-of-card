@@ -134,7 +134,7 @@ public class PotSignView : MonoBehaviour
     void Show(string labelText, long value, string lineText)
     {
         if (label != null) label.text = labelText;
-        if (number != null) number.text = string.Format(numberFormat, value);
+        NumberRoller.Show(number, value, numberFormat);       // counts if the number has a NumberRoller
         if (line != null) line.text = lineText;
     }
 }

@@ -43,11 +43,11 @@ public class SafeBarView : MonoBehaviour
         long target = flow.GetBlindTarget(flow.CurrentBlind);
         long safe = flow.Phase == GamePhase.BlindMenu ? 0 : flow.SafePoints;     // the next blind starts at 0
 
+        // Through NumberRoller: with one on the amount the number counts (and the bar fills along with it)
         bool previewing = flow.IsChoosingBankOrRide;
-        SetText(amount, previewing
-            ? string.Format(previewAmountFormat, safe, flow.SafeAfterBank, target)
-            : string.Format(amountFormat, safe, target));
-        SetWidth(fill, Share(safe, target));
+        if (previewing) NumberRoller.Show(amount, safe, previewAmountFormat, flow.SafeAfterBank, target);
+        else NumberRoller.Show(amount, safe, amountFormat, target);
+        SetWidth(fill, Share(NumberRoller.Shown(amount, safe), target));
         if (fillImage != null) fillImage.sprite = flow.IsTargetReached && safe > 0 ? targetMetSprite : belowTargetSprite;
 
         if (previewFill != null)
@@ -79,8 +79,4 @@ public class SafeBarView : MonoBehaviour
         bar.offsetMax = Vector2.zero;
     }
 
-    static void SetText(TMP_Text text, string value)
-    {
-        if (text != null) text.text = value;
-    }
 }

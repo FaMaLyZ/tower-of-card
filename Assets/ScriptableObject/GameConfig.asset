@@ -30,4 +30,6 @@ MonoBehaviour:
   shakeSpinLimit: 0.1
   shakeMaxSeconds: 6
   maxPresentationWait: 3
+  maxScoreRevealWait: 8
+  blindEndPauseSeconds: 2.5
   drawPauseSeconds: 2

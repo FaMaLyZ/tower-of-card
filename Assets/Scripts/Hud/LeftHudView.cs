@@ -65,7 +65,7 @@ public class LeftHudView : MonoBehaviour
 
     void RefreshRunScore()
     {
-        SetText(runScoreNumber, string.Format(runScoreFormat, flow.RunTotal));
+        NumberRoller.Show(runScoreNumber, flow.RunTotal, runScoreFormat);   // counts if it has a NumberRoller
     }
 
     // "–" until the hand is scored, then the score stays through Shake and Bank / Ride

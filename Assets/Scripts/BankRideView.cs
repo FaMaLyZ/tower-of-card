@@ -4,7 +4,8 @@ using UnityEngine.UI;
 
 /// The Bank / Ride choice after a shake the tower survived: the cashier drawer under the right HUD
 /// (HUD Design §5.6), with a receipt line and two register keys.
-/// A view: shows the drawer and sends the click to the conductor. The slide-in is presentation (C5).
+/// A view: shows the drawer and sends the click to the conductor. With a DrawerSlideJuice on the drawer it drops
+/// out of the HUD and snaps back (C5); without one it simply appears.
 public class BankRideView : MonoBehaviour
 {
     [Header("Game references")]
@@ -50,11 +51,13 @@ public class BankRideView : MonoBehaviour
         RefreshReceipt();
     }
 
+    // The keys live inside the drawer, so they leave with it (they stay visible while it slides away)
     void ShowChoice(bool show)
     {
-        if (panel != null) panel.SetActive(show);
-        if (bankButton != null) bankButton.gameObject.SetActive(show);
-        if (rideButton != null) rideButton.gameObject.SetActive(show);
+        DrawerSlideJuice.Show(panel, show);
+        if (!show) return;
+        if (bankButton != null) bankButton.gameObject.SetActive(true);
+        if (rideButton != null) rideButton.gameObject.SetActive(true);
     }
 
     void RefreshKeys()

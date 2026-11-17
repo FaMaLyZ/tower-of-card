@@ -1312,6 +1312,7 @@ GameObject:
   - component: {fileID: 52412402}
   - component: {fileID: 52412404}
   - component: {fileID: 52412403}
+  - component: {fileID: 52412405}
   m_Layer: 5
   m_Name: Number
   m_TagString: Untagged
@@ -1438,6 +1439,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 52412401}
   m_CullTransparentMesh: 1
+--- !u!114 &52412405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 52412401}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14fa17fe38a4fb2489a7f3a3ca1611d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NumberRoller
+  rollSeconds: 0.6
+  punchSize: 0.35
+  punchSeconds: 0.3
 --- !u!1 &57438190
 GameObject:
   m_ObjectHideFlags: 0
@@ -3350,6 +3366,7 @@ GameObject:
   - component: {fileID: 146832607}
   - component: {fileID: 146832609}
   - component: {fileID: 146832608}
+  - component: {fileID: 146832610}
   m_Layer: 5
   m_Name: Number
   m_TagString: Untagged
@@ -3476,6 +3493,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 146832606}
   m_CullTransparentMesh: 1
+--- !u!114 &146832610
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 146832606}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14fa17fe38a4fb2489a7f3a3ca1611d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NumberRoller
+  rollSeconds: 0.6
+  punchSize: 0.35
+  punchSeconds: 0.3
 --- !u!1 &147485240
 GameObject:
   m_ObjectHideFlags: 0
@@ -3698,6 +3730,8 @@ MonoBehaviour:
   multBox: {fileID: 906730523}
   slam: {fileID: 1617238074}
   burst: {fileID: 1617238073}
+  floating: {fileID: 1617238075}
+  potNumber: {fileID: 52412405}
   punchSize: 0.25
   punchSeconds: 0.3
   scoringPunchSize: 0.5
@@ -8610,6 +8644,77 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 365064750}
   m_CullTransparentMesh: 1
+--- !u!1 &373856460
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 373856463}
+  - component: {fileID: 373856462}
+  - component: {fileID: 373856461}
+  m_Layer: 0
+  m_Name: BankJuice
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &373856461
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 373856460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a16c1689897bdb04c9194aba6e78c424, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TowerSweepJuice
+  sideSpeed: 6
+  upSpeed: 3.5
+  scatter: 1.5
+  gravity: 14
+  spinDegrees: 540
+  stagger: 0.25
+  seconds: 0.9
+  maxCards: 60
+--- !u!114 &373856462
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 373856460}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1edf9a97be2d564c9fb191c17f178bd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BankJuice
+  floating: {fileID: 1617238075}
+  potNumber: {fileID: 52412403}
+  safeAmount: {fileID: 1441360957}
+  runScore: {fileID: 146832610}
+  theme: {fileID: 11400000, guid: c85c3893b2c442d41bb3176b087a434f, type: 2}
+  pauseBeforeRunScore: 0.15
+--- !u!4 &373856463
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 373856460}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &379576866
 GameObject:
   m_ObjectHideFlags: 0
@@ -26914,6 +27019,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1299464469}
+  - component: {fileID: 1299464470}
   m_Layer: 5
   m_Name: CashierDrawer
   m_TagString: Untagged
@@ -26941,6 +27047,26 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 14}
   m_SizeDelta: {x: 340, y: 230}
   m_Pivot: {x: 0.5, y: 1}
+--- !u!114 &1299464470
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1299464468}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9d4d0d2878439f43ab4f947a051105d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DrawerSlideJuice
+  travel: 0
+  openSeconds: 0.7
+  swings: 4
+  swingSize: 0.2
+  pullPixels: 30
+  pullSeconds: 0.14
+  pullStretch: 0.06
+  snapSeconds: 0.16
 --- !u!1 &1306384929
 GameObject:
   m_ObjectHideFlags: 0
@@ -30497,6 +30623,7 @@ GameObject:
   - component: {fileID: 1441360954}
   - component: {fileID: 1441360956}
   - component: {fileID: 1441360955}
+  - component: {fileID: 1441360957}
   m_Layer: 5
   m_Name: Amount
   m_TagString: Untagged
@@ -30623,6 +30750,21 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1441360953}
   m_CullTransparentMesh: 1
+--- !u!114 &1441360957
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1441360953}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 14fa17fe38a4fb2489a7f3a3ca1611d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NumberRoller
+  rollSeconds: 0.6
+  punchSize: 0.35
+  punchSeconds: 0.3
 --- !u!1 &1442974006
 GameObject:
   m_ObjectHideFlags: 0
@@ -34397,6 +34539,7 @@ GameObject:
   - component: {fileID: 1617238072}
   - component: {fileID: 1617238073}
   - component: {fileID: 1617238074}
+  - component: {fileID: 1617238075}
   m_Layer: 0
   m_Name: HudFx
   m_TagString: Untagged
@@ -34474,6 +34617,33 @@ MonoBehaviour:
   cameraShaker: {fileID: 0}
   handJuice: {fileID: 0}
   deckJuice: {fileID: 0}
+--- !u!114 &1617238075
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1617238071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f932d88e175f19742a2f17d695b0e904, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::FloatingNumbers
+  fontSource: {fileID: 930814228}
+  poolSize: 16
+  popFontSize: 54
+  popRisePixels: 80
+  popSeconds: 0.75
+  popStartScale: 2
+  flyFontSize: 76
+  liftPixels: 70
+  liftSeconds: 0.22
+  flySeconds: 0.5
+  arcPixels: 180
+  landScale: 0.55
+  trailSparksPerSecond: 70
+  arrivalShards: 26
+  burst: {fileID: 1617238073}
 --- !u!1 &1628754917
 GameObject:
   m_ObjectHideFlags: 0
@@ -44849,3 +45019,4 @@ SceneRoots:
   - {fileID: 466649125}
   - {fileID: 2134393900}
   - {fileID: 232867041}
+  - {fileID: 373856463}

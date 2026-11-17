@@ -20,6 +20,7 @@ public class JuiceDebugPanel : MonoBehaviour
     HandPlaqueJuice plaque;
     HandJuice handJuice;
     DeckJuice deckJuice;
+    BankJuice bankJuice;
     CameraShaker cameraShaker;
     PotSignJuice potSign;
 
@@ -48,6 +49,7 @@ public class JuiceDebugPanel : MonoBehaviour
         cameraShaker = FindAnyObjectByType<CameraShaker>();
         handJuice = FindAnyObjectByType<HandJuice>();
         deckJuice = FindAnyObjectByType<DeckJuice>();
+        bankJuice = FindAnyObjectByType<BankJuice>();
         potSign = FindAnyObjectByType<PotSignJuice>();
     }
 
@@ -109,6 +111,8 @@ public class JuiceDebugPanel : MonoBehaviour
         GUILayout.EndHorizontal();
 
         if (plaque != null && GUILayout.Button("Slam at this drama")) plaque.DebugSlamAtDrama("Test Slam", drama, ReadScore());
+        if (plaque != null && GUILayout.Button("Score pops and flies to the Pot")) plaque.DebugScoreToPot(ReadScore());
+        if (bankJuice != null && GUILayout.Button("Bank flights: Pot to Safe to Run Score")) bankJuice.DebugFlights(ReadScore());
     }
 
     void DrawShakes()

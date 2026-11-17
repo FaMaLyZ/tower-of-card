@@ -7,7 +7,9 @@ using UnityEngine;
 ///   - While the hand is being scored, each chip box punches harder, wiggles and sheds a few fragments.
 ///   - Play hand: the hand name slams across the screen, then flies into the plaque.
 ///   - Scoring done: the score slams across the screen, then flies into the plaque's total.
-/// The game waits for the scoring and the score slam before the shake (it holds PresentationGate).
+///   - Each card's chips pop off it on the tower as it is counted ("+11"); bonus mult pops by the mult box.
+///   - Then "+260" lifts off the total and flies into the Pot sign, and the Pot counts up as it lands.
+/// The game waits for all of this before the shake (it holds PresentationGate).
 /// Put it on the HandPlaque object. Listen-only: delete it and the plaque shows the same numbers,
 /// and the shake starts straight away as before.
 public class HandPlaqueJuice : MonoBehaviour
@@ -32,6 +34,12 @@ public class HandPlaqueJuice : MonoBehaviour
     [Header("Screen slams")]
     public ScreenSlam slam;
     public UiShardBurst burst;
+
+    [Header("Score into the Pot")]
+    [Tooltip("The floating '+11' pops and the '+260' that flies to the Pot")]
+    public FloatingNumbers floating;
+    [Tooltip("The Pot sign's number: held at the old Pot until the '+260' lands, then counts up")]
+    public NumberRoller potNumber;
 
     [Header("Punch when a text changes")]
     public float punchSize = 0.25f;
@@ -74,6 +82,7 @@ public class HandPlaqueJuice : MonoBehaviour
         if (scoreManager == null) scoreManager = FindAnyObjectByType<ScoreManager>();
         if (slam == null) slam = FindAnyObjectByType<ScreenSlam>();
         if (burst == null) burst = FindAnyObjectByType<UiShardBurst>();
+        if (floating == null) floating = FindAnyObjectByType<FloatingNumbers>();
 
         Watch(buildingName, null, false);
         Watch(pokerName, null, false);
@@ -95,6 +104,7 @@ public class HandPlaqueJuice : MonoBehaviour
         GameEvents.HandCommitted += OnHandCommitted;
         GameEvents.PhaseChanged += OnPhaseChanged;
         if (scoreManager != null) scoreManager.OnTurnScored += OnTurnScored;
+        if (scoreManager != null) scoreManager.OnScoreStep += OnScoreStep;
     }
 
     void OnDisable()
@@ -102,7 +112,9 @@ public class HandPlaqueJuice : MonoBehaviour
         GameEvents.HandCommitted -= OnHandCommitted;
         GameEvents.PhaseChanged -= OnPhaseChanged;
         if (scoreManager != null) scoreManager.OnTurnScored -= OnTurnScored;
+        if (scoreManager != null) scoreManager.OnScoreStep -= OnScoreStep;
 
+        ReleasePot();
         ReleaseGate();
         foreach (Watched w in watched)
         {
@@ -125,9 +137,14 @@ public class HandPlaqueJuice : MonoBehaviour
     void OnPhaseChanged(GamePhase phase)
     {
         if (phase == GamePhase.Score && slam != null) HoldGate();
-        else if (phase != GamePhase.Score) ReleaseGate();
+        else if (phase != GamePhase.Score)
+        {
+            ReleasePot();                               // never leave the Pot showing an old number
+            ReleaseGate();
+        }
     }
 
+    // Counting done: the score slams in, then flies on into the Pot. The Pot keeps its old number until then.
     void OnTurnScored(ScoreContext score)
     {
         if (!holdingGate || slam == null || totalText == null)
@@ -135,9 +152,67 @@ public class HandPlaqueJuice : MonoBehaviour
             ReleaseGate();
             return;
         }
+        if (potNumber != null) potNumber.Hold();
+
         float drama = DramaOf(score.result);
-        SlamInto(string.Format("{0:N0}", score.finalScore), totalText, theme != null ? theme.mult : Color.red, drama, ReleaseGate);
+        SlamInto(string.Format("{0:N0}", score.finalScore), totalText, theme != null ? theme.mult : Color.red, drama,
+                 () => SendScoreToPot(score.finalScore));
     }
+
+    // ---------- Score into the Pot ----------
+
+    // "+260" lifts off the total and lands in the Pot sign; the Pot counts up, then the shake may start
+    void SendScoreToPot(long score)
+    {
+        if (floating == null || potNumber == null || totalText == null)
+        {
+            ReleasePot();
+            ReleaseGate();
+            return;
+        }
+
+        Color green = theme != null ? theme.safe : Color.green;
+        Color gold = theme != null ? theme.gold : Color.yellow;
+        floating.Fly(string.Format("+{0:N0}", score), MiddleOf(totalText.rectTransform), potNumber.transform as RectTransform,
+                     green, gold, () =>
+                     {
+                         ReleasePot();
+                         ReleaseGate();
+                     });
+    }
+
+    void ReleasePot()
+    {
+        if (potNumber != null) potNumber.Release();
+    }
+
+    // Each counted card's chips pop off that card on the tower; bonus mult pops by the mult box
+    void OnScoreStep(ScoreStep step)
+    {
+        if (floating == null) return;
+
+        if (step.chipsAdded > 0f)
+            floating.Pop(string.Format("+{0:0}", step.chipsAdded), WhereCardIs(step.card), theme != null ? theme.cardChips : Color.cyan);
+        if (step.multAdded != 0f && multBox != null)
+            floating.Pop(string.Format("+{0:0.##} Mult", step.multAdded), MiddleOf(multBox), theme != null ? theme.mult : Color.red);
+        if (step.multFactor != 1f && multBox != null)
+            floating.Pop(string.Format("x{0:0.##}", step.multFactor), MiddleOf(multBox), theme != null ? theme.mult : Color.red);
+    }
+
+    // The card on the tower, as a point on the screen (the HUD canvas covers the screen 1:1);
+    // a card that has gone (broken) pops by the card-chips box instead
+    Vector3 WhereCardIs(Card card)
+    {
+        Camera cam = Camera.main;
+        if (card != null && cam != null)
+        {
+            Vector3 screen = cam.WorldToScreenPoint(card.transform.position);
+            if (screen.z > 0f) return new Vector3(screen.x, screen.y, 0f);
+        }
+        return cardChipsBox != null ? MiddleOf(cardChipsBox) : transform.position;
+    }
+
+    static Vector3 MiddleOf(RectTransform rect) => rect.TransformPoint(rect.rect.center);
 
     // The real text hides while its big copy is on screen, then punches as the copy lands on it
     void SlamInto(string words, TMP_Text target, Color accent, float drama, System.Action afterLanding = null)
@@ -173,6 +248,16 @@ public class HandPlaqueJuice : MonoBehaviour
         Color gold = theme != null ? theme.goldLight : Color.yellow;
         Color red = theme != null ? theme.mult : Color.red;
         SlamInto(title, buildingName, gold, drama, () => SlamInto(string.Format("{0:N0}", score), totalText, red, drama));
+    }
+
+    /// "+11" pops by the card-chips box, and a "+score" flies from the total into the Pot (no Pot change)
+    public void DebugScoreToPot(long score)
+    {
+        if (floating == null || totalText == null || cardChipsBox == null) return;
+        floating.Pop("+11", MiddleOf(cardChipsBox), theme != null ? theme.cardChips : Color.cyan);
+        if (potNumber == null) return;
+        floating.Fly(string.Format("+{0:N0}", score), MiddleOf(totalText.rectTransform), potNumber.transform as RectTransform,
+                     theme != null ? theme.safe : Color.green, theme != null ? theme.gold : Color.yellow, potNumber.Punch);
     }
 
     /// What drama a hand gets, for the debug panel's table
