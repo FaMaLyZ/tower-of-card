@@ -157,11 +157,11 @@ Read the card's actual gameplay mass and chip value. This is separate from the b
 
 ## Category 6 — World / Tower
 
-### 6.1 Camera Shake on Collapse
+### 6.1 Camera Shake on Breaks and Collapse
 
-On the authoritative `TowerCollapsed` event (added in C4, see [Events the effects need](#events-the-effects-need)), play a camera shake lasting about 0.3 seconds, with decaying X/Y amplitude.
+Every `CardBroken` gives the camera a small jolt, and jolts stack: cards breaking close together build into a bigger shake (decided 2026-11-18 after play-testing C4). The authoritative `TowerCollapsed` event (added in C4, see [Events the effects need](#events-the-effects-need)) gives the full shake. Uses "shake energy" from 0 to 1: each event adds some, it drains over about half a second, and the X/Y offset and tilt follow what is left.
 
-- **File / integration:** `CameraShaker.cs` listens to `TowerCollapsed` and adds an offset to the orbit camera's normal pose.
+- **File / integration:** `CameraShaker.cs` listens to `CardBroken` and `TowerCollapsed` and adds an offset to the orbit camera's normal pose.
 - **Rule:** A broken card alone does not imply collapse. `TowerBuilder` does not call camera effects directly, and the camera effect never shakes the physical table.
 
 ### 6.2 Deck Feedback
@@ -346,13 +346,13 @@ Effects listen to `GameEvents`. Each missing event is added by the step that fir
 | Event | Status | Used by | Added in |
 |---|---|---|---|
 | `HandChanged`, `SelectionChanged` | ✅ exists | B1, B3, C1 | — |
-| `CardBroken(Card)` | ✅ exists (A6) | C3 | — |
+| `CardBroken(Card)` | ✅ exists (A6) | C3, C4 | — |
 | `ShakeResolved`, `PotChanged`, `PotBanked`, `TableLeft` | ✅ exists | C3, C5 | — |
 | `BlindOffered`, `BlindSkipped`, `BlindStarted`, `BlindWon`, `BlindFailed`, `RunEnded` | ✅ exists | C6 | — |
 | `GlassChanged` | ✅ exists | C7 | — |
 | `CardsDrawn(card IDs)` | ✅ exists (B3) | B3, 6.2 | B3 |
 | `SwapRejected(reason)` | ✅ exists (B5) | 6.2 | B5 |
-| `TowerCollapsed` | ❌ missing: `ShakeResolved.Collapsed` covers it until then | C4, C3 Pot shatter | C4 |
+| `TowerCollapsed(ShakeResult)` | ✅ exists (C4) | C4, C3 Pot shatter | C4 |
 | `HandCommitted(card IDs, hand)` | ❌ missing | C1 | C1 |
 | `HandScored(score result)` | ❌ missing: only `ScoreManager.OnScoreStep` / `OnTurnScored` | C2 | C2 |
 

@@ -707,6 +707,7 @@ public class GameFlowController : MonoBehaviour
         Debug.Log($"[Flow] shake {LastShake.ShakeId}: {LastShake.BrokenCount} broken, {LastShake.StandingLevels} levels, " +
                   $"collapsed {LastShake.Collapsed}, pot {oldChips} -> {pot.PotChips}");
         GameEvents.RaiseShakeResolved(LastShake);
+        if (LastShake.Collapsed) GameEvents.RaiseTowerCollapsed(LastShake);
         AnnouncePotChanged(oldChips, LastShake.Collapsed ? PotChangeReason.Collapsed : PotChangeReason.ShakeResolved);
     }
 

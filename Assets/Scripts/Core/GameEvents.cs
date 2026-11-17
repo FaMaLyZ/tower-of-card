@@ -95,6 +95,12 @@ public static class GameEvents
 
     public static void RaiseShakeResolved(ShakeResult result) => ShakeResolved?.Invoke(result);
 
+    /// The resolved shake says the tower collapsed (raised right after ShakeResolved, before the Pot empties).
+    /// A broken card alone never means a collapse; only this event does.
+    public static event Action<ShakeResult> TowerCollapsed;
+
+    public static void RaiseTowerCollapsed(ShakeResult result) => TowerCollapsed?.Invoke(result);
+
     /// The Pot changed, told AFTER the change. Carries the old chips, the new chips, why, and what
     /// a Bank would pay now. Listeners show these numbers; they never redo the maths.
     public static event Action<long, long, PotChangeReason, long> PotChanged;
@@ -162,6 +168,7 @@ public static class GameEvents
         SelectionChanged = null;
         CardBroken = null;
         ShakeResolved = null;
+        TowerCollapsed = null;
         PotChanged = null;
         PotBanked = null;
         TableLeft = null;

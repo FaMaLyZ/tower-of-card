@@ -1769,6 +1769,7 @@ GameObject:
   - component: {fileID: 67061921}
   - component: {fileID: 67061922}
   - component: {fileID: 67061923}
+  - component: {fileID: 67061924}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1933,6 +1934,22 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 448
   m_MaxRayIntersections: 0
+--- !u!114 &67061924
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 67061917}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3bc0ff5abd5c1924d9c34a06d3e47513, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CameraShaker
+  collapseAmount: 0.3
+  collapseTiltDegrees: 1.5
+  collapseSeconds: 0.4
+  frequency: 25
 --- !u!1 &79598245
 GameObject:
   m_ObjectHideFlags: 0
@@ -4348,6 +4365,7 @@ GameObject:
   m_Component:
   - component: {fileID: 185223674}
   - component: {fileID: 185223675}
+  - component: {fileID: 185223676}
   m_Layer: 5
   m_Name: PotSign
   m_TagString: Untagged
@@ -4407,6 +4425,66 @@ MonoBehaviour:
   brokeOneLine: "{0:N0} \u2212 {1} broken card = {2:N0}"
   brokeManyLine: "{0:N0} \u2212 {1} broken cards = {2:N0}"
   nothingBrokeLine: Nothing broke
+--- !u!114 &185223676
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 185223673}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ffa543df3b98d7c458710398949b17b8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PotSignJuice
+  visual: {fileID: 1089508975}
+  number: {fileID: 52412403}
+  bulbs:
+  - {fileID: 2068193008}
+  - {fileID: 450103991}
+  - {fileID: 1754077906}
+  - {fileID: 461593232}
+  - {fileID: 1192549608}
+  - {fileID: 999896641}
+  - {fileID: 1049210497}
+  - {fileID: 1906683360}
+  - {fileID: 1117244633}
+  - {fileID: 184664716}
+  - {fileID: 1909966470}
+  - {fileID: 386175150}
+  - {fileID: 723273828}
+  - {fileID: 991442579}
+  - {fileID: 603503034}
+  - {fileID: 1785387477}
+  - {fileID: 1824490864}
+  - {fileID: 908446632}
+  - {fileID: 300619271}
+  - {fileID: 365064751}
+  - {fileID: 1602271253}
+  - {fileID: 1079834299}
+  - {fileID: 473105356}
+  - {fileID: 1207976212}
+  - {fileID: 1332352305}
+  - {fileID: 169526563}
+  - {fileID: 1954810997}
+  - {fileID: 1365950719}
+  burst: {fileID: 1617238073}
+  theme: {fileID: 11400000, guid: c85c3893b2c442d41bb3176b087a434f, type: 2}
+  lossShakePixels: 8
+  lossShakeCycles: 4
+  lossShakeSeconds: 0.35
+  lossFlashSeconds: 0.6
+  lossShards: 12
+  collapseShakePixels: 24
+  collapseShakeCycles: 6
+  collapseShakeSeconds: 0.6
+  collapseFlashSeconds: 1.2
+  collapseShards: 45
+  bulbPopSpeed: 380
+  bulbGravity: 1500
+  bulbSpinDegrees: 900
+  bulbFallSeconds: 1.2
+  bulbReturnSeconds: 0.3
 --- !u!1 &192163235
 GameObject:
   m_ObjectHideFlags: 0
@@ -5677,6 +5755,70 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 230483297}
   m_CullTransparentMesh: 1
+--- !u!1 &232867039
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 232867041}
+  - component: {fileID: 232867040}
+  m_Layer: 0
+  m_Name: BreakJuice
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &232867040
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 232867039}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e58899004a0083145aedda303fe96db8, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BreakJuice
+  shardsPerCard: 12
+  shardSize: {x: 0.3, y: 0.2}
+  shardSizeVariation: 0.5
+  shardSpeed: 3
+  shardUpSpeed: 4
+  shardSpinDegrees: 720
+  shardSeconds: 1.2
+  gravity: 1.5
+  bounceOnTable: 1
+  cardColor: {r: 0.96, g: 0.92, b: 0.82, a: 1}
+  redSuitColor: {r: 0.8, g: 0.15, b: 0.15, a: 1}
+  blackSuitColor: {r: 0.12, g: 0.12, b: 0.14, a: 1}
+  suitShardShare: 0.35
+  dustPerCard: 6
+  dustSize: 0.1
+  dustSpeed: 1
+  dustSeconds: 0.5
+  dustColor: {r: 0.75, g: 0.7, b: 0.62, a: 1}
+  maxBurstsPerSecond: 8
+  particleMaterial: {fileID: 2100000, guid: 80dc6367a4127d64691855714a733db2, type: 2}
+--- !u!4 &232867041
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 232867039}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &233891360
 GameObject:
   m_ObjectHideFlags: 0
@@ -14656,6 +14798,15 @@ MonoBehaviour:
   parts:
   - {fileID: 468320002}
   - {fileID: 322564892}
+  hoverShakeDegrees: 6
+  hoverShakeCycles: 2.5
+  hoverShakeSeconds: 0.2
+  maxTiltDegrees: 10
+  tiltRadiusPixels: 150
+  pressUnderMouse: 1
+  hoverSpeed: 18
+  hoverLift: 0.05
+  hoverScale: 1.05
   wobbleDegrees: 8
   wobbleCycles: 2
   wobbleSeconds: 0.25
@@ -20147,6 +20298,7 @@ RectTransform:
   - {fileID: 709673103}
   - {fileID: 48778525}
   - {fileID: 505231553}
+  - {fileID: 1617238072}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -31515,6 +31667,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1485689002}
   - component: {fileID: 1485689003}
+  - component: {fileID: 1485689004}
   m_Layer: 5
   m_Name: BrokenStrip
   m_TagString: Untagged
@@ -31567,6 +31720,33 @@ MonoBehaviour:
   settlingText: ...
   penaltyFormat: "\u2212{0:0.#}%"
   collapsedText: lost all
+--- !u!114 &1485689004
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1485689001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a5a6cf5a8893d564cb3f8cdc620fc7f1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BrokenStripJuice
+  flow: {fileID: 466649124}
+  icons:
+  - {fileID: 1904995658}
+  - {fileID: 1590801024}
+  - {fileID: 584487962}
+  - {fileID: 1154435468}
+  - {fileID: 1908136415}
+  burst: {fileID: 1617238073}
+  theme: {fileID: 11400000, guid: c85c3893b2c442d41bb3176b087a434f, type: 2}
+  popScale: 1.6
+  popSeconds: 0.25
+  shardsPerIcon: 8
+  shardStrength: 0.6
+  flickerSpeed: 14
+  flickerLowestAlpha: 0.4
 --- !u!1 &1486856501
 GameObject:
   m_ObjectHideFlags: 0
@@ -33903,6 +34083,61 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1615663769}
   m_CullTransparentMesh: 1
+--- !u!1 &1617238071
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1617238072}
+  - component: {fileID: 1617238073}
+  m_Layer: 0
+  m_Name: HudFx
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1617238072
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1617238071}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 989166575}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1617238073
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1617238071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0c7639454b23e8948856f99a7cc8dad1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::UiShardBurst
+  size: {x: 9, y: 6}
+  speed: 260
+  upSpeed: 200
+  gravity: 900
+  spinDegrees: 720
+  seconds: 0.6
+  poolSize: 120
 --- !u!1 &1628754917
 GameObject:
   m_ObjectHideFlags: 0
@@ -44197,3 +44432,4 @@ SceneRoots:
   - {fileID: 1506003894}
   - {fileID: 466649125}
   - {fileID: 2134393900}
+  - {fileID: 232867041}
