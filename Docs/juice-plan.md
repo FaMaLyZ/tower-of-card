@@ -24,6 +24,7 @@
 ## Category 1 — On Hover
 
 ### 1.1 Shake on Hover
+
 When the mouse enters an interactable card, play a quick rotation shake — left-right wobble, 2–3 cycles, about 0.2 seconds total. It signals "this is clickable."
 
 - **Trigger:** Hover input from `HandCardView`.
@@ -31,6 +32,7 @@ When the mouse enters an interactable card, play a quick rotation shake — left
 - **File / integration:** `HandCardJuice.cs` listens to the view's hover state.
 
 ### 1.2 3D Tilt Toward Mouse (Parallax Tilt)
+
 While the mouse is over a card, it tilts in 3D according to the mouse position relative to the card center. Mouse left of center → card tilts right; mouse above center → card tilts back.
 
 ```text
@@ -45,6 +47,7 @@ Apply this only as a visual offset on top of the base fan pose. Lerp back to zer
 - **Strength:** About 8–12 degrees maximum, adjusted by feel.
 
 ### 1.3 Fan Spread on Mouse Proximity
+
 As the mouse moves across the fan, nearby cards push sideways away from it. Cards outside the spread radius are unaffected. Return to normal spacing when the mouse leaves.
 
 - **Animation:** Distance-weighted visual offsets, with a falloff radius of about two card widths.
@@ -56,18 +59,21 @@ As the mouse moves across the fan, nearby cards push sideways away from it. Card
 ## Category 2 — On Click / Select
 
 ### 2.1 Position Punch on Select
+
 When an accepted selection changes a card from unselected to selected, it lifts with a slight overshoot, then settles. Use a spring curve rather than a plain lerp.
 
 - **Curve:** Y goes `0 → selectedLift × 1.3 → selectedLift` over about 0.15 seconds.
 - **File / integration:** `HandCardJuice.cs` reacts to the accepted selection state. The base view shows selection immediately if juice is absent.
 
 ### 2.2 Toggle-Pop Deselect
+
 Clicking a selected card removes that card from the selected set. It punches down with a small undershoot, then returns to its normal visual pose.
 
 - **Rule:** Toggling one selected card never clears the others. Commit allows up to 5 selected cards; Swap allows as many as there are swaps left (up to 3).
 - **File / integration:** The normal input controller requests the selection change; `HandCardJuice.cs` animates its result.
 
 ### 2.3 Snap Punch on Card Arrival
+
 When a newly drawn or reordered card's visual reaches its destination, play a one-time scale punch: `1.0 → 1.15 → 1.0` over about 0.15 seconds.
 
 - **File / integration:** `DrawAnimator.cs` or the hand presentation component tracks visual arrival and fires once per movement.
@@ -78,12 +84,14 @@ When a newly drawn or reordered card's visual reaches its destination, play a on
 ## Category 3 — On Drag / Movement
 
 ### 3.1 Velocity Tilt During Movement
+
 While a card's visual moves through a draw arc, drag, or fan adjustment, it tilts in the direction of travel. It returns to its base rotation as its visual velocity approaches zero.
 
 - **Formula:** `tiltAngle = visualVelocityX × tiltMultiplier`, clamped to about ±25°.
 - **File / integration:** `HandCardJuice.cs` or `DrawAnimator.cs` tracks the visual motion, without changing the root or card data.
 
 ### 3.2 Drag to Reorder Hand
+
 The player can drag a card left or right to rearrange the hand. Other cards move aside to show the new position. On release, the visual settles into the final slot with the snap punch from 2.3.
 
 **Normal input behavior, implemented before its effects:**
@@ -99,6 +107,7 @@ The player can drag a card left or right to rearrange the hand. Other cards move
 - **Rule:** Reordering never changes the committed card set, poker result, or which cards have been placed. Phase permissions come from the core.
 
 ### 3.3 Mouse Lag While Dragging
+
 A dragged card's visual follows the mouse with a slight lag, roughly one frame behind. Apply this to the hand card visual or the tower ghost visual.
 
 - **File / integration:** `HandCardJuice.cs` for hand cards. For the tower, `TowerPlacementInput` already eases its preview card toward the snapped slot (`snapSpeed`); any extra lag goes in a separate presentation component that reads it.
@@ -109,6 +118,7 @@ A dragged card's visual follows the mouse with a slight lag, roughly one frame b
 ## Category 4 — Draw Animation
 
 ### 4.1 Sequenced One-by-One Draw
+
 New cards appear one at a time, about 0.08–0.12 seconds apart. Unplayed cards remain in the hand; draw only enough cards to reach the hand limit of 8.
 
 - **Core:** The deck and hand perform the draw and record the result independently of the effect.
@@ -116,12 +126,14 @@ New cards appear one at a time, about 0.08–0.12 seconds apart. Unplayed cards 
 - **Fallback:** All new cards appear in their final readable layout immediately. No animation callback is required to make them usable.
 
 ### 4.2 Bézier Arc from Deck
+
 Each new card's `Visual` travels from the deck to its assigned hand pose along a Bézier curve, rising before descending.
 
 - **Control point:** Start around two world units above the straight-line midpoint, then tune for the camera and hand scale.
 - **File / integration:** `DrawAnimator.cs` reads card identities and destination poses from the accepted draw result.
 
 ### 4.3 Tilt During Flight
+
 Apply the velocity tilt from 3.1 during the arc. The visual leans in its travel direction and settles at its destination.
 
 ---
@@ -129,6 +141,7 @@ Apply the velocity tilt from 3.1 during the arc. The visual leans in its travel 
 ## Category 5 — Card Info
 
 ### 5.1 Weight + Chips Tooltip on Hover
+
 A small label near the hovered card shows:
 
 ```text
@@ -145,12 +158,14 @@ Read the card's actual gameplay mass and chip value. This is separate from the b
 ## Category 6 — World / Tower
 
 ### 6.1 Camera Shake on Collapse
+
 On the authoritative `TowerCollapsed` event (added in C4, see [Events the effects need](#events-the-effects-need)), play a camera shake lasting about 0.3 seconds, with decaying X/Y amplitude.
 
 - **File / integration:** `CameraShaker.cs` listens to `TowerCollapsed` and adds an offset to the orbit camera's normal pose.
 - **Rule:** A broken card alone does not imply collapse. `TowerBuilder` does not call camera effects directly, and the camera effect never shakes the physical table.
 
 ### 6.2 Deck Feedback
+
 The deck responds to hover, cards entering or leaving, and rejected interaction.
 
 - **Hover when available:** Brief rotation wobble to signal that it is clickable.
@@ -158,7 +173,6 @@ The deck responds to hover, cards entering or leaving, and rejected interaction.
 - **Card departure:** Scale `1.0 → 0.88 → 1.0`, about 0.12 seconds.
 - **Arrival flash:** Flash white once per accepted card return. If several cards return during a reset, the flashes may be queued or shortened within the presentation budget.
 - **Unavailable interaction:** Brief X-axis shake and red flash after the core rejects the deck command. The rejection reason also has a readable plain-text or disabled-state equivalent.
-
 - **File / integration:** `DeckFeedback.cs` listens to deck/swap results and rejection feedback. `DeckGlowBehavior.cs` reads whether a swap is available. Deck input stays in the normal view/controller, independent of these effects.
 
 ---
@@ -296,7 +310,7 @@ Agreed order after A6 (2026-11-16). The [Master Plan](Master%20Plan%20Real.md) s
 | 2 | **Track B** (B1–B5) | Done (2026-11-16). |
 | 3 | **HUD design** | Done: [HUD Design.md](HUD%20Design.md). Building names and the live Commit preview are already in the code. |
 | 4 | **C3** break particles, **C4** collapse camera shake | They animate the tower and the camera, not the HUD. Can be slotted in any time before step 6. |
-| 5 | **HUD rebuild** with plain placeholder art, area by area (H1–H7 below) | The HUD-bound effects need to know which elements exist and where they sit. |
+| 5 | **HUD rebuild** with plain placeholder art, area by area (H1–H7 below) | Done (2026-11-18). The HUD-bound effects need to know which elements exist and where they sit. |
 | 6 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
 | Alongside 5–6 | **Artist replaces placeholder art** | Brief: [HUD Art Assets.md](HUD%20Art%20Assets.md). Art drops into fixed slots, so it never blocks code work. |
 | Later | **C8** run intro | Needs the full run and a `RunIntro` step in the conductor. |
@@ -311,15 +325,16 @@ Agreed order after A6 (2026-11-16). The [Master Plan](Master%20Plan%20Real.md) s
 | H4 | Right HUD | ✅ Done (2026-11-17): `BlindPlaqueView`, `SafeBarView`, `PotSignView`, `BrokenStripView`, `BreakdownView`, `LadderView`, `RightHudView`. Old `TurnText`, `TotalScoreText`, `PotText` and the card-details `HintText` deleted. Hand centred at the bottom; deck moved to the bottom-right corner below the right HUD. Bank / Ride / Continue / Leave / main button sit left of the panel until H5 / H6 |
 | H5 | Centre + deck + buttons | ✅ Done (2026-11-17): instruction line and banner pills (`HudView`), `PotTagView`, `DeckHudView` (count badge, swap pips, blue glow, hover tooltip), Play hand / Done swapping and Undo buttons under the hand. Hand raised slightly to make room. Old `StateText`, `CardsText`, `DeckText`, `DiscardText`, `BannerText`, `EndTurnButton` deleted |
 | H6 | Cashier drawer | ✅ Done (2026-11-17): drawer under the right HUD (`BankRideView` rewired: receipt line, BANK / RIDE keys, "Tower full"). Appears instantly; the slide is C5. Old `BankButton` / `RideButton` deleted |
-| H7 | Full-screen panels | 🔶 Built 2026-11-17, waiting for play-test: Blind menu (`BlindMenuView`, upcoming blinds not dimmed), Continue / Leave (`ContinueLeaveView`), Blind result (`BlindResultView`, keeps the auto timer, no Next button), Run end (`RunEndView` texts inside the existing marquee art), Run Info (`RunInfoView`), Options mock-up (Back only). Run Info / Options use `HudPopup`: they block table clicks but do not pause. Panels slide up from the bottom (`PanelSlideJuice`) with no dark backdrop |
+| H7 | Full-screen panels | ✅ Done (play-tested 2026-11-18): Blind menu (`BlindMenuView`, upcoming blinds not dimmed), Continue / Leave (`ContinueLeaveView`), Blind result (`BlindResultView`, keeps the auto timer, no Next button), Run end (`RunEndView` texts inside the existing marquee art), Run Info (`RunInfoView`), Options mock-up (Back only). Run Info / Options use `HudPopup`: they block table clicks but do not pause. Panels slide up from the bottom (`PanelSlideJuice`) with no dark backdrop |
 | ~~H8~~ | ~~Panel focus~~ | Dropped 2026-11-17: no dimming anywhere in the HUD |
 
 **Rules for the rebuild:**
+
 - **Replace one area at a time, never the whole HUD at once.** Build the new area beside the old texts, play and check the numbers, then delete the old texts it replaces and commit. The game stays playable after every step.
 - **Code never depends on the art.** Each element is a prefab with fixed child names (for example `PotSign/Frame`, `PotSign/Label`, `PotSign/Number`, `PotSign/Line`). Scripts reference texts and roots, never a sprite, so the artist swaps the sprite in `Frame` and nothing else changes.
 - **Animations move a wrapper, not the art.** Effects tween a `Visual` child (the same rule as the hand cards), so new art inside it cannot break a tween.
 - **Placeholders use the final sizes** from [HUD Art Assets.md](HUD%20Art%20Assets.md), with stretchable sprites (9-slice), so swapping the art does not move the layout.
-- **Small views, not one big `HudView`:** for example `LeftHudView`, `HandPlaqueView`, `PotPanelView`, `CashierView`, `DeckHudView`, `LadderView`. `HudView` keeps the instruction line, banners and main buttons.
+- **Small views, not one big** `HudView`**:** for example `LeftHudView`, `HandPlaqueView`, `PotPanelView`, `CashierView`, `DeckHudView`, `LadderView`. `HudView` keeps the instruction line, banners and main buttons.
 - **Done when:** every juice component is off and a full run still shows every number correctly.
 
 Track B notes: B4 needs plain drag-to-reorder input (a `HandManager` reorder command) before any reorder effect. B3 is the first effect that holds `PresentationGate`, so it also adds the conductor's wait on the gate after a draw (the gate exists but nothing waits on it yet).
@@ -371,11 +386,13 @@ Names are implementation suggestions. Combine small presentation helpers when th
 # Revision notes
 
 **Revision 3 (2026-11-17), after the HUD design.**
+
 - Track B and the HUD design marked done. Building names changed to Tent, Twin Tents, Tripod, Wall.
 - Implementation order now has the HUD rebuild steps (H1–H8), the replace-one-area-at-a-time rule, and the artist working alongside from [HUD Art Assets.md](HUD%20Art%20Assets.md).
 - `CardsDrawn` and `SwapRejected` marked as existing.
 
 **Revision 2 (2026-11-16), after A6.**
+
 - Swap is up to 3 cards in one deck click (built in A2), not one card at a time. Phase 2 and rule 2.2 rewritten.
 - Script names follow A6: `HudView` (was `GameUI`), `SwapManager` / `SwapZone` (were `DiscardManager` / `DiscardZone`), `TowerPlacementInput` and `SnapMarkerView` (split out of `TowerBuilder` / `GameUI`), `GameEvents.CardBroken` (was `Card.Broken`).
 - Added [Events the effects need](#events-the-effects-need): which events exist, and which step adds each missing one.
