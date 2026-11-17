@@ -1,17 +1,36 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
-/// Deck effects: hover wobble, a squash per card drawn, a flash on swap-in, a red shake on a refused click.
+/// Deck effects: hover shake, tilt and lift (like the hand cards), a squash per card drawn, a flash on swap-in,
+/// a red shake on a refused click.
 /// Put it on the deck object. It moves the deck's children, never the SwapZone root.
 /// Listen-only: delete it and the deck works the same.
-public class DeckJuice : MonoBehaviour, IPointerEnterHandler
+public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     [Header("Game references")]
     public GameFlowController flow;
     public List<Transform> parts = new List<Transform>();
 
-    [Header("Hover wobble")]
+    [Header("Hover (like the hand cards)")]
+    [Tooltip("Quick left-right shake when the mouse arrives")]
+    public float hoverShakeDegrees = 6f;
+    public float hoverShakeCycles = 2.5f;
+    public float hoverShakeSeconds = 0.2f;
+    [Tooltip("Most the deck leans toward the mouse while hovered")]
+    public float maxTiltDegrees = 10f;
+    [Tooltip("Mouse distance from the deck's centre that gives the full lean")]
+    public float tiltRadiusPixels = 150f;
+    [Tooltip("True: the side under the mouse dips, like pressing on it")]
+    public bool pressUnderMouse = true;
+    [Tooltip("How fast the lean, lift and grow follow the mouse")]
+    public float hoverSpeed = 18f;
+    [Tooltip("World units the deck rises on screen while hovered")]
+    public float hoverLift = 0.05f;
+    public float hoverScale = 1.05f;
+
+    [Header("Swap-ready wobble (hover while picked cards can be swapped)")]
     public float wobbleDegrees = 8f;
     public float wobbleCycles = 2f;
     public float wobbleSeconds = 0.25f;
@@ -72,6 +91,13 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
     float shakeWidth;
     bool isAtRest = true;
 
+    // Hover: the mouse is over the deck; the lean and lift ease toward it every frame
+    bool isHovered;
+    float hoverShakeStart = -1f;
+    float hoverAmount;                          // 0 = resting, 1 = fully lifted and grown
+    Quaternion tilt = Quaternion.identity;      // in the deck's local space
+    Vector3 boundsCentre;                       // the deck's middle at rest, for the lean
+
     void Awake()
     {
         if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
@@ -90,6 +116,7 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
     void RememberRestPoses()
     {
         var bounds = new Bounds(transform.position, Vector3.zero);
+        bool hasRenderer = false;
         foreach (Transform part in parts)
         {
             if (part == null) continue;
@@ -97,11 +124,15 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
 
             foreach (Renderer r in part.GetComponentsInChildren<Renderer>())
             {
-                bounds.Encapsulate(r.bounds);
+                // Start from the first piece, so the deck object's own pivot never pulls the middle off-centre
+                if (!hasRenderer) bounds = r.bounds;
+                else bounds.Encapsulate(r.bounds);
+                hasRenderer = true;
                 RememberTint(r);
             }
         }
         shakeWidth = bounds.size.x;
+        boundsCentre = transform.InverseTransformPoint(bounds.center);
     }
 
     void RememberTint(Renderer r)
@@ -128,6 +159,10 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
         wobbleStarts.Clear();
         punches.Clear();
         pendingDrawPulses.Clear();
+        isHovered = false;
+        hoverShakeStart = -1f;
+        hoverAmount = 0f;
+        tilt = Quaternion.identity;
         isAtRest = false;
         ReturnToRest();
     }
@@ -136,7 +171,14 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
 
     public void OnPointerEnter(PointerEventData eventData)
     {
-        if (flow != null && flow.IsReady && flow.CanSwapSelectedCard) wobbleStarts.Add(Time.time);
+        isHovered = true;
+        hoverShakeStart = Time.time;
+        if (flow != null && flow.IsReady && flow.CanSwapSelectedCard) wobbleStarts.Add(Time.time);    // "click me"
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        isHovered = false;
     }
 
     // One wobble and squash per card, at the moment that card leaves the deck
@@ -202,16 +244,69 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
         float shake = Decaying(ref shakeStart, rejectShakeSeconds, rejectShakeCycles) * rejectShakeAmount * shakeWidth;
         float scale = SumPunches();
         float flash = Fade(ref flashStart, flashSeconds);
+        float hoverShake = Decaying(ref hoverShakeStart, hoverShakeSeconds, hoverShakeCycles) * hoverShakeDegrees;
+        UpdateHover();
 
-        if (wobbleStarts.Count == 0 && punches.Count == 0 && shakeStart < 0f && flashStart < 0f && pendingDrawPulses.Count == 0)
+        if (wobbleStarts.Count == 0 && punches.Count == 0 && shakeStart < 0f && flashStart < 0f &&
+            pendingDrawPulses.Count == 0 && hoverShakeStart < 0f && IsHoverAtRest())
         {
             ReturnToRest();
             return;
         }
 
         isAtRest = false;
-        ApplyPose(wobble, shake, scale);
+        ApplyPose(wobble, shake, scale * Mathf.Lerp(1f, hoverScale, hoverAmount), GetHoverRotation(hoverShake), GetHoverLift());
         ApplyFlash(flash);
+    }
+
+    // ---------- Hover ----------
+
+    // Lean and lift ease toward their targets: toward the mouse while hovered, back to rest after
+    void UpdateHover()
+    {
+        float ease = hoverSpeed <= 0f ? 1f : 1f - Mathf.Exp(-hoverSpeed * Time.deltaTime);
+        hoverAmount = Mathf.Lerp(hoverAmount, isHovered ? 1f : 0f, ease);
+        tilt = Quaternion.Slerp(tilt, isHovered ? GetTiltTowardMouse() : Quaternion.identity, ease);
+    }
+
+    bool IsHoverAtRest()
+    {
+        return !isHovered && hoverAmount < 0.001f && Quaternion.Angle(tilt, Quaternion.identity) < 0.01f;
+    }
+
+    // The same lean as a hand card: the mouse's offset from the deck's middle, worked out in camera space
+    Quaternion GetTiltTowardMouse()
+    {
+        Camera cam = Camera.main;
+        if (cam == null || Mouse.current == null) return Quaternion.identity;
+
+        Vector3 centre = cam.WorldToScreenPoint(transform.TransformPoint(boundsCentre));
+        if (centre.z <= 0f) return Quaternion.identity;
+
+        Vector2 offset = (Mouse.current.position.ReadValue() - (Vector2)centre) / Mathf.Max(1f, tiltRadiusPixels);
+        offset = Vector2.ClampMagnitude(offset, 1f) * maxTiltDegrees;
+        float sign = pressUnderMouse ? 1f : -1f;
+
+        Quaternion worldTilt = Quaternion.AngleAxis(sign * offset.y, cam.transform.right) *
+                               Quaternion.AngleAxis(-sign * offset.x, cam.transform.up);
+        return Quaternion.Inverse(transform.rotation) * worldTilt * transform.rotation;
+    }
+
+    // The lean plus the arrival shake, which turns around the axis pointing at the camera (flat on screen)
+    Quaternion GetHoverRotation(float shakeDegrees)
+    {
+        Camera cam = Camera.main;
+        if (cam == null || Mathf.Abs(shakeDegrees) < 0.001f) return tilt;
+        Vector3 towardCamera = transform.InverseTransformDirection(-cam.transform.forward);
+        return tilt * Quaternion.AngleAxis(shakeDegrees, towardCamera);
+    }
+
+    // Up on screen, in the deck's local space
+    Vector3 GetHoverLift()
+    {
+        Camera cam = Camera.main;
+        if (cam == null || hoverAmount < 0.001f) return Vector3.zero;
+        return transform.InverseTransformVector(cam.transform.up * hoverLift * hoverAmount);
     }
 
     // Every wobble still playing, added up (kept within 1.5x one wobble so a fast draw can't spin the deck)
@@ -271,18 +366,19 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler
         return t;
     }
 
-    // The whole deck moves as one piece around its centre (the deck object's origin):
-    // every part is scaled, turned and shifted together, so the stack never comes apart.
-    void ApplyPose(float wobbleDegreesNow, float shakeWorld, float scale)
+    // The whole deck moves as one piece around its middle: every part is scaled, turned and shifted
+    // together, so the stack never comes apart. The hover lean turns it around its visible middle.
+    void ApplyPose(float wobbleDegreesNow, float shakeWorld, float scale, Quaternion hoverRotation, Vector3 lift)
     {
         Camera cam = Camera.main;
         Vector3 shakeLocal = cam != null ? transform.InverseTransformVector(cam.transform.right * shakeWorld) : Vector3.zero;
-        Quaternion turn = Quaternion.AngleAxis(wobbleDegreesNow, Vector3.up);
+        Quaternion turn = hoverRotation * Quaternion.AngleAxis(wobbleDegreesNow, Vector3.up);
 
         foreach (Part p in restPoses)
         {
             if (p.transform == null) continue;
-            p.transform.localPosition = turn * (p.restPosition * scale) + shakeLocal;
+            Vector3 fromMiddle = p.restPosition * scale - boundsCentre;
+            p.transform.localPosition = boundsCentre + turn * fromMiddle + shakeLocal + lift;
             p.transform.localRotation = turn * p.restRotation;
             p.transform.localScale = p.restScale * scale;
         }
