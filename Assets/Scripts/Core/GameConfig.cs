@@ -38,6 +38,8 @@ public class GameConfig : ScriptableObject
 
     [Header("Presentation")]
     [Min(0f)] public float maxPresentationWait = 3.0f;
+    [Tooltip("Longest the shake waits for the score count-up and its effects (a 5-card hand counts for about 3 s)")]
+    [Min(0f)] public float maxScoreRevealWait = 6.0f;
     [Min(0f)] public float blindEndPauseSeconds = 2.5f;
     [FormerlySerializedAs("oldLoopDrawSeconds")]
     [Min(0f)] public float drawPauseSeconds = 2.0f;

@@ -18,7 +18,7 @@ public class UiShardBurst : MonoBehaviour
     public float spinDegrees = 720f;
     public float seconds = 0.6f;
     [Tooltip("Fragments kept ready; when all are in flight the oldest is reused")]
-    public int poolSize = 120;
+    public int poolSize = 400;
 
     class Shard
     {
@@ -50,12 +50,14 @@ public class UiShardBurst : MonoBehaviour
     }
 
     /// Bursts `count` fragments from a point on the canvas, half in each colour.
-    /// Strength scales their speed (1 = normal, 2 = a big blast).
-    public void Emit(Vector3 worldPosition, int count, Color colorA, Color colorB, float strength = 1f)
+    /// Strength scales their speed (1 = normal, 2 = a big blast); sizeScale and lifeScale make them
+    /// bigger and longer-lived (1 = the settings above).
+    public void Emit(Vector3 worldPosition, int count, Color colorA, Color colorB, float strength = 1f,
+                     float sizeScale = 1f, float lifeScale = 1f)
     {
         if (shards.Count == 0) return;
         for (int i = 0; i < count; i++)
-            Launch(TakeShard(), worldPosition, Random.value < 0.5f ? colorA : colorB, strength);
+            Launch(TakeShard(), worldPosition, Random.value < 0.5f ? colorA : colorB, strength, sizeScale, lifeScale);
     }
 
     Shard TakeShard()
@@ -65,10 +67,10 @@ public class UiShardBurst : MonoBehaviour
         return shard;
     }
 
-    void Launch(Shard shard, Vector3 worldPosition, Color color, float strength)
+    void Launch(Shard shard, Vector3 worldPosition, Color color, float strength, float sizeScale, float lifeScale)
     {
         shard.rect.position = worldPosition;
-        shard.rect.sizeDelta = size * Random.Range(0.6f, 1.3f);
+        shard.rect.sizeDelta = size * sizeScale * Random.Range(0.6f, 1.3f);
         shard.rect.localRotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
         shard.rect.localScale = Vector3.one;
         shard.image.color = color;
@@ -77,7 +79,7 @@ public class UiShardBurst : MonoBehaviour
                          Vector2.up * upSpeed * strength * Random.Range(0.5f, 1.2f);
         shard.spin = Random.Range(-1f, 1f) * spinDegrees;
         shard.start = Time.unscaledTime;
-        shard.life = seconds * Random.Range(0.75f, 1.15f);
+        shard.life = seconds * lifeScale * Random.Range(0.75f, 1.15f);
         shard.alive = true;
         shard.rect.gameObject.SetActive(true);
     }

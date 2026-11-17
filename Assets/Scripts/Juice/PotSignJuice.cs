@@ -106,14 +106,16 @@ public class PotSignJuice : MonoBehaviour
         if (phase == GamePhase.Draw && bulbState == BulbState.Popped) StartBulbState(BulbState.Returning);
     }
 
-    void PlayLoss()
+    /// The broken-cards jolt and red flash (public for the juice debug panel)
+    public void PlayLoss()
     {
         StartShake(lossShakePixels, lossShakeCycles, lossShakeSeconds);
         StartFlash(lossFlashSeconds);
         EmitShards(lossShards, 1f);
     }
 
-    void PlayShatter()
+    /// The collapse shatter: jolt, flash, fragments, bulbs pop off (public for the juice debug panel)
+    public void PlayShatter()
     {
         StartShake(collapseShakePixels, collapseShakeCycles, collapseShakeSeconds);
         StartFlash(collapseFlashSeconds);

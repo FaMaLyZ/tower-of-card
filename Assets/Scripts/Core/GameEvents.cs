@@ -84,6 +84,11 @@ public static class GameEvents
 
     public static void RaiseSelectionChanged(IReadOnlyList<int> selectedCardIds) => SelectionChanged?.Invoke(selectedCardIds);
 
+    /// Play Hand was accepted: these cards are locked in as this hand, making this poker hand.
+    public static event Action<IReadOnlyList<int>, PokerHandResult> HandCommitted;
+
+    public static void RaiseHandCommitted(IReadOnlyList<int> cardIds, PokerHandResult hand) => HandCommitted?.Invoke(cardIds, hand);
+
     /// A card is breaking (raised just before it is destroyed). TowerBuilder counts it for the
     /// next ShakeResult; effects may play here. The Pot numbers come from ShakeResolved, never from this.
     public static event Action<Card> CardBroken;
@@ -166,6 +171,7 @@ public static class GameEvents
         CardsSwapped = null;
         SwapRejected = null;
         SelectionChanged = null;
+        HandCommitted = null;
         CardBroken = null;
         ShakeResolved = null;
         TowerCollapsed = null;

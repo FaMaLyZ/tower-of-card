@@ -309,9 +309,10 @@ Agreed order after A6 (2026-11-16). The [Master Plan](Master%20Plan%20Real.md) s
 | 1 | Revise this plan | Done (revision 2). |
 | 2 | **Track B** (B1–B5) | Done (2026-11-16). |
 | 3 | **HUD design** | Done: [HUD Design.md](HUD%20Design.md). Building names and the live Commit preview are already in the code. |
-| 4 | **C3** break particles, **C4** collapse camera shake | They animate the tower and the camera, not the HUD. Can be slotted in any time before step 6. |
+| 4 | **C3** break particles, **C4** collapse camera shake | Done (2026-11-18): `BreakJuice` (tower shards), `UiShardBurst` + `PotSignJuice` + `BrokenStripJuice` (HUD), `CameraShaker` (stacking shake per break, full on collapse). The Pot number count-down moves to C5. |
 | 5 | **HUD rebuild** with plain placeholder art, area by area (H1–H7 below) | Done (2026-11-18). The HUD-bound effects need to know which elements exist and where they sit. |
 | 6 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
+| 6a | **C1** + the plaque part of **C2** | Done (2026-11-18, play-tested): `HandPlaqueJuice` (plaque texts punch on change, harder with a twist and fragments while scoring; Play hand slams the hand name across the screen, scoring done slams the score; holds `PresentationGate` so the shake waits, capped by `GameConfig.maxScoreRevealWait`), `ScreenSlam` (slam, hold, fly into the plaque; drama 0-1 by poker hand from a curve that jumps at Flush, Royal Flush on top; fragments, hold sparks, epic aftershock), `ShakeOffset` (HUD blocks jitter, hop and rock; hand anchor jitters), hand cards jump, tumble and rock (`HandJuice` / `HandCardJuice`), deck hops, rocks and flashes red (`DeckJuice`), `CameraShaker` bump. `HandCommitted` event added. F8 `JuiceDebugPanel` fires every effect without touching the game. Still to do in C2: floating "+N" per card and the Turn Score into the Pot. |
 | Alongside 5–6 | **Artist replaces placeholder art** | Brief: [HUD Art Assets.md](HUD%20Art%20Assets.md). Art drops into fixed slots, so it never blocks code work. |
 | Later | **C8** run intro | Needs the full run and a `RunIntro` step in the conductor. |
 
@@ -353,7 +354,7 @@ Effects listen to `GameEvents`. Each missing event is added by the step that fir
 | `CardsDrawn(card IDs)` | ✅ exists (B3) | B3, 6.2 | B3 |
 | `SwapRejected(reason)` | ✅ exists (B5) | 6.2 | B5 |
 | `TowerCollapsed(ShakeResult)` | ✅ exists (C4) | C4, C3 Pot shatter | C4 |
-| `HandCommitted(card IDs, hand)` | ❌ missing | C1 | C1 |
+| `HandCommitted(card IDs, hand)` | ✅ exists (C1) | C1 | C1 |
 | `HandScored(score result)` | ❌ missing: only `ScoreManager.OnScoreStep` / `OnTurnScored` | C2 | C2 |
 
 **Acceptance check:** Disable all optional juice components, play through selection, swaps, reorder, commit, build, score, Bank/Ride, last-hand resolution, a blind result, and replay. Inputs, totals, and transitions must still work. Re-enable effects and verify that skipping or interrupting them produces exactly the same results.

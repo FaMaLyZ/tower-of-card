@@ -4,7 +4,8 @@ using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 
 /// Deck effects: hover shake, tilt and lift (like the hand cards), a squash per card drawn, a flash on swap-in,
-/// a red shake on a refused click.
+/// a red shake on a refused click, and the slam (it hops, tumbles, rocks and flashes red when a hand or
+/// score slams onto the screen; epic hands strobe).
 /// Put it on the deck object. It moves the deck's children, never the SwapZone root.
 /// Listen-only: delete it and the deck works the same.
 public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
@@ -50,6 +51,23 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     public float rejectShakeCycles = 4f;
     public float rejectShakeSeconds = 0.3f;
     public Color rejectFlashColor = new Color(1f, 0.25f, 0.25f, 1f);
+
+    [Header("Slam (drama 0 → drama 1)")]
+    [Tooltip("How high it hops on screen, in world units")]
+    public Vector2 slamHop = new Vector2(0.05f, 0.4f);
+    public Vector2 slamHopSeconds = new Vector2(0.18f, 0.36f);
+    [Tooltip("Most it turns in the air, in degrees")]
+    public Vector2 slamTumbleDegrees = new Vector2(6f, 28f);
+    [Tooltip("How far it rocks left-right after landing, in degrees")]
+    public Vector2 slamRockDegrees = new Vector2(5f, 18f);
+    public Vector2 slamRockSeconds = new Vector2(0.35f, 0.9f);
+    public float slamRockCycles = 3f;
+    [Tooltip("Squash size as it lands")]
+    public Vector2 slamLandPunch = new Vector2(1.08f, 1.4f);
+    [ColorUsage(false, true)] public Color slamFlashColor = new Color(2.5f, 0.15f, 0.1f, 1f);
+    public Vector2 slamFlashSeconds = new Vector2(0.3f, 0.8f);
+    [Tooltip("How many red flashes: 1 for a small hand, a strobe for an epic one")]
+    public Vector2Int slamFlashPulses = new Vector2Int(1, 4);
 
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     static readonly int ColorId = Shader.PropertyToID("_Color");
@@ -97,6 +115,33 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     float hoverAmount;                          // 0 = resting, 1 = fully lifted and grown
     Quaternion tilt = Quaternion.identity;      // in the deck's local space
     Vector3 boundsCentre;                       // the deck's middle at rest, for the lean
+
+    // The slam in progress; slamStart < 0 = none
+    float slamStart = -1f;
+    float slamHopNow, slamHopSecondsNow, slamTumbleNow, slamRockNow, slamRockSecondsNow, slamLandPunchNow;
+    bool slamLanded;
+    float slamFlashStart = -1f, slamFlashSecondsNow;
+    int slamFlashPulsesNow;
+
+    /// Hop, tumble, land with a squash, rock, and flash red. Drama 0 = a nudge, 1 = thrown and strobing.
+    public void PlaySlam(float drama)
+    {
+        if (!isActiveAndEnabled) return;
+        drama = Mathf.Clamp01(drama);
+
+        slamStart = Time.time;
+        slamLanded = false;
+        slamHopNow = Mathf.Lerp(slamHop.x, slamHop.y, drama);
+        slamHopSecondsNow = Mathf.Max(0.01f, Mathf.Lerp(slamHopSeconds.x, slamHopSeconds.y, drama));
+        slamTumbleNow = Mathf.Lerp(slamTumbleDegrees.x, slamTumbleDegrees.y, drama) * (Random.value < 0.5f ? -1f : 1f);
+        slamRockNow = Mathf.Lerp(slamRockDegrees.x, slamRockDegrees.y, drama);
+        slamRockSecondsNow = Mathf.Max(0.01f, Mathf.Lerp(slamRockSeconds.x, slamRockSeconds.y, drama));
+        slamLandPunchNow = Mathf.Lerp(slamLandPunch.x, slamLandPunch.y, drama);
+
+        slamFlashStart = Time.time;
+        slamFlashSecondsNow = Mathf.Max(0.01f, Mathf.Lerp(slamFlashSeconds.x, slamFlashSeconds.y, drama));
+        slamFlashPulsesNow = Mathf.Max(1, Mathf.RoundToInt(Mathf.Lerp(slamFlashPulses.x, slamFlashPulses.y, drama)));
+    }
 
     void Awake()
     {
@@ -155,7 +200,7 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         GameEvents.CardsDrawn -= OnCardsDrawn;
         GameEvents.CardsSwapped -= OnCardsSwapped;
         GameEvents.SwapRejected -= OnSwapRejected;
-        shakeStart = flashStart = -1f;
+        shakeStart = flashStart = slamStart = slamFlashStart = -1f;
         wobbleStarts.Clear();
         punches.Clear();
         pendingDrawPulses.Clear();
@@ -246,17 +291,71 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         float flash = Fade(ref flashStart, flashSeconds);
         float hoverShake = Decaying(ref hoverShakeStart, hoverShakeSeconds, hoverShakeCycles) * hoverShakeDegrees;
         UpdateHover();
+        GetSlamPose(out Vector3 slamLift, out Quaternion slamTurn);
+        float slamFlash = GetSlamFlash();
 
         if (wobbleStarts.Count == 0 && punches.Count == 0 && shakeStart < 0f && flashStart < 0f &&
-            pendingDrawPulses.Count == 0 && hoverShakeStart < 0f && IsHoverAtRest())
+            pendingDrawPulses.Count == 0 && hoverShakeStart < 0f && IsHoverAtRest() &&
+            slamStart < 0f && slamFlashStart < 0f)
         {
             ReturnToRest();
             return;
         }
 
         isAtRest = false;
-        ApplyPose(wobble, shake, scale * Mathf.Lerp(1f, hoverScale, hoverAmount), GetHoverRotation(hoverShake), GetHoverLift());
-        ApplyFlash(flash);
+        ApplyPose(wobble, shake, scale * Mathf.Lerp(1f, hoverScale, hoverAmount),
+                  slamTurn * GetHoverRotation(hoverShake), GetHoverLift() + slamLift);
+
+        // The slam's red wins over a smaller flash while it plays
+        if (slamFlash > 0f)
+        {
+            flashColor = slamFlashColor;
+            ApplyFlash(slamFlash);
+        }
+        else ApplyFlash(flash);
+    }
+
+    // ---------- Slam ----------
+
+    // In the air: up and down on screen, tumbling flat on the screen and back.
+    // Landed: a squash, then rocking left-right that dies out.
+    void GetSlamPose(out Vector3 lift, out Quaternion turn)
+    {
+        lift = Vector3.zero;
+        turn = Quaternion.identity;
+        Camera cam = Camera.main;
+        if (slamStart < 0f || cam == null) return;
+
+        Vector3 towardCamera = transform.InverseTransformDirection(-cam.transform.forward);
+        float t = (Time.time - slamStart) / slamHopSecondsNow;
+        if (t < 1f)
+        {
+            float height = slamHopNow * 4f * t * (1f - t);
+            lift = transform.InverseTransformVector(cam.transform.up * height);
+            turn = Quaternion.AngleAxis(slamTumbleNow * Mathf.Sin(t * Mathf.PI), towardCamera);
+            return;
+        }
+
+        if (!slamLanded)
+        {
+            slamLanded = true;
+            PlayPunch(slamLandPunchNow);
+        }
+
+        float u = (t - 1f) * slamHopSecondsNow / slamRockSecondsNow;
+        if (u >= 1f) { slamStart = -1f; return; }
+
+        float rock = Mathf.Sin(u * slamRockCycles * 2f * Mathf.PI) * (1f - u);
+        turn = Quaternion.AngleAxis(-Mathf.Sign(slamTumbleNow) * slamRockNow * rock, towardCamera);
+    }
+
+    // 0..1 red amount: one fading flash, or several pulses (a strobe) for an epic slam
+    float GetSlamFlash()
+    {
+        float t = Progress(ref slamFlashStart, slamFlashSecondsNow);
+        if (t < 0f) return 0f;
+        float pulse = Mathf.Abs(Mathf.Cos(t * slamFlashPulsesNow * Mathf.PI));
+        return pulse * (1f - t);
     }
 
     // ---------- Hover ----------
@@ -333,7 +432,7 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
             scale += (punches[i].peak - 1f) * Bump(ref start, punchSeconds);
             if (start < 0f) punches.RemoveAt(i);
         }
-        return Mathf.Clamp(scale, 0.75f, 1.3f);
+        return Mathf.Clamp(scale, 0.75f, 1.5f);
     }
 
     // A wave that dies out over "seconds" (-1..1), or 0 when finished

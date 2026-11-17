@@ -1946,10 +1946,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3bc0ff5abd5c1924d9c34a06d3e47513, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CameraShaker
-  collapseAmount: 0.3
-  collapseTiltDegrees: 1.5
-  collapseSeconds: 0.4
+  energyPerBrokenCard: 0.3
+  energyOnCollapse: 1
+  maxAmount: 0.4
+  maxTiltDegrees: 2
   frequency: 25
+  drainPerSecond: 2
 --- !u!1 &79598245
 GameObject:
   m_ObjectHideFlags: 0
@@ -2322,6 +2324,7 @@ GameObject:
   m_Component:
   - component: {fileID: 98881897}
   - component: {fileID: 98881898}
+  - component: {fileID: 98881899}
   m_Layer: 5
   m_Name: RightHud
   m_TagString: Untagged
@@ -2365,6 +2368,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::RightHudView
   flow: {fileID: 466649124}
   decisionGlow: {fileID: 1785917984}
+--- !u!114 &98881899
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98881896}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &110992498
 GameObject:
   m_ObjectHideFlags: 0
@@ -3576,6 +3602,8 @@ GameObject:
   - component: {fileID: 154354826}
   - component: {fileID: 154354828}
   - component: {fileID: 154354827}
+  - component: {fileID: 154354829}
+  - component: {fileID: 154354830}
   m_Layer: 5
   m_Name: HandPlaque
   m_TagString: Untagged
@@ -3644,6 +3672,151 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &154354829
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 154354825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9203230e054d71341886f9eb8356c529, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::HandPlaqueJuice
+  flow: {fileID: 466649124}
+  scoreManager: {fileID: 1007714718}
+  theme: {fileID: 11400000, guid: c85c3893b2c442d41bb3176b087a434f, type: 2}
+  buildingName: {fileID: 1584551681}
+  pokerName: {fileID: 32988500}
+  baseChipsNumber: {fileID: 2114260336}
+  cardChipsNumber: {fileID: 930814228}
+  multNumber: {fileID: 1446054280}
+  totalText: {fileID: 2029196324}
+  baseChipsBox: {fileID: 872301553}
+  cardChipsBox: {fileID: 1169967566}
+  multBox: {fileID: 906730523}
+  slam: {fileID: 1617238074}
+  burst: {fileID: 1617238073}
+  punchSize: 0.25
+  punchSeconds: 0.3
+  scoringPunchSize: 0.5
+  scoringTwistDegrees: 10
+  scoringPunchSeconds: 0.35
+  scoringShards: 8
+  scoringShardStrength: 0.7
+  landPunchSize: {x: 0.35, y: 0.8}
+  dramaByHand:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 0
+      inSlope: 0
+      outSlope: 0.4
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.125
+      value: 0.05
+      inSlope: 0.4
+      outSlope: 0.4
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.25
+      value: 0.1
+      inSlope: 0.4
+      outSlope: 0.64000005
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.375
+      value: 0.18
+      inSlope: 0.64000005
+      outSlope: 0.79999995
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.5
+      value: 0.28
+      inSlope: 0.79999995
+      outSlope: 2.5600002
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.625
+      value: 0.6
+      inSlope: 2.5600002
+      outSlope: 0.96000004
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.75
+      value: 0.72
+      inSlope: 0.96000004
+      outSlope: 1.04
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 0.875
+      value: 0.85
+      inSlope: 1.04
+      outSlope: 0.7999997
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    - serializedVersion: 3
+      time: 1
+      value: 0.95
+      inSlope: 0.7999997
+      outSlope: 0
+      tangentMode: 0
+      weightedMode: 0
+      inWeight: 0
+      outWeight: 0
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  royalFlushDrama: 1
+--- !u!114 &154354830
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 154354825}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &154785202
 GameObject:
   m_ObjectHideFlags: 0
@@ -7901,6 +8074,7 @@ GameObject:
   - component: {fileID: 341808441}
   - component: {fileID: 341808440}
   - component: {fileID: 341808439}
+  - component: {fileID: 341808443}
   m_Layer: 5
   m_Name: Banner
   m_TagString: Untagged
@@ -8006,6 +8180,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 341808437}
   m_CullTransparentMesh: 1
+--- !u!114 &341808443
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 341808437}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &343199615
 GameObject:
   m_ObjectHideFlags: 0
@@ -9738,6 +9935,7 @@ GameObject:
   - component: {fileID: 432318357}
   - component: {fileID: 432318356}
   - component: {fileID: 432318355}
+  - component: {fileID: 432318359}
   m_Layer: 5
   m_Name: InstructionLine
   m_TagString: Untagged
@@ -9843,6 +10041,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 432318353}
   m_CullTransparentMesh: 1
+--- !u!114 &432318359
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 432318353}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &433897256
 GameObject:
   m_ObjectHideFlags: 0
@@ -14822,6 +15043,16 @@ MonoBehaviour:
   rejectShakeCycles: 4
   rejectShakeSeconds: 0.3
   rejectFlashColor: {r: 1, g: 0.25, b: 0.25, a: 1}
+  slamHop: {x: 0.05, y: 0.4}
+  slamHopSeconds: {x: 0.18, y: 0.36}
+  slamTumbleDegrees: {x: 6, y: 28}
+  slamRockDegrees: {x: 5, y: 18}
+  slamRockSeconds: {x: 0.35, y: 0.9}
+  slamRockCycles: 3
+  slamLandPunch: {x: 1.08, y: 1.4}
+  slamFlashColor: {r: 2.5, g: 0.15, b: 0.1, a: 1}
+  slamFlashSeconds: {x: 0.3, y: 0.8}
+  slamFlashPulses: {x: 1, y: 4}
 --- !u!1 &683678135
 GameObject:
   m_ObjectHideFlags: 0
@@ -20116,6 +20347,7 @@ GameObject:
   - component: {fileID: 976833025}
   - component: {fileID: 976833027}
   - component: {fileID: 976833026}
+  - component: {fileID: 976833028}
   m_Layer: 5
   m_Name: LeftHud
   m_TagString: Untagged
@@ -20186,6 +20418,29 @@ CanvasGroup:
   m_Interactable: 1
   m_BlocksRaycasts: 1
   m_IgnoreParentGroups: 0
+--- !u!114 &976833028
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 976833024}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &989166571
 GameObject:
   m_ObjectHideFlags: 0
@@ -26807,6 +27062,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1310185243}
   - component: {fileID: 1310185244}
+  - component: {fileID: 1310185245}
   m_Layer: 5
   m_Name: PotTag
   m_TagString: Untagged
@@ -26852,6 +27108,29 @@ MonoBehaviour:
   amount: {fileID: 931543051}
   heightAboveTower: 0.35
   amountFormat: '{0:N0}'
+--- !u!114 &1310185245
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1310185242}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &1311159898
 GameObject:
   m_ObjectHideFlags: 0
@@ -33085,6 +33364,7 @@ GameObject:
   - component: {fileID: 1559809637}
   - component: {fileID: 1559809636}
   - component: {fileID: 1559809635}
+  - component: {fileID: 1559809638}
   m_Layer: 5
   m_Name: UndoButton
   m_TagString: Untagged
@@ -33194,6 +33474,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1559809633}
   m_CullTransparentMesh: 1
+--- !u!114 &1559809638
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1559809633}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &1568323755
 GameObject:
   m_ObjectHideFlags: 0
@@ -34093,6 +34396,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1617238072}
   - component: {fileID: 1617238073}
+  - component: {fileID: 1617238074}
   m_Layer: 0
   m_Name: HudFx
   m_TagString: Untagged
@@ -34137,7 +34441,39 @@ MonoBehaviour:
   gravity: 900
   spinDegrees: 720
   seconds: 0.6
-  poolSize: 120
+  poolSize: 400
+--- !u!114 &1617238074
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1617238071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e5f68d50cd45c84ab9de5f3b2d37b14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ScreenSlam
+  fontSize: {x: 120, y: 270}
+  startScale: {x: 2.5, y: 7}
+  screenOffset: {x: 0, y: 80}
+  slamSeconds: {x: 0.14, y: 0.26}
+  holdSeconds: {x: 0.35, y: 1.2}
+  flySeconds: 0.3
+  impactShards: {x: 16, y: 220}
+  impactShardStrength: {x: 1, y: 3}
+  impactShardSize: {x: 1, y: 3.5}
+  impactShardLife: {x: 1, y: 1.8}
+  holdSparksPerSecond: {x: 0, y: 90}
+  cameraBump: {x: 0.12, y: 1}
+  hudAndHandShake: {x: 0.15, y: 1}
+  holdPulse: {x: 0.03, y: 0.12}
+  epicFrom: 0.55
+  epicLandingShake: 0.6
+  burst: {fileID: 0}
+  cameraShaker: {fileID: 0}
+  handJuice: {fileID: 0}
+  deckJuice: {fileID: 0}
 --- !u!1 &1628754917
 GameObject:
   m_ObjectHideFlags: 0
@@ -38664,6 +39000,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1904989368}
   - component: {fileID: 1904989369}
+  - component: {fileID: 1904989370}
   m_Layer: 5
   m_Name: DeckHud
   m_TagString: Untagged
@@ -38715,6 +39052,29 @@ MonoBehaviour:
   tooltipText: {fileID: 1922185266}
   countFormat: '{0}<size=70%>/{1}</size>'
   tooltipFormat: "Deck {0} \xB7 Discard {1}"
+--- !u!114 &1904989370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1904989367}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &1904995656
 GameObject:
   m_ObjectHideFlags: 0
@@ -40511,6 +40871,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1967341411}
+  - component: {fileID: 1967341412}
   m_Layer: 0
   m_Name: HandPosition
   m_TagString: Untagged
@@ -40533,6 +40894,29 @@ Transform:
   m_Children: []
   m_Father: {fileID: 67061920}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1967341412
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1967341410}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 0.057392895
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 0
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &1975130902
 GameObject:
   m_ObjectHideFlags: 0
@@ -41877,6 +42261,7 @@ GameObject:
   - component: {fileID: 2041259075}
   - component: {fileID: 2041259074}
   - component: {fileID: 2041259073}
+  - component: {fileID: 2041259076}
   m_Layer: 5
   m_Name: MainButton
   m_TagString: Untagged
@@ -41986,6 +42371,29 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2041259071}
   m_CullTransparentMesh: 1
+--- !u!114 &2041259076
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2041259071}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5610de80b25bc4a4bbb28d83bc937273, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ShakeOffset
+  maxDistance: 22
+  maxTiltDegrees: 1.5
+  frequency: 22
+  drainPerSecond: 2
+  hopAndRock: 1
+  hopHeight: {x: 6, y: 34}
+  hopSeconds: {x: 0.16, y: 0.3}
+  rockDegrees: {x: 1.5, y: 6}
+  rockSeconds: {x: 0.35, y: 0.8}
+  rockCycles: 2.5
+  maxDelay: 0.08
 --- !u!1 &2041704958
 GameObject:
   m_ObjectHideFlags: 0
@@ -44263,6 +44671,14 @@ MonoBehaviour:
   dragLeanSpeed: 12
   dropPunchScale: 1.1
   dropPunchSeconds: 0.15
+  slamJumpHeight: {x: 0.12, y: 0.9}
+  slamJumpSeconds: {x: 0.28, y: 0.55}
+  slamTumbleDegrees: {x: 6, y: 40}
+  slamWobbleDegrees: {x: 4, y: 18}
+  slamWobbleSeconds: {x: 0.3, y: 0.75}
+  slamWobbleCycles: 3
+  slamStaggerSeconds: 0.12
+  slamLandSquashScale: 1.08
 --- !u!4 &2134393900
 Transform:
   m_ObjectHideFlags: 0

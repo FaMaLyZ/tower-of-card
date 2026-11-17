@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
-/// The effects on ONE hand card: hover shake, select punch, deselect pop, tilt, draw flight and drag.
+/// The effects on ONE hand card: hover shake, select punch, deselect pop, tilt, draw flight, drag,
+/// and the slam jump (it hops up tumbling when a big hand slams onto the screen, then rocks as it lands).
 /// Moves the Visual child only, as an offset on its rest pose; the root never moves.
 /// HandJuice adds it to every hand card.
 public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
@@ -33,7 +34,23 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     float dragLean;                                 // degrees, around the camera's forward axis
     Vector3 lastVisualWorld;
 
+    // the slam jump: up and tumbling, then rocking left-right after landing; slamJump.start < 0 = not playing
+    SlamJump slamJump = new SlamJump { start = -1f };
+    bool slamLanded;
+
     bool isAtRest = true;
+
+    /// One slam jump: when it starts, how high and long the hop is, how it tumbles, how it rocks after
+    public struct SlamJump
+    {
+        public float start;
+        public float seconds;
+        public float height;                // in the root's local units
+        public Vector3 tumbleDegrees;       // the turn at the top of the hop (around the card's own axes)
+        public float wobbleDegrees;         // + or -: which way it rocks first
+        public float wobbleCycles;
+        public float wobbleSeconds;
+    }
 
     public void Setup(HandCardView cardView, HandJuice juiceSettings)
     {
@@ -91,6 +108,15 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
     public bool IsFlying => flightStart >= 0f;
 
+    /// Hop up tumbling, land with a squash, then rock left-right (HandJuice sets the sizes per card)
+    public void PlaySlamJump(SlamJump jump)
+    {
+        jump.seconds = Mathf.Max(0.01f, jump.seconds);
+        jump.wobbleSeconds = Mathf.Max(0.01f, jump.wobbleSeconds);
+        slamJump = jump;
+        slamLanded = false;
+    }
+
     // ---------- Every frame: add up the effects, apply them to the Visual ----------
 
     void LateUpdate()
@@ -100,7 +126,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         // HandJuice switched off: every effect stops and the card sits exactly on its root
         if (!settings.isActiveAndEnabled)
         {
-            shakeStart = punchStart = flightStart = -1f;
+            shakeStart = punchStart = flightStart = slamJump.start = -1f;
             wasDragged = false;
             ReturnToRest();
             return;
@@ -114,6 +140,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
         float shakeAngle = GetShakeAngle();
         UpdateDrag();
+        GetSlamJump(out float jumpLift, out Quaternion jumpTurn);
         GetPunch(out float lift, out float scale);
         UpdateTilt();
 
@@ -123,12 +150,12 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
             return;
         }
 
-        ApplyOffsets(shakeAngle, lift, scale);
+        ApplyOffsets(shakeAngle, lift + jumpLift, scale, jumpTurn);
     }
 
     bool NothingIsPlaying()
     {
-        return shakeStart < 0f && punchStart < 0f && !isHovered && !wasDragged &&
+        return shakeStart < 0f && punchStart < 0f && slamJump.start < 0f && !isHovered && !wasDragged &&
                dragOffset.sqrMagnitude < RestEpsilon && Mathf.Abs(dragLean) < 0.01f &&
                Quaternion.Angle(tilt, Quaternion.identity) < 0.01f;
     }
@@ -143,6 +170,37 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
 
         float wave = Mathf.Sin(t * settings.hoverShakeCycles * 2f * Mathf.PI);
         return settings.hoverShakeDegrees * wave * (1f - t);
+    }
+
+    // In the air: a hop (up and back down) while it tumbles and turns back flat.
+    // Landed: a small squash, then a left-right rock that dies out.
+    void GetSlamJump(out float lift, out Quaternion turn)
+    {
+        lift = 0f;
+        turn = Quaternion.identity;
+        if (slamJump.start < 0f) return;
+
+        float t = (Time.time - slamJump.start) / slamJump.seconds;
+        if (t < 0f) return;                                         // still waiting for its turn
+
+        if (t < 1f)
+        {
+            lift = slamJump.height * 4f * t * (1f - t);             // up and down like it was thrown
+            turn = Quaternion.Euler(slamJump.tumbleDegrees * Mathf.Sin(t * Mathf.PI));
+            return;
+        }
+
+        if (!slamLanded)
+        {
+            slamLanded = true;
+            PlayPunch(0.12f, 0f, settings.slamLandSquashScale);
+        }
+
+        float u = (t - 1f) * slamJump.seconds / slamJump.wobbleSeconds;
+        if (u >= 1f) { slamJump.start = -1f; return; }
+
+        float rock = Mathf.Sin(u * slamJump.wobbleCycles * 2f * Mathf.PI) * (1f - u);
+        turn = Quaternion.AngleAxis(slamJump.wobbleDegrees * rock, Vector3.forward);
     }
 
     // one bump out and back (select goes up, deselect dips, landing only grows). Scale follows.
@@ -253,14 +311,14 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         tilt = Quaternion.Slerp(tilt, target, settings.EaseFactor(settings.tiltSpeed));
     }
 
-    void ApplyOffsets(float shakeAngle, float lift, float scale)
+    void ApplyOffsets(float shakeAngle, float lift, float scale, Quaternion jumpTurn)
     {
         isAtRest = false;
         Transform visual = view.Visual;
 
         // The root's local "up" is the card's up (it leans with the fan)
         visual.localPosition = view.VisualRestPosition + Vector3.up * lift + dragOffset;
-        visual.localRotation = settings.GetLeanInRootSpace(transform, dragLean) * tilt *
+        visual.localRotation = settings.GetLeanInRootSpace(transform, dragLean) * tilt * jumpTurn *
                                Quaternion.AngleAxis(shakeAngle, Vector3.forward) * view.VisualRestRotation;
         visual.localScale = view.VisualRestScale * scale;
     }
@@ -281,6 +339,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
         shakeStart = -1f;
         punchStart = -1f;
         flightStart = -1f;
+        slamJump.start = -1f;
         isHovered = false;
         wasDragged = false;
         isAtRest = false;

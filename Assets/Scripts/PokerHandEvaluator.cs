@@ -13,6 +13,7 @@ public class PokerHandResult
     public PokerHand hand;
     public string displayName;
     public string shapeName;
+    public bool isRoyal;                    // a Straight Flush from 10 up to Ace (shown as "Royal Flush")
     public List<int> scoringIndices = new List<int>();
 }
 
@@ -108,6 +109,7 @@ public static class PokerHandEvaluator
         // A-K-Q-J-10 of one suit has its own name
         if (hand == PokerHand.StraightFlush && byRank.ContainsKey(1) && byRank.ContainsKey(13))
         {
+            result.isRoyal = true;
             result.displayName = "Royal Flush";
             result.shapeName = "Palace";
         }

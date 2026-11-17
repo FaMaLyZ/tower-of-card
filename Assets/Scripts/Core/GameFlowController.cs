@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// The conductor: the ONLY script that decides what happens next.
@@ -333,6 +334,7 @@ public class GameFlowController : MonoBehaviour
         if (!Commit.TryCommitSelectedCards()) return;       // worker says the commit is not legal
         blind.UseOneHand();                                 // the hand is spent here, exactly once
         playHandAccepted = true;                            // CommitPhase is waiting for this
+        GameEvents.RaiseHandCommitted(GetCommittedCardIds(), Commit.Preview);
     }
 
     /// The table or a snap point was clicked while building.
@@ -606,7 +608,8 @@ public class GameFlowController : MonoBehaviour
         yield return CommitPhase();                         // until "Play Hand" is accepted
         yield return BuildPhase();                          // until every committed card is placed
         ScorePhase();
-        yield return ShakePhase();                          // physics -> one ShakeResult -> Pot updated once
+        yield return PresentationGate.WaitUntilClear(config.maxScoreRevealWait);   // score effects still playing
+        yield return ShakePhase();                         // physics -> one ShakeResult -> Pot updated once
 
         if (LastShake.Collapsed) yield break;               // jump: tower fell, the Pot is already lost
         if (blind.HandsLeft == 0) { BankThePot(); yield break; }   // jump: the last hand banks by itself
@@ -671,6 +674,13 @@ public class GameFlowController : MonoBehaviour
         placement.DisableInput();
         hand.ClearSelection();
         SpendCommittedCards();
+    }
+
+    List<int> GetCommittedCardIds()
+    {
+        var ids = new List<int>(Commit.CommittedCards.Count);
+        foreach (CardInstance card in Commit.CommittedCards) ids.Add(card.Id);
+        return ids;
     }
 
     // The committed cards are used up: they go to the discard pile
