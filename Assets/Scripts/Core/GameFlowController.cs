@@ -584,10 +584,12 @@ public class GameFlowController : MonoBehaviour
         GameEvents.RaiseGlassChanged(oldLives, newLives, reason);
     }
 
-    /// The blind result stays on screen for a moment before the blind menu opens.
+    /// The blind result stays on screen for a moment before the blind menu opens,
+    /// and a little longer if its effects (a slam, a count) are still playing. Never waits forever.
     IEnumerator ShowBlindResult()
     {
         yield return new WaitForSeconds(config.blindEndPauseSeconds);
+        yield return PresentationGate.WaitUntilClear(config.maxPresentationWait);
     }
 
     /// Cleared or Shattered. The end panel shows the Run Total.

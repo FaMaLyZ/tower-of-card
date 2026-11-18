@@ -57,7 +57,7 @@ public class BlindResultView : MonoBehaviour
         SetText(resultTitle, won ? wonTitle : failedTitle);
         if (resultTitle != null && theme != null) resultTitle.color = won ? theme.goldText : theme.danger;
 
-        SetText(scoreText, string.Format(scoreFormat, flow.SafePoints, flow.Target));
+        NumberRoller.Show(scoreText, flow.SafePoints, scoreFormat, flow.Target);   // counts if it has a NumberRoller
         SetText(detailText, flow.LeftTable
             ? string.Format(bankedAndLeftFormat, flow.BankedThisBlind, flow.LeaveBonusPaid)
             : string.Format(bankedFormat, flow.BankedThisBlind));

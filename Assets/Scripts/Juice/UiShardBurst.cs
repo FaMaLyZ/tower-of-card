@@ -51,13 +51,17 @@ public class UiShardBurst : MonoBehaviour
 
     /// Bursts `count` fragments from a point on the canvas, half in each colour.
     /// Strength scales their speed (1 = normal, 2 = a big blast); sizeScale and lifeScale make them
-    /// bigger and longer-lived (1 = the settings above).
+    /// bigger and longer-lived (1 = the settings above). With sprites, each fragment is one of those
+    /// pictures (kept to its own shape) instead of a plain chip.
     public void Emit(Vector3 worldPosition, int count, Color colorA, Color colorB, float strength = 1f,
-                     float sizeScale = 1f, float lifeScale = 1f)
+                     float sizeScale = 1f, float lifeScale = 1f, IList<Sprite> sprites = null)
     {
         if (shards.Count == 0) return;
         for (int i = 0; i < count; i++)
-            Launch(TakeShard(), worldPosition, Random.value < 0.5f ? colorA : colorB, strength, sizeScale, lifeScale);
+        {
+            Sprite sprite = sprites != null && sprites.Count > 0 ? sprites[Random.Range(0, sprites.Count)] : null;
+            Launch(TakeShard(), worldPosition, Random.value < 0.5f ? colorA : colorB, strength, sizeScale, lifeScale, sprite);
+        }
     }
 
     Shard TakeShard()
@@ -67,10 +71,12 @@ public class UiShardBurst : MonoBehaviour
         return shard;
     }
 
-    void Launch(Shard shard, Vector3 worldPosition, Color color, float strength, float sizeScale, float lifeScale)
+    void Launch(Shard shard, Vector3 worldPosition, Color color, float strength, float sizeScale, float lifeScale,
+                Sprite sprite)
     {
         shard.rect.position = worldPosition;
-        shard.rect.sizeDelta = size * sizeScale * Random.Range(0.6f, 1.3f);
+        shard.image.sprite = sprite;
+        shard.rect.sizeDelta = GetSize(sprite, sizeScale * Random.Range(0.6f, 1.3f));
         shard.rect.localRotation = Quaternion.Euler(0f, 0f, Random.Range(0f, 360f));
         shard.rect.localScale = Vector3.one;
         shard.image.color = color;
@@ -82,6 +88,14 @@ public class UiShardBurst : MonoBehaviour
         shard.life = seconds * lifeScale * Random.Range(0.75f, 1.15f);
         shard.alive = true;
         shard.rect.gameObject.SetActive(true);
+    }
+
+    // A plain chip uses the size above; a picture keeps its own shape at that width
+    Vector2 GetSize(Sprite sprite, float scale)
+    {
+        if (sprite == null || sprite.rect.width <= 0f) return size * scale;
+        float width = size.x * scale;
+        return new Vector2(width, width * sprite.rect.height / sprite.rect.width);
     }
 
     void Update()

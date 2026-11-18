@@ -57,7 +57,7 @@ public class RunEndView : MonoBehaviour
 
         string label = flow.RunOutcome == RunOutcome.Cleared ? clearedLabel : shatteredLabel;
         SetText(titleText, label);
-        SetText(runScoreText, string.Format(runScoreFormat, flow.RunTotal));
+        NumberRoller.Show(runScoreText, flow.RunTotal, runScoreFormat);   // counts if it has a NumberRoller
         SetText(detailText, string.Format(detailFormat, flow.AnteNumber, flow.AntesPerRun, flow.LastBlindKind, flow.GlassLives, flow.GlassMaxLives));
         SetText(resultText, string.Format(resultFormat, label, flow.RunTotal, flow.AnteNumber, flow.AntesPerRun, flow.LastBlindKind));
     }

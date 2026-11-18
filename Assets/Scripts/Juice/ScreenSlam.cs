@@ -69,6 +69,7 @@ public class ScreenSlam : MonoBehaviour
         public Color accent;
         public float drama;
         public float sparkDebt;             // part-sparks carried over between frames
+        public bool hideTarget;             // keep the real text invisible until the slam lands on it
         public Action landed;
     }
 
@@ -98,7 +99,8 @@ public class ScreenSlam : MonoBehaviour
 
     /// Slams `words` onto the screen, then flies it into `target`. Drama 0 = mild, 1 = as big as it gets.
     /// `landed` runs when it arrives (also if it is cut short), so the caller can show the real text again.
-    public void Play(string words, TMP_Text target, Color accent, float drama, Action landed = null)
+    /// hideTarget: the real text stays invisible until the slam lands on it (even if a view keeps redrawing it).
+    public void Play(string words, TMP_Text target, Color accent, float drama, Action landed = null, bool hideTarget = false)
     {
         Slam slam = TakeFreeSlam();
         slam.landed?.Invoke();                      // a reused slam lands its old text at once
@@ -107,6 +109,7 @@ public class ScreenSlam : MonoBehaviour
         slam.accent = accent;
         slam.drama = Mathf.Clamp01(drama);
         slam.sparkDebt = 0f;
+        slam.hideTarget = hideTarget;
         slam.landed = landed;
         CopyLook(slam, words);
         slam.text.gameObject.SetActive(true);
@@ -262,10 +265,18 @@ public class ScreenSlam : MonoBehaviour
         }
     }
 
+    // After the views have drawn this frame: keep a hidden landing spot invisible
+    void LateUpdate()
+    {
+        foreach (Slam slam in slams)
+            if (slam != null && slam.stage != Stage.Idle && slam.hideTarget && slam.target != null) slam.target.alpha = 0f;
+    }
+
     void Land(Slam slam)
     {
         slam.stage = Stage.Idle;
         slam.text.gameObject.SetActive(false);
+        if (slam.hideTarget && slam.target != null) slam.target.alpha = 1f;
         Action landed = slam.landed;
         slam.landed = null;
         landed?.Invoke();

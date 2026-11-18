@@ -21,6 +21,10 @@ public class JuiceDebugPanel : MonoBehaviour
     HandJuice handJuice;
     DeckJuice deckJuice;
     BankJuice bankJuice;
+    GlassJuice glassJuice;
+    BlindResultJuice blindResult;
+    BlindMenuJuice blindMenu;
+    RunEndJuice runEnd;
     CameraShaker cameraShaker;
     PotSignJuice potSign;
 
@@ -50,6 +54,10 @@ public class JuiceDebugPanel : MonoBehaviour
         handJuice = FindAnyObjectByType<HandJuice>();
         deckJuice = FindAnyObjectByType<DeckJuice>();
         bankJuice = FindAnyObjectByType<BankJuice>();
+        glassJuice = FindAnyObjectByType<GlassJuice>();
+        blindResult = FindAnyObjectByType<BlindResultJuice>();
+        blindMenu = FindAnyObjectByType<BlindMenuJuice>();
+        runEnd = FindAnyObjectByType<RunEndJuice>();
         potSign = FindAnyObjectByType<PotSignJuice>();
     }
 
@@ -74,6 +82,8 @@ public class JuiceDebugPanel : MonoBehaviour
         DrawAnyDrama();
         DrawShakes();
         DrawPotSign();
+        DrawGlass();
+        DrawBlindScreens();
 
         GUILayout.EndScrollView();
         GUILayout.EndArea();
@@ -138,6 +148,25 @@ public class JuiceDebugPanel : MonoBehaviour
         if (GUILayout.Button("Cards broke (jolt + red flash)")) potSign.PlayLoss();
         if (GUILayout.Button("Collapse (shatter, bulbs pop off)")) potSign.PlayShatter();
         GUILayout.Label("Bulbs come back when the next hand is drawn");
+    }
+
+    void DrawGlass()
+    {
+        Section("Glass (look only; F4 cracks it for real)");
+        if (glassJuice == null) { GUILayout.Label("No GlassJuice in the scene"); return; }
+        if (GUILayout.Button("Crack burst on the right crystal")) glassJuice.PlayCrack(glassJuice.stars.Count - 1);
+        if (GUILayout.Button("Heal: wobble and break apart (right crystal)")) glassJuice.PlayRepair(glassJuice.stars.Count - 1);
+    }
+
+    // The slams only: the panels themselves open only for a real result
+    void DrawBlindScreens()
+    {
+        Section("Blind screens (slams only)");
+        if (blindResult != null && GUILayout.Button("WON! at the slider's drama")) blindResult.Play(true, drama);
+        if (blindResult != null && GUILayout.Button("FAILED")) blindResult.Play(false, blindResult.failedDrama);
+        if (blindMenu != null && GUILayout.Button("ANTE 3")) blindMenu.PlayAnte(3);
+        if (runEnd != null && GUILayout.Button("RUN CLEARED (with confetti)")) runEnd.Play(true);
+        if (runEnd != null && GUILayout.Button("GLASS SHATTERED (crystals burst)")) runEnd.Play(false);
     }
 
     // ---------- Helpers ----------

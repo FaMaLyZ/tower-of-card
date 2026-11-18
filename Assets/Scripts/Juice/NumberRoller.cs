@@ -61,6 +61,17 @@ public class NumberRoller : MonoBehaviour
         if (hasValue && shown != target) StartRoll();
     }
 
+    /// Show `value` (usually 0) and hold there; the next Release counts up to whatever the view asks for.
+    /// For a number that should count from nothing when its panel appears (a result score, the Run Score).
+    public void StartFrom(long value)
+    {
+        EnsureParts();
+        hasValue = true;
+        shown = target = value;
+        rollStart = -1f;
+        held = true;
+    }
+
     /// A punch on its own (the debug panel uses it)
     public void Punch() => punch?.Play(punchSize, 0f, punchSeconds);
 
