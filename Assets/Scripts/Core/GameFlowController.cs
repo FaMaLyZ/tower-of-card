@@ -489,6 +489,7 @@ public class GameFlowController : MonoBehaviour
     IEnumerator PlayRun()
     {
         Debug.Log($"[Flow] run started: {run.AntesPerRun} Antes, {run.Glass.LivesRemaining} lives");
+        yield return RunIntroPhase();
         while (!run.IsOver)
         {
             yield return BlindMenuPhase();
@@ -500,6 +501,15 @@ public class GameFlowController : MonoBehaviour
 
         FinishRun();
         flow = null;
+    }
+
+    /// Optional presentation at the start of a run (the cards fly in and form the deck). The game only waits here
+    /// while an effect holds the gate, never longer than maxRunIntroWait; with no effects it moves straight on.
+    IEnumerator RunIntroPhase()
+    {
+        SetPhase(GamePhase.RunIntro);
+        yield return null;                                  // one frame for effects to start and hold the gate
+        yield return PresentationGate.WaitUntilClear(config.maxRunIntroWait);
     }
 
     /// Ends when the player presses Select or Skip. The table is cleared first, so the menu sits on an empty table.

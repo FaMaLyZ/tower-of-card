@@ -3911,6 +3911,9 @@ MonoBehaviour:
   scoringShards: 8
   scoringShardStrength: 0.7
   landPunchSize: {x: 0.35, y: 0.8}
+  dropSeconds: 0.5
+  dropOvershoot: 0.12
+  dropMargin: 60
   dramaByHand:
     serializedVersion: 2
     m_Curve:
@@ -7081,6 +7084,7 @@ GameObject:
   - component: {fileID: 289279669}
   - component: {fileID: 289279668}
   - component: {fileID: 289279667}
+  - component: {fileID: 289279671}
   m_Layer: 0
   m_Name: BlindScreensJuice
   m_TagString: Untagged
@@ -7183,6 +7187,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &289279671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 289279666}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 830378ddc6c0de94bafbb938993431df, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::RunIntroJuice
+  deck: {fileID: 672158921}
+  cardLook: {fileID: 569515374}
+  hud: {fileID: 989166574}
+  burst: {fileID: 1617238073}
+  cameraShaker: {fileID: 0}
+  theme: {fileID: 11400000, guid: c85c3893b2c442d41bb3176b087a434f, type: 2}
+  centreScale: 1.6
+  cardCount: 52
+  launchSeconds: 1.1
+  flySeconds: 0.45
+  startOutside: 0.3
+  curve: 0.35
+  spinDegrees: 540
+  squashEvery: 3
+  finishSparks: 40
+  finishCameraBump: 0.3
+  pauseSeconds: 0.25
+  travelSeconds: 0.45
+  travelArc: 0.3
+  hudFadeSeconds: 0.3
+  fromLeft:
+  - {fileID: 976833025}
+  fromRight:
+  - {fileID: 98881897}
+  fromTop:
+  - {fileID: 154354826}
+  - {fileID: 432318354}
+  fromBottom:
+  - {fileID: 2041259072}
+  - {fileID: 1559809634}
+  - {fileID: 1904989368}
+  entranceSeconds: 0.5
+  entranceStagger: 0
+  entranceOvershoot: 0.12
+  entranceLean: 14
+  entranceMargin: 60
 --- !u!1 &297290912
 GameObject:
   m_ObjectHideFlags: 0
@@ -13442,6 +13494,11 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 560349334}
   m_CullTransparentMesh: 1
+--- !u!23 &569515374 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: 8160671836494333227, guid: 7c2ba47b2cbaad2438ba0c890462adec, type: 3}
+  m_PrefabInstance: {fileID: 1023183667}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &576568427
 GameObject:
   m_ObjectHideFlags: 0
@@ -15476,6 +15533,13 @@ MonoBehaviour:
   slamFlashColor: {r: 2.5, g: 0.15, b: 0.1, a: 1}
   slamFlashSeconds: {x: 0.3, y: 0.8}
   slamFlashPulses: {x: 1, y: 4}
+  introRockDegrees: 16
+  introRockSeconds: 0.3
+  introRockCycles: 1.5
+  introPulseSize: 0.2
+  introPulseSeconds: 0.18
+  introFlashColor: {r: 2.5, g: 2.5, b: 2.5, a: 1}
+  introFlashSeconds: 0.08
 --- !u!1 &683678135
 GameObject:
   m_ObjectHideFlags: 0

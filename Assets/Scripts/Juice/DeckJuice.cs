@@ -69,6 +69,18 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     [Tooltip("How many red flashes: 1 for a small hand, a strobe for an epic one")]
     public Vector2Int slamFlashPulses = new Vector2Int(1, 4);
 
+    [Header("Run intro (a card lands on the deck)")]
+    [Tooltip("How far the deck rocks on screen at each landing, in degrees (it swings the other way each time)")]
+    public float introRockDegrees = 16f;
+    public float introRockSeconds = 0.3f;
+    public float introRockCycles = 1.5f;
+    [Tooltip("How much bigger / smaller the deck pulses at each landing (0.2 = 120% then 80%, alternating)")]
+    public float introPulseSize = 0.2f;
+    public float introPulseSeconds = 0.18f;
+    [ColorUsage(false, true)] public Color introFlashColor = new Color(2.5f, 2.5f, 2.5f, 1f);
+    [Tooltip("Kept short: the cards land many times a second, so the deck strobes instead of staying white")]
+    public float introFlashSeconds = 0.08f;
+
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
     static readonly int ColorId = Shader.PropertyToID("_Color");
 
@@ -122,6 +134,50 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     bool slamLanded;
     float slamFlashStart = -1f, slamFlashSecondsNow;
     int slamFlashPulsesNow;
+
+    // Run intro: how full the deck looks (0 = gone, 1 = whole); RunIntroJuice grows it as the cards land
+    float introFill = 1f;
+    float introRockStart = -1f;
+    float introRockSide = 1f;
+    float introPulseStart = -1f;
+    float flashDuration = 0.2f;                 // how long the current flash lasts
+
+    /// Run intro: how full the deck looks, 0 (not there) to 1 (the whole deck)
+    public void SetIntroFill(float fill)
+    {
+        introFill = Mathf.Clamp01(fill);
+        if (introFill < 1f) isAtRest = false;
+    }
+
+    /// Run intro: a card landed on the deck, so it wobbles; squash = also a small squash;
+    /// last = the final card (a big punch)
+    public void PlayIntroLanding(bool squash, bool last)
+    {
+        wobbleStarts.Add(Time.time);
+        introRockStart = Time.time;
+        introRockSide = -introRockSide;             // each landing knocks it the other way
+        introPulseStart = Time.time;                // and makes it bigger, then the next one smaller
+        PlayFlash(introFlashColor, introFlashSeconds);
+        if (last) PlayPunch(1.4f);
+        else if (squash) PlayPunch(arrivePunchScale);
+    }
+
+    // Bigger or smaller (by turns), easing back to normal size; restarted by every landing
+    float GetIntroPulse()
+    {
+        float bump = Bump(ref introPulseStart, introPulseSeconds);
+        return 1f + introPulseSize * introRockSide * bump;
+    }
+
+    // A hard rock flat on the screen that dies out (restarted by every landing)
+    Quaternion GetIntroRock()
+    {
+        Camera cam = Camera.main;
+        float rock = Decaying(ref introRockStart, introRockSeconds, introRockCycles);
+        if (cam == null || rock == 0f) return Quaternion.identity;
+        Vector3 towardCamera = transform.InverseTransformDirection(-cam.transform.forward);
+        return Quaternion.AngleAxis(introRockDegrees * introRockSide * rock, towardCamera);
+    }
 
     /// Hop, tumble, land with a squash, rock, and flash red. Drama 0 = a nudge, 1 = thrown and strobing.
     public void PlaySlam(float drama)
@@ -200,7 +256,8 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         GameEvents.CardsDrawn -= OnCardsDrawn;
         GameEvents.CardsSwapped -= OnCardsSwapped;
         GameEvents.SwapRejected -= OnSwapRejected;
-        shakeStart = flashStart = slamStart = slamFlashStart = -1f;
+        shakeStart = flashStart = slamStart = slamFlashStart = introRockStart = introPulseStart = -1f;
+        introFill = 1f;
         wobbleStarts.Clear();
         punches.Clear();
         pendingDrawPulses.Clear();
@@ -273,8 +330,11 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         punches.Add(new Punch { start = Time.time, peak = peak });
     }
 
-    void PlayFlash(Color color)
+    void PlayFlash(Color color) => PlayFlash(color, flashSeconds);
+
+    void PlayFlash(Color color, float seconds)
     {
+        flashDuration = seconds;
         flashStart = Time.time;
         flashColor = color;
     }
@@ -288,7 +348,7 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         float wobble = SumWobbles();
         float shake = Decaying(ref shakeStart, rejectShakeSeconds, rejectShakeCycles) * rejectShakeAmount * shakeWidth;
         float scale = SumPunches();
-        float flash = Fade(ref flashStart, flashSeconds);
+        float flash = Fade(ref flashStart, flashDuration);
         float hoverShake = Decaying(ref hoverShakeStart, hoverShakeSeconds, hoverShakeCycles) * hoverShakeDegrees;
         UpdateHover();
         GetSlamPose(out Vector3 slamLift, out Quaternion slamTurn);
@@ -296,15 +356,15 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
 
         if (wobbleStarts.Count == 0 && punches.Count == 0 && shakeStart < 0f && flashStart < 0f &&
             pendingDrawPulses.Count == 0 && hoverShakeStart < 0f && IsHoverAtRest() &&
-            slamStart < 0f && slamFlashStart < 0f)
+            slamStart < 0f && slamFlashStart < 0f && introFill >= 1f && introRockStart < 0f && introPulseStart < 0f)
         {
             ReturnToRest();
             return;
         }
 
         isAtRest = false;
-        ApplyPose(wobble, shake, scale * Mathf.Lerp(1f, hoverScale, hoverAmount),
-                  slamTurn * GetHoverRotation(hoverShake), GetHoverLift() + slamLift);
+        ApplyPose(wobble, shake, scale * introFill * GetIntroPulse() * Mathf.Lerp(1f, hoverScale, hoverAmount),
+                  GetIntroRock() * slamTurn * GetHoverRotation(hoverShake), GetHoverLift() + slamLift);
 
         // The slam's red wins over a smaller flash while it plays
         if (slamFlash > 0f)

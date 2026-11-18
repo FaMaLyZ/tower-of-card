@@ -321,7 +321,8 @@ Card chips: 2–10 give their number, J / Q / K give 10, Ace gives 11. Only scor
 | Build | The committed hand, locked |
 | Score | The committed hand plus **= 260** |
 | Shake, Bank / Ride | The last scored hand plus **= 260** |
-| Blind menu, Continue / Leave, results, run end | Hidden |
+| Run intro, Blind menu | Empty: **Your hand** / Select 1-5 cards (decided 2026-11-18: it stays up so it can arrive with the rest of the HUD after the run intro) |
+| Continue / Leave, results, run end | Hidden |
 
 The plaque is never dimmed: it is fully bright whenever it is shown (decided 2026-11-17 after play-testing H3).
 

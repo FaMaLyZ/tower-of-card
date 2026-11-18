@@ -55,6 +55,13 @@ public class HandPlaqueJuice : MonoBehaviour
     [Header("Landing punch (a slam arrives), drama 0 → drama 1")]
     public Vector2 landPunchSize = new Vector2(0.35f, 0.8f);
 
+    [Header("Drop in from the top when the plaque appears")]
+    public float dropSeconds = 0.5f;
+    [Tooltip("How far past its place it drops before snapping back up (share of the trip)")]
+    [Range(0f, 0.3f)] public float dropOvershoot = 0.12f;
+    [Tooltip("Extra distance above the screen it starts from, in canvas pixels")]
+    public float dropMargin = 60f;
+
     [Header("Drama by poker hand")]
     [Tooltip("Left = High Card, right = Straight Flush. Up = a bigger, harder slam and shake. " +
              "The default stays calm up to a Straight, then jumps at Flush and climbs from there")]
@@ -76,6 +83,12 @@ public class HandPlaqueJuice : MonoBehaviour
     bool holdingGate;
     bool started;
 
+    // The plaque hides between blinds (its view fades it); each time it comes back it drops in from the top
+    CanvasGroup plaqueGroup;
+    HudEntrance drop;
+    bool wasShown;
+    float dropStart = -1f;
+
     void Awake()
     {
         if (flow == null) flow = FindAnyObjectByType<GameFlowController>();
@@ -83,6 +96,8 @@ public class HandPlaqueJuice : MonoBehaviour
         if (slam == null) slam = FindAnyObjectByType<ScreenSlam>();
         if (burst == null) burst = FindAnyObjectByType<UiShardBurst>();
         if (floating == null) floating = FindAnyObjectByType<FloatingNumbers>();
+        plaqueGroup = GetComponent<CanvasGroup>();
+        drop = new HudEntrance((RectTransform)transform, Vector2.up);
 
         Watch(buildingName, null, false);
         Watch(pokerName, null, false);
@@ -116,6 +131,8 @@ public class HandPlaqueJuice : MonoBehaviour
 
         ReleasePot();
         ReleaseGate();
+        dropStart = -1f;
+        drop?.ReturnToRest();
         foreach (Watched w in watched)
         {
             w.punch.ReturnToRest();
@@ -291,9 +308,10 @@ public class HandPlaqueJuice : MonoBehaviour
 
     // ---------- Punches ----------
 
-    // After HandPlaqueView.Update has written this frame's texts
+    // After HandPlaqueView.Update has written this frame's texts (and faded the plaque in or out)
     void LateUpdate()
     {
+        UpdateDropIn();
         bool scoring = scoreManager != null && scoreManager.IsScoring;
         foreach (Watched w in watched)
         {
@@ -303,6 +321,19 @@ public class HandPlaqueJuice : MonoBehaviour
             w.punch.Apply();
         }
         started = true;     // the first frame only records the texts, so nothing punches on load
+    }
+
+    // Hidden → shown: start the drop; then slide it in, past its place a little, and snap back
+    void UpdateDropIn()
+    {
+        bool shown = plaqueGroup == null || plaqueGroup.alpha > 0.5f;
+        if (shown && !wasShown && started) dropStart = Time.unscaledTime;
+        wasShown = shown;
+
+        if (dropStart < 0f || drop == null) return;
+        float t = (Time.unscaledTime - dropStart) / Mathf.Max(0.01f, dropSeconds);
+        drop.Apply(t, dropMargin, dropOvershoot, 0f);
+        if (t >= 1f) dropStart = -1f;
     }
 
     void OnTextChanged(Watched w, bool scoring)

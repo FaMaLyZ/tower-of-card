@@ -55,7 +55,8 @@ public class HandPlaqueView : MonoBehaviour
         SetAlpha(hidden ? 0f : 1f);
         if (hidden) return;
 
-        if (scoreManager != null && scoreManager.HasResult) ShowScoredHand();
+        if (IsBetweenBlinds(flow.Phase)) ShowNoHand();          // no old hand left over on the menu
+        else if (scoreManager != null && scoreManager.HasResult) ShowScoredHand();
         else if (GetPreview() != null) ShowPreview(flow.Commit.Preview, GetPreview());
         else ShowNoHand();
     }
@@ -104,12 +105,15 @@ public class HandPlaqueView : MonoBehaviour
 
     // ---------- Visibility ----------
 
-    // Hidden between blinds; always fully bright otherwise (no dimming, by choice)
+    // Hidden on the result panels; always fully bright otherwise (no dimming, by choice). It stays up during the
+    // run intro and the blind menu (as "Your hand"), so it can arrive with the rest of the HUD (decided 2026-11-18)
     static bool IsHidden(GamePhase phase)
     {
-        return phase == GamePhase.None || phase == GamePhase.BlindMenu || phase == GamePhase.ContinueOrLeave ||
+        return phase == GamePhase.None || phase == GamePhase.ContinueOrLeave ||
                phase == GamePhase.BlindEnd || phase == GamePhase.RunEnd;
     }
+
+    static bool IsBetweenBlinds(GamePhase phase) => phase == GamePhase.RunIntro || phase == GamePhase.BlindMenu;
 
     void SetAlpha(float alpha)
     {

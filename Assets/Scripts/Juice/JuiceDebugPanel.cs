@@ -25,6 +25,7 @@ public class JuiceDebugPanel : MonoBehaviour
     BlindResultJuice blindResult;
     BlindMenuJuice blindMenu;
     RunEndJuice runEnd;
+    RunIntroJuice runIntro;
     CameraShaker cameraShaker;
     PotSignJuice potSign;
 
@@ -58,6 +59,7 @@ public class JuiceDebugPanel : MonoBehaviour
         blindResult = FindAnyObjectByType<BlindResultJuice>();
         blindMenu = FindAnyObjectByType<BlindMenuJuice>();
         runEnd = FindAnyObjectByType<RunEndJuice>();
+        runIntro = FindAnyObjectByType<RunIntroJuice>();
         potSign = FindAnyObjectByType<PotSignJuice>();
     }
 
@@ -167,6 +169,7 @@ public class JuiceDebugPanel : MonoBehaviour
         if (blindMenu != null && GUILayout.Button("ANTE 3")) blindMenu.PlayAnte(3);
         if (runEnd != null && GUILayout.Button("RUN CLEARED (with confetti)")) runEnd.Play(true);
         if (runEnd != null && GUILayout.Button("GLASS SHATTERED (crystals burst)")) runEnd.Play(false);
+        if (runIntro != null && GUILayout.Button("Run intro: cards fly in and form the deck")) runIntro.Play();
     }
 
     // ---------- Helpers ----------
