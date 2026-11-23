@@ -145,7 +145,11 @@ public class DrawJuice : MonoBehaviour
 
     public void PlayLandSound()
     {
-        if (playLandSound) AudioManager.SFX(SoundType.DrawCard);
+        if (playLandSound)
+        {
+            AudioManager.Instance.PlayOneShotSFX(SoundType.DrawCard);
+
+        }
     }
 
     Camera GetCamera()

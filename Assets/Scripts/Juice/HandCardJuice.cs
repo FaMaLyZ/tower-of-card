@@ -52,6 +52,7 @@ public class HandCardJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHa
     {
         isHovered = true;
         if (settings != null && settings.CanHoverShake && IsUsable) PlayHoverShake();
+        AudioManager.Instance.PlayOneShotSFX(SoundType.CardHover);
     }
 
     public void OnPointerExit(PointerEventData eventData)

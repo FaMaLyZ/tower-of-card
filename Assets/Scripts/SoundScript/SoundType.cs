@@ -13,4 +13,8 @@ public enum SoundType
     Ost_TowerOfCard,
     SFX_EndGame,
     Ost_MainMenu,
+    Score_Cul,
+    CardSwap_Reject,
+    CardSwap_Success, 
+    CardHover,
 }

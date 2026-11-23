@@ -155,12 +155,12 @@ public class BlindMenuView : MonoBehaviour
     public void OnSelectClicked()
     {
         if (flow != null) flow.RequestSelectBlind();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void OnSkipClicked()
     {
         if (flow != null) flow.RequestSkipBlind();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 }
