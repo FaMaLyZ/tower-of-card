@@ -11,8 +11,10 @@ public enum PokerHand
 public class PokerHandResult
 {
     public PokerHand hand;
-    public string displayName;                                  // "Pair", "Royal Flush"...
-    public List<int> scoringIndices = new List<int>();          // which of the played cards score (played order)
+    public string displayName;
+    public string shapeName;
+    public bool isRoyal;                    // a Straight Flush from 10 up to Ace (shown as "Royal Flush")
+    public List<int> scoringIndices = new List<int>();
 }
 
 /// Works out which poker hand a group of cards makes, and which cards score.
@@ -23,15 +25,15 @@ public static class PokerHandEvaluator
     {
         switch (hand)
         {
-            case PokerHand.HighCard:      return "High Card";
-            case PokerHand.Pair:          return "Pair";
-            case PokerHand.TwoPair:       return "Two Pair";
-            case PokerHand.ThreeOfAKind:  return "Three of a Kind";
-            case PokerHand.Straight:      return "Straight";
-            case PokerHand.Flush:         return "Flush";
-            case PokerHand.FullHouse:     return "Full House";
-            case PokerHand.FourOfAKind:   return "Four of a Kind";
-            default:                      return "Straight Flush";
+            case PokerHand.HighCard: return "High Card";
+            case PokerHand.Pair: return "Pair";
+            case PokerHand.TwoPair: return "Two Pair";
+            case PokerHand.ThreeOfAKind: return "Three of a Kind";
+            case PokerHand.Straight: return "Straight";
+            case PokerHand.Flush: return "Flush";
+            case PokerHand.FullHouse: return "Full House";
+            case PokerHand.FourOfAKind: return "Four of a Kind";
+            default: return "Straight Flush";
         }
     }
 
@@ -89,52 +91,55 @@ public static class PokerHandEvaluator
 
         // A-K-Q-J-10 of one suit has its own name
         if (hand == PokerHand.StraightFlush && byRank.ContainsKey(1) && byRank.ContainsKey(13))
+        {
+            result.isRoyal = true;
             result.displayName = "Royal Flush";
 
-        // Which cards score (kickers do not score, just like Balatro)
-        var scoring = result.scoringIndices;
-        switch (hand)
-        {
-            case PokerHand.HighCard:
-                scoring.Add(HighestCardIndex(cards));
-                break;
-            case PokerHand.Pair:
-            case PokerHand.ThreeOfAKind:
-            case PokerHand.FourOfAKind:
-                scoring.AddRange(groups[0]);
-                break;
-            case PokerHand.TwoPair:
-                scoring.AddRange(groups[0]);
-                scoring.AddRange(groups[1]);
-                break;
-            default:    // Straight, Flush, Full House, Straight Flush: all cards score
-                for (int i = 0; i < n; i++) scoring.Add(i);
-                break;
+            // Which cards score (kickers do not score, just like Balatro)
+            var scoring = result.scoringIndices;
+            switch (hand)
+            {
+                case PokerHand.HighCard:
+                    scoring.Add(HighestCardIndex(cards));
+                    break;
+                case PokerHand.Pair:
+                case PokerHand.ThreeOfAKind:
+                case PokerHand.FourOfAKind:
+                    scoring.AddRange(groups[0]);
+                    break;
+                case PokerHand.TwoPair:
+                    scoring.AddRange(groups[0]);
+                    scoring.AddRange(groups[1]);
+                    break;
+                default:    // Straight, Flush, Full House, Straight Flush: all cards score
+                    for (int i = 0; i < n; i++) scoring.Add(i);
+                    break;
+            }
+            scoring.Sort();
+            return result;
         }
-        scoring.Sort();
-        return result;
-    }
 
-    // 5 different ranks in a row. Ace can be low (A-2-3-4-5) or high (10-J-Q-K-A), not both.
-    static bool IsStraight(List<int> ranks)
-    {
-        if (ranks.Count != 5) return false;
-        if (Consecutive(ranks)) return true;
-        if (ranks.Contains(1)) return Consecutive(ranks.Select(r => r == 1 ? 14 : r).ToList());
-        return false;
-    }
+        // 5 different ranks in a row. Ace can be low (A-2-3-4-5) or high (10-J-Q-K-A), not both.
+        static bool IsStraight(List<int> ranks)
+        {
+            if (ranks.Count != 5) return false;
+            if (Consecutive(ranks)) return true;
+            if (ranks.Contains(1)) return Consecutive(ranks.Select(r => r == 1 ? 14 : r).ToList());
+            return false;
+        }
 
-    static bool Consecutive(List<int> ranks)
-    {
-        var sorted = ranks.OrderBy(r => r).ToList();
-        return sorted[sorted.Count - 1] - sorted[0] == 4;
-    }
+        static bool Consecutive(List<int> ranks)
+        {
+            var sorted = ranks.OrderBy(r => r).ToList();
+            return sorted[sorted.Count - 1] - sorted[0] == 4;
+        }
 
-    static int HighestCardIndex(IList<CardData> cards)
-    {
-        int best = 0;
-        for (int i = 1; i < cards.Count; i++)
-            if (HighValue((int)cards[i].rank) > HighValue((int)cards[best].rank)) best = i;
-        return best;
+        static int HighestCardIndex(IList<CardData> cards)
+        {
+            int best = 0;
+            for (int i = 1; i < cards.Count; i++)
+                if (HighValue((int)cards[i].rank) > HighValue((int)cards[best].rank)) best = i;
+            return best;
+        }
     }
 }

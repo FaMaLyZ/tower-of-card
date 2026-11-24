@@ -111,7 +111,6 @@ public class TowerPlacementInput : MonoBehaviour
         heldCard = card;
         AudioManager.Instance.PlayOneShotSFX(SoundType.SelectCard);
 
-
         // Before the tower exists there are no slots: the next click on the table places the card
         if (tower.IsEmpty) return;
         ShowPreview(card.Data);

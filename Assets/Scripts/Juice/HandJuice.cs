@@ -2,18 +2,11 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-/// Track B hand effects:
-///   B1 (juice-plan 1.1, 2.1, 2.2): hover shake, select punch, deselect pop.
-///   B2 (juice-plan 1.2): 3D tilt toward the mouse. (The fan spread is in HandManager's layout, so the
-///   click areas move with the cards.)
-///   Lock-in: when Play Hand is accepted the committed cards pop and the waiting cards dip as they drop.
-///   B4 (juice-plan 3.1 - 3.3): a dragged card follows the mouse with lag, leans the way it moves,
-///   and punches when dropped. (The neighbours already glide aside: HandManager eases every root.)
-///
-/// Put this on its own object in the scene. It gives every hand card a HandCardJuice and tells it
-/// when the selection changed. It only listens: HandChanged and SelectionChanged have already
-/// happened when it hears them, so it can never change what is selected.
-/// Delete this object and the hand plays exactly the same, just without these effects.
+/// Hand effects: hover shake, select punch, deselect pop, mouse tilt, lock-in pop, drag lag and lean,
+/// and the slam jump (every card hops and rocks when a hand or score slams onto the screen).
+/// Put it on its own object. It gives every hand card a HandCardJuice and only listens to events,
+/// so deleting it leaves the hand working the same.
+
 public class HandJuice : MonoBehaviour
 {
     [Header("Game references (auto-found if empty)")]
@@ -65,6 +58,21 @@ public class HandJuice : MonoBehaviour
     public float dragLeanSpeed = 12f;
     public float dropPunchScale = 1.1f;
     public float dropPunchSeconds = 0.15f;
+
+    [Header("Slam jump (drama 0 → drama 1)")]
+    [Tooltip("How high each card hops, in hand units")]
+    public Vector2 slamJumpHeight = new Vector2(0.12f, 0.9f);
+    public Vector2 slamJumpSeconds = new Vector2(0.28f, 0.55f);
+    [Tooltip("Most a card turns while in the air, in degrees")]
+    public Vector2 slamTumbleDegrees = new Vector2(6f, 40f);
+    [Tooltip("How far a card rocks left-right after it lands, in degrees")]
+    public Vector2 slamWobbleDegrees = new Vector2(4f, 18f);
+    public Vector2 slamWobbleSeconds = new Vector2(0.3f, 0.75f);
+    public float slamWobbleCycles = 3f;
+    [Tooltip("Cards leave one after another, spread over this many seconds")]
+    public float slamStaggerSeconds = 0.12f;
+    [Tooltip("Size of the squash as a card lands")]
+    public float slamLandSquashScale = 1.08f;
 
     readonly HashSet<int> selectedBefore = new HashSet<int>();
     bool wasLockedIn;
@@ -134,6 +142,36 @@ public class HandJuice : MonoBehaviour
     {
         if (cam == null || Mathf.Abs(degrees) < 0.001f) return Quaternion.identity;
         return Quaternion.AngleAxis(degrees, cardRoot.InverseTransformDirection(cam.transform.forward));
+    }
+
+    /// Every hand card hops up tumbling, then rocks as it lands. Drama 0 = a little hop, 1 = thrown in the air.
+    /// Neighbouring cards rock opposite ways, like a row of cards jostled on a table.
+    public void PlaySlamJump(float drama)
+    {
+        if (!isActiveAndEnabled || hand == null) return;
+        drama = Mathf.Clamp01(drama);
+
+        for (int i = 0; i < hand.Count; i++)
+        {
+            HandCardJuice juice = FindJuice(hand.GetCardId(i));
+            if (juice != null && !juice.IsFlying) juice.PlaySlamJump(MakeSlamJump(drama, i % 2 == 0 ? 1f : -1f));
+        }
+    }
+
+    HandCardJuice.SlamJump MakeSlamJump(float drama, float side)
+    {
+        float cardScale = Mathf.Max(0.0001f, hand.handCardScale);
+        float tumble = Mathf.Lerp(slamTumbleDegrees.x, slamTumbleDegrees.y, drama);
+        return new HandCardJuice.SlamJump
+        {
+            start = Time.time + Random.Range(0f, slamStaggerSeconds),
+            seconds = Mathf.Lerp(slamJumpSeconds.x, slamJumpSeconds.y, drama),
+            height = Mathf.Lerp(slamJumpHeight.x, slamJumpHeight.y, drama) * Random.Range(0.7f, 1.2f) / cardScale,
+            tumbleDegrees = new Vector3(Random.Range(-0.3f, 0.3f), Random.Range(-0.3f, 0.3f), Random.Range(-1f, 1f)) * tumble,
+            wobbleDegrees = Mathf.Lerp(slamWobbleDegrees.x, slamWobbleDegrees.y, drama) * side,
+            wobbleCycles = slamWobbleCycles,
+            wobbleSeconds = Mathf.Lerp(slamWobbleSeconds.x, slamWobbleSeconds.y, drama),
+        };
     }
 
     void Awake()

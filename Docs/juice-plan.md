@@ -24,6 +24,7 @@
 ## Category 1 — On Hover
 
 ### 1.1 Shake on Hover
+
 When the mouse enters an interactable card, play a quick rotation shake — left-right wobble, 2–3 cycles, about 0.2 seconds total. It signals "this is clickable."
 
 - **Trigger:** Hover input from `HandCardView`.
@@ -31,6 +32,7 @@ When the mouse enters an interactable card, play a quick rotation shake — left
 - **File / integration:** `HandCardJuice.cs` listens to the view's hover state.
 
 ### 1.2 3D Tilt Toward Mouse (Parallax Tilt)
+
 While the mouse is over a card, it tilts in 3D according to the mouse position relative to the card center. Mouse left of center → card tilts right; mouse above center → card tilts back.
 
 ```text
@@ -45,6 +47,7 @@ Apply this only as a visual offset on top of the base fan pose. Lerp back to zer
 - **Strength:** About 8–12 degrees maximum, adjusted by feel.
 
 ### 1.3 Fan Spread on Mouse Proximity
+
 As the mouse moves across the fan, nearby cards push sideways away from it. Cards outside the spread radius are unaffected. Return to normal spacing when the mouse leaves.
 
 - **Animation:** Distance-weighted visual offsets, with a falloff radius of about two card widths.
@@ -56,18 +59,21 @@ As the mouse moves across the fan, nearby cards push sideways away from it. Card
 ## Category 2 — On Click / Select
 
 ### 2.1 Position Punch on Select
+
 When an accepted selection changes a card from unselected to selected, it lifts with a slight overshoot, then settles. Use a spring curve rather than a plain lerp.
 
 - **Curve:** Y goes `0 → selectedLift × 1.3 → selectedLift` over about 0.15 seconds.
 - **File / integration:** `HandCardJuice.cs` reacts to the accepted selection state. The base view shows selection immediately if juice is absent.
 
 ### 2.2 Toggle-Pop Deselect
+
 Clicking a selected card removes that card from the selected set. It punches down with a small undershoot, then returns to its normal visual pose.
 
 - **Rule:** Toggling one selected card never clears the others. Commit allows up to 5 selected cards; Swap allows as many as there are swaps left (up to 3).
 - **File / integration:** The normal input controller requests the selection change; `HandCardJuice.cs` animates its result.
 
 ### 2.3 Snap Punch on Card Arrival
+
 When a newly drawn or reordered card's visual reaches its destination, play a one-time scale punch: `1.0 → 1.15 → 1.0` over about 0.15 seconds.
 
 - **File / integration:** `DrawAnimator.cs` or the hand presentation component tracks visual arrival and fires once per movement.
@@ -78,12 +84,14 @@ When a newly drawn or reordered card's visual reaches its destination, play a on
 ## Category 3 — On Drag / Movement
 
 ### 3.1 Velocity Tilt During Movement
+
 While a card's visual moves through a draw arc, drag, or fan adjustment, it tilts in the direction of travel. It returns to its base rotation as its visual velocity approaches zero.
 
 - **Formula:** `tiltAngle = visualVelocityX × tiltMultiplier`, clamped to about ±25°.
 - **File / integration:** `HandCardJuice.cs` or `DrawAnimator.cs` tracks the visual motion, without changing the root or card data.
 
 ### 3.2 Drag to Reorder Hand
+
 The player can drag a card left or right to rearrange the hand. Other cards move aside to show the new position. On release, the visual settles into the final slot with the snap punch from 2.3.
 
 **Normal input behavior, implemented before its effects:**
@@ -99,6 +107,7 @@ The player can drag a card left or right to rearrange the hand. Other cards move
 - **Rule:** Reordering never changes the committed card set, poker result, or which cards have been placed. Phase permissions come from the core.
 
 ### 3.3 Mouse Lag While Dragging
+
 A dragged card's visual follows the mouse with a slight lag, roughly one frame behind. Apply this to the hand card visual or the tower ghost visual.
 
 - **File / integration:** `HandCardJuice.cs` for hand cards. For the tower, `TowerPlacementInput` already eases its preview card toward the snapped slot (`snapSpeed`); any extra lag goes in a separate presentation component that reads it.
@@ -109,6 +118,7 @@ A dragged card's visual follows the mouse with a slight lag, roughly one frame b
 ## Category 4 — Draw Animation
 
 ### 4.1 Sequenced One-by-One Draw
+
 New cards appear one at a time, about 0.08–0.12 seconds apart. Unplayed cards remain in the hand; draw only enough cards to reach the hand limit of 8.
 
 - **Core:** The deck and hand perform the draw and record the result independently of the effect.
@@ -116,12 +126,14 @@ New cards appear one at a time, about 0.08–0.12 seconds apart. Unplayed cards 
 - **Fallback:** All new cards appear in their final readable layout immediately. No animation callback is required to make them usable.
 
 ### 4.2 Bézier Arc from Deck
+
 Each new card's `Visual` travels from the deck to its assigned hand pose along a Bézier curve, rising before descending.
 
 - **Control point:** Start around two world units above the straight-line midpoint, then tune for the camera and hand scale.
 - **File / integration:** `DrawAnimator.cs` reads card identities and destination poses from the accepted draw result.
 
 ### 4.3 Tilt During Flight
+
 Apply the velocity tilt from 3.1 during the arc. The visual leans in its travel direction and settles at its destination.
 
 ---
@@ -129,6 +141,7 @@ Apply the velocity tilt from 3.1 during the arc. The visual leans in its travel 
 ## Category 5 — Card Info
 
 ### 5.1 Weight + Chips Tooltip on Hover
+
 A small label near the hovered card shows:
 
 ```text
@@ -144,13 +157,15 @@ Read the card's actual gameplay mass and chip value. This is separate from the b
 
 ## Category 6 — World / Tower
 
-### 6.1 Camera Shake on Collapse
-On the authoritative `TowerCollapsed` event (added in C4, see [Events the effects need](#events-the-effects-need)), play a camera shake lasting about 0.3 seconds, with decaying X/Y amplitude.
+### 6.1 Camera Shake on Breaks and Collapse
 
-- **File / integration:** `CameraShaker.cs` listens to `TowerCollapsed` and adds an offset to the orbit camera's normal pose.
+Every `CardBroken` gives the camera a small jolt, and jolts stack: cards breaking close together build into a bigger shake (decided 2026-11-18 after play-testing C4). The authoritative `TowerCollapsed` event (added in C4, see [Events the effects need](#events-the-effects-need)) gives the full shake. Uses "shake energy" from 0 to 1: each event adds some, it drains over about half a second, and the X/Y offset and tilt follow what is left.
+
+- **File / integration:** `CameraShaker.cs` listens to `CardBroken` and `TowerCollapsed` and adds an offset to the orbit camera's normal pose.
 - **Rule:** A broken card alone does not imply collapse. `TowerBuilder` does not call camera effects directly, and the camera effect never shakes the physical table.
 
 ### 6.2 Deck Feedback
+
 The deck responds to hover, cards entering or leaving, and rejected interaction.
 
 - **Hover when available:** Brief rotation wobble to signal that it is clickable.
@@ -158,7 +173,6 @@ The deck responds to hover, cards entering or leaving, and rejected interaction.
 - **Card departure:** Scale `1.0 → 0.88 → 1.0`, about 0.12 seconds.
 - **Arrival flash:** Flash white once per accepted card return. If several cards return during a reset, the flashes may be queued or shortened within the presentation budget.
 - **Unavailable interaction:** Brief X-axis shake and red flash after the core rejects the deck command. The rejection reason also has a readable plain-text or disabled-state equivalent.
-
 - **File / integration:** `DeckFeedback.cs` listens to deck/swap results and rejection feedback. `DeckGlowBehavior.cs` reads whether a swap is available. Deck input stays in the normal view/controller, independent of these effects.
 
 ---
@@ -211,7 +225,7 @@ The player selects **1–5 cards**. The live preview shows the evaluated poker h
 
 1. Non-committed cards dim and reduce toward 0.75× scale while remaining readable.
 2. Committed cards lift, grow toward 1.2× scale, and align in the active area.
-3. A short announcement, about 0.6 seconds, shows the hand name and its real scoring values. For example, the optional name **"TWIN TENTS"** represents Two Pair, whose current base values are `20 × 2`.
+3. A short announcement, about 0.6 seconds, shows the hand name and its real scoring values. For example, the optional name **"DOUBLE BRACE"** represents Two Pair, whose current base values are `20 × 2`.
 4. The presentation gate completes or skips, and the conductor enables Build.
 
 The baseline view sets the readable committed/reserve layout instantly even without these effects. `CommitManager` owns the committed IDs; `ScoreRevealJuice` or an announcement presenter owns the slam. A rejected commitment shows its reason without spending a hand.
@@ -257,7 +271,7 @@ The core releases the tower, waits using the Master Plan's bounded settling poli
 - **Ride:** The accepted choice keeps the Pot and standing tower. The conductor begins the next hand. A full tower's disabled Ride explanation remains readable without effects.
 - **After Bank:** If Leave Table is legal, show **Continue** and **Leave Table**. Do not automatically draw while this choice is pending.
 - **Blind result:** The menu slide, win/fail cues, and Glass crack or repair effects react to resolved results. A skip advances according to the core rules; an animation cannot apply a second repair.
-- **Run intro:** Cards fly in to form the deck during the optional intro gate. `GamePhase.RunIntro` exists but the conductor does not enter it yet; C8 adds that step. With effects off, the ready deck and Blind Menu appear immediately.
+- **Run intro:** Cards fly in to form the deck during the optional intro gate. The conductor enters `GamePhase.RunIntro` at the start of every run (added in C8). With effects off, the ready deck and Blind Menu appear immediately.
 
 ---
 
@@ -276,6 +290,9 @@ The normal HUD always shows the evaluated hand during Commit. Architectural name
 | 5 cards: three of one rank and two of another | House | Full House |
 | 4 matching ranks | Tower Block | Four of a Kind |
 | 5 consecutive ranks of one suit | Spire | Straight Flush |
+| Same-suit 10–J–Q–K–A | Palace | Royal Flush |
+
+The names are flavour only. A Pair is called "Tent" even though it does not have to be built as a tent on the tower (names changed 2026-11-17, see [HUD Design.md](HUD%20Design.md) §4).
 
 The evaluator decides the strongest hand and scoring-card indices. Extra non-scoring cards do not become chip contributions because of an animation. Zero selected cards shows **"Select 1–5 cards"** rather than a fabricated hand.
 
@@ -290,10 +307,39 @@ Agreed order after A6 (2026-11-16). The [Master Plan](Master%20Plan%20Real.md) s
 | Order | Work | Why here |
 |---|---|---|
 | 1 | Revise this plan | Done (revision 2). |
-| 2 | **Track B** (B1–B5), **C3** break particles, **C4** collapse camera shake | They animate cards and the camera, not the HUD, so a HUD change cannot break them. |
-| 3 | **HUD update**, planned and built with plain (instant) displays | The HUD-bound effects need to know which elements exist and where they sit. |
-| 4 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
-| Later | **C8** run intro | Needs the full run and a `RunIntro` step in the conductor. |
+| 2 | **Track B** (B1–B5) | Done (2026-11-16). |
+| 3 | **HUD design** | Done: [HUD Design.md](HUD%20Design.md). Building names and the live Commit preview are already in the code. |
+| 4 | **C3** break particles, **C4** collapse camera shake | Done (2026-11-18): `BreakJuice` (tower shards), `UiShardBurst` + `PotSignJuice` + `BrokenStripJuice` (HUD), `CameraShaker` (stacking shake per break, full on collapse). The Pot number count-down moves to C5. |
+| 5 | **HUD rebuild** with plain placeholder art, area by area (H1–H7 below) | Done (2026-11-18). The HUD-bound effects need to know which elements exist and where they sit. |
+| 6 | **C1, C2, C5, C6, C7** on the new HUD | Each animates a HUD element: hand name, score texts, Pot and Safe displays, blind menu, Glass. |
+| 6a | **C1** + the plaque part of **C2** | Done (2026-11-18, play-tested): `HandPlaqueJuice` (plaque texts punch on change, harder with a twist and fragments while scoring; Play hand slams the hand name across the screen, scoring done slams the score; holds `PresentationGate` so the shake waits, capped by `GameConfig.maxScoreRevealWait`), `ScreenSlam` (slam, hold, fly into the plaque; drama 0-1 by poker hand from a curve that jumps at Flush, Royal Flush on top; fragments, hold sparks, epic aftershock), `ShakeOffset` (HUD blocks jitter, hop and rock; hand anchor jitters), hand cards jump, tumble and rock (`HandJuice` / `HandCardJuice`), deck hops, rocks and flashes red (`DeckJuice`), `CameraShaker` bump. `HandCommitted` event added. F8 `JuiceDebugPanel` fires every effect without touching the game. Rest of C2 built 2026-11-18, waiting for play-test: `FloatingNumbers` ("+11" pops off each scored card on the tower, bonus mult by the mult box; "+score" lifts off the total and arcs into the Pot sign trailing sparks), `NumberRoller` on the Pot number (held at the old Pot until the "+score" lands, then counts up and punches; also counts down after breaks, the C3 leftover). `PotSignView` writes its number through `NumberRoller.Show`. `maxScoreRevealWait` raised to 8 s. |
+| 6b | **C5** Bank | Built 2026-11-18, waiting for play-test: the cashier drawer works like a real drawer (`DrawerSlideJuice`, shown through `DrawerSlideJuice.Show` in `BankRideView`): it drops down out of the right HUD it hangs under (drawn behind it), bounces up and down as it settles; closing, it is pulled down a little with a stretch, then snaps up into the HUD (decided 2026-11-18 after play-testing). `BankJuice`: on `PotBanked` "+payout" lifts off the Pot sign (counting down to 0) into the Safe bar, Safe counts up and the bar fills along with it (`SafeBarView` uses `NumberRoller.Show` / `Shown`), then a gold "+payout" flies on into the Run Score, which counts up (`LeftHudView` uses `NumberRoller.Show`). `TowerSweepJuice`: in the Bank frame copies the tower cards' meshes (no physics, no logic) and blows the copies off sideways, top first; the core removes the real cards at once as before. |
+| 6c | **C7** Glass | Built 2026-11-18, waiting for play-test: the Glass lives are spinning crystals from `Assets/Shards` (61-frame turns, imported as 256 px sprites). A whole life is the black silhouette crystal turning slowly (30 fps, 2 s a turn), a cracked life the red crystal turning fast (60 fps); the repeated last frame is skipped; `GlassStarsView` plays the frames (still sprites as fallback; crack-line overlays dropped). `GlassJuice`: on a crack the black crystal is held (`GlassStarsView.HoldWhole`) while 8 red shards (`glass_shard_1-3`) appear in a ring and fly in from every direction; as they meet, the red crystal grows out over the black one (a black copy fades underneath), with a flash of fragments, a HUD hop and a camera shake (changed 2026-11-18 from an outward burst); on a repair (`HoldCracked`) the red crystal wobbles harder and harder, then breaks into red shards flying out and the black crystal is simply there underneath. `UiShardBurst.Emit` can now fly sprite shards. `Crystal.fbx` is not used yet. |
+| 6d | **C6** Blind screens + run end | Built 2026-11-18, waiting for play-test. All slams use `ScreenSlam` (new `hideTarget`: the landing text stays invisible until the slam arrives). `BlindResultJuice`: "WON!" (drama by blind, Small 0.35 / Big 0.55 / Boss 0.85, plus up to 0.15 for winning by double the target) or "FAILED" (0.65) slams into the result title; on landing the score counts up from 0 (`NumberRoller.StartFrom`; `BlindResultView` writes it through `NumberRoller.Show`), the reward / crack line punches, confetti. Holds `PresentationGate`; `ShowBlindResult` now also waits on the gate after `blindEndPauseSeconds` (capped by `maxPresentationWait`). `GlassJuice` waits `delayAtBlindEnd` (0.9 s) before a crack or heal caused by a blind's end, so the word lands first. `BlindMenuJuice`: "ANTE n" slams into the menu header once per Ante; Select punches the chosen chip with sparks; Skip slams a small "SKIPPED" into that blind's status. `RunEndJuice`: cleared, "RUN CLEARED" at full drama then waves of gold confetti along the top; shattered, every crystal blows apart (`GlassJuice.ShatterAll`) then "GLASS SHATTERED"; the Run Score counts up from 0 on landing (`RunEndView` writes it through `NumberRoller.Show`). |
+| Alongside 5–6 | **Artist replaces placeholder art** | Brief: [HUD Art Assets.md](HUD%20Art%20Assets.md). Art drops into fixed slots, so it never blocks code work. |
+| 7 | **C8** run intro | Built 2026-11-18, waiting for play-test: the conductor now starts every run with `RunIntroPhase` (`GamePhase.RunIntro`, waits on `PresentationGate`, capped by `maxPresentationWait`; no effects = no wait). `RunIntroJuice`: the HUD canvas is hidden (a `CanvasGroup`; the HudFx layer ignores it so sparks show) and the empty deck sits in the middle of the screen, 1.6× bigger (`DeckJuice.SetIntroFill`); 52 mesh-only card copies fly in from past every screen edge on curved, spinning paths; each landing grows the deck and wobbles it, every third also squashes it; the last lands with a big punch, gold sparks and a camera bump. After a beat the deck travels down to its corner along an arc, then the whole HUD arrives at once, every piece from its own side (`HudEntrance`): left HUD from the left, right HUD from the right, hand plaque and instruction line from the top, buttons and deck count from the bottom; the side pieces lean as they come, all overshoot and snap (changed 2026-11-18 after play-testing). The hand plaque now stays up (empty) during the intro and the blind menu, and drops in from the top whenever it reappears. A click skips it. Capped by the new `GameConfig.maxRunIntroWait` (5 s). The hand plaque is hidden during the intro. |
+
+### HUD rebuild steps (step 5)
+
+| # | Area | Contents |
+|---|---|---|
+| H1 | Missing game values | ✅ Done (2026-11-17): `SafeAfterBank`, `BankReachesTarget`, `PointsOverTarget`, `HeightBonusPercent`, `LastShakeLossPercent`, `RewardMultiplierBeforeLastWin` (HUD Design §13.2) |
+| H2 | Style setup | ✅ Done (2026-11-17): TMP font assets in `Assets/Fonts`, `HudTheme` asset (colours, fonts, dimming), 59 placeholder sprites in `Assets/Images/HUD` (menu: Tower of Cards > HUD > Make Missing Placeholders; never overwrites) |
+| H3 | Left HUD + hand plaque | ✅ Done (2026-11-17): `LeftHudView`, `HandPlaqueView`, `GlassStarsView`, `PipRow` (in `Assets/Scripts/Hud`). Old `ScoresPanel`, `RunText`, `GlassText` deleted. The plaque never dims |
+| H4 | Right HUD | ✅ Done (2026-11-17): `BlindPlaqueView`, `SafeBarView`, `PotSignView`, `BrokenStripView`, `BreakdownView`, `LadderView`, `RightHudView`. Old `TurnText`, `TotalScoreText`, `PotText` and the card-details `HintText` deleted. Hand centred at the bottom; deck moved to the bottom-right corner below the right HUD. Bank / Ride / Continue / Leave / main button sit left of the panel until H5 / H6 |
+| H5 | Centre + deck + buttons | ✅ Done (2026-11-17): instruction line and banner pills (`HudView`), `PotTagView`, `DeckHudView` (count badge, swap pips, blue glow, hover tooltip), Play hand / Done swapping and Undo buttons under the hand. Hand raised slightly to make room. Old `StateText`, `CardsText`, `DeckText`, `DiscardText`, `BannerText`, `EndTurnButton` deleted |
+| H6 | Cashier drawer | ✅ Done (2026-11-17): drawer under the right HUD (`BankRideView` rewired: receipt line, BANK / RIDE keys, "Tower full"). Appears instantly; the slide is C5. Old `BankButton` / `RideButton` deleted |
+| H7 | Full-screen panels | ✅ Done (play-tested 2026-11-18): Blind menu (`BlindMenuView`, upcoming blinds not dimmed), Continue / Leave (`ContinueLeaveView`), Blind result (`BlindResultView`, keeps the auto timer, no Next button), Run end (`RunEndView` texts inside the existing marquee art), Run Info (`RunInfoView`), Options mock-up (Back only). Run Info / Options use `HudPopup`: they block table clicks but do not pause. Panels slide up from the bottom (`PanelSlideJuice`) with no dark backdrop |
+| ~~H8~~ | ~~Panel focus~~ | Dropped 2026-11-17: no dimming anywhere in the HUD |
+
+**Rules for the rebuild:**
+
+- **Replace one area at a time, never the whole HUD at once.** Build the new area beside the old texts, play and check the numbers, then delete the old texts it replaces and commit. The game stays playable after every step.
+- **Code never depends on the art.** Each element is a prefab with fixed child names (for example `PotSign/Frame`, `PotSign/Label`, `PotSign/Number`, `PotSign/Line`). Scripts reference texts and roots, never a sprite, so the artist swaps the sprite in `Frame` and nothing else changes.
+- **Animations move a wrapper, not the art.** Effects tween a `Visual` child (the same rule as the hand cards), so new art inside it cannot break a tween.
+- **Placeholders use the final sizes** from [HUD Art Assets.md](HUD%20Art%20Assets.md), with stretchable sprites (9-slice), so swapping the art does not move the layout.
+- **Small views, not one big** `HudView`**:** for example `LeftHudView`, `HandPlaqueView`, `PotPanelView`, `CashierView`, `DeckHudView`, `LadderView`. `HudView` keeps the instruction line, banners and main buttons.
+- **Done when:** every juice component is off and a full run still shows every number correctly.
 
 Track B notes: B4 needs plain drag-to-reorder input (a `HandManager` reorder command) before any reorder effect. B3 is the first effect that holds `PresentationGate`, so it also adds the conductor's wait on the gate after a draw (the gate exists but nothing waits on it yet).
 
@@ -304,14 +350,14 @@ Effects listen to `GameEvents`. Each missing event is added by the step that fir
 | Event | Status | Used by | Added in |
 |---|---|---|---|
 | `HandChanged`, `SelectionChanged` | ✅ exists | B1, B3, C1 | — |
-| `CardBroken(Card)` | ✅ exists (A6) | C3 | — |
+| `CardBroken(Card)` | ✅ exists (A6) | C3, C4 | — |
 | `ShakeResolved`, `PotChanged`, `PotBanked`, `TableLeft` | ✅ exists | C3, C5 | — |
 | `BlindOffered`, `BlindSkipped`, `BlindStarted`, `BlindWon`, `BlindFailed`, `RunEnded` | ✅ exists | C6 | — |
 | `GlassChanged` | ✅ exists | C7 | — |
-| `CardsDrawn(card IDs)` | ❌ missing: `HandChanged` gives the new list, not which cards came from the deck | B3, 6.2 | B3 |
-| `SwapRejected(reason)` | ❌ missing: a bad deck click is ignored silently | 6.2 | B5 |
-| `TowerCollapsed` | ❌ missing: `ShakeResolved.Collapsed` covers it until then | C4, C3 Pot shatter | C4 |
-| `HandCommitted(card IDs, hand)` | ❌ missing | C1 | C1 |
+| `CardsDrawn(card IDs)` | ✅ exists (B3) | B3, 6.2 | B3 |
+| `SwapRejected(reason)` | ✅ exists (B5) | 6.2 | B5 |
+| `TowerCollapsed(ShakeResult)` | ✅ exists (C4) | C4, C3 Pot shatter | C4 |
+| `HandCommitted(card IDs, hand)` | ✅ exists (C1) | C1 | C1 |
 | `HandScored(score result)` | ❌ missing: only `ScoreManager.OnScoreStep` / `OnTurnScored` | C2 | C2 |
 
 **Acceptance check:** Disable all optional juice components, play through selection, swaps, reorder, commit, build, score, Bank/Ride, last-hand resolution, a blind result, and replay. Inputs, totals, and transitions must still work. Re-enable effects and verify that skipping or interrupting them produces exactly the same results.
@@ -343,7 +389,14 @@ Names are implementation suggestions. Combine small presentation helpers when th
 
 # Revision notes
 
+**Revision 3 (2026-11-17), after the HUD design.**
+
+- Track B and the HUD design marked done. Building names changed to Tent, Twin Tents, Tripod, Wall.
+- Implementation order now has the HUD rebuild steps (H1–H8), the replace-one-area-at-a-time rule, and the artist working alongside from [HUD Art Assets.md](HUD%20Art%20Assets.md).
+- `CardsDrawn` and `SwapRejected` marked as existing.
+
 **Revision 2 (2026-11-16), after A6.**
+
 - Swap is up to 3 cards in one deck click (built in A2), not one card at a time. Phase 2 and rule 2.2 rewritten.
 - Script names follow A6: `HudView` (was `GameUI`), `SwapManager` / `SwapZone` (were `DiscardManager` / `DiscardZone`), `TowerPlacementInput` and `SnapMarkerView` (split out of `TowerBuilder` / `GameUI`), `GameEvents.CardBroken` (was `Card.Broken`).
 - Added [Events the effects need](#events-the-effects-need): which events exist, and which step adds each missing one.

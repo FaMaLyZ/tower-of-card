@@ -52,7 +52,15 @@ public class RunEndView : MonoBehaviour
         if (resultText == null || flow == null || !flow.IsRunOver) return;
 
         string label = flow.RunOutcome == RunOutcome.Cleared ? clearedLabel : shatteredLabel;
-        resultText.text = string.Format(resultFormat, label, flow.RunTotal, flow.AnteNumber, flow.AntesPerRun, flow.LastBlindKind);
+        SetText(titleText, label);
+        NumberRoller.Show(runScoreText, flow.RunTotal, runScoreFormat);   // counts if it has a NumberRoller
+        SetText(detailText, string.Format(detailFormat, flow.AnteNumber, flow.AntesPerRun, flow.LastBlindKind, flow.GlassLives, flow.GlassMaxLives));
+        SetText(resultText, string.Format(resultFormat, label, flow.RunTotal, flow.AnteNumber, flow.AntesPerRun, flow.LastBlindKind));
+    }
+
+    static void SetText(TMP_Text text, string value)
+    {
+        if (text != null) text.text = value;
     }
 
     void StartFadeIn()

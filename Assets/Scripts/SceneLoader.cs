@@ -12,7 +12,6 @@ public class SceneLoader : MonoBehaviour
     public void LoadMainMenu()
     {
         AudioManager.Instance.StopSFX();
-
         SceneManager.LoadScene("MainMenu");
     }
     public void ExitGame()

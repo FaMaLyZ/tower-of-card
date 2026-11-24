@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// The conductor: the ONLY script that decides what happens next (Master Plan rule 4).
@@ -309,6 +310,7 @@ public class GameFlowController : MonoBehaviour
         if (!Commit.TryCommitSelectedCards()) return;       // worker says the commit is not legal
         blind.UseOneHand();                                 // the hand is spent here, exactly once
         playHandAccepted = true;                            // CommitPhase is waiting for this
+        GameEvents.RaiseHandCommitted(GetCommittedCardIds(), Commit.Preview);
     }
 
     /// The table or a snap point was clicked while building.
@@ -463,6 +465,7 @@ public class GameFlowController : MonoBehaviour
     IEnumerator PlayRun()
     {
         Debug.Log($"[Flow] run started: {run.AntesPerRun} Antes, {run.Glass.LivesRemaining} lives");
+        yield return RunIntroPhase();
         while (!run.IsOver)
         {
             yield return BlindMenuPhase();
@@ -474,6 +477,15 @@ public class GameFlowController : MonoBehaviour
 
         FinishRun();
         flow = null;
+    }
+
+    /// Optional presentation at the start of a run (the cards fly in and form the deck). The game only waits here
+    /// while an effect holds the gate, never longer than maxRunIntroWait; with no effects it moves straight on.
+    IEnumerator RunIntroPhase()
+    {
+        SetPhase(GamePhase.RunIntro);
+        yield return null;                                  // one frame for effects to start and hold the gate
+        yield return PresentationGate.WaitUntilClear(config.maxRunIntroWait);
     }
 
     /// Ends when the player presses Select or Skip. The table is cleared first, so the menu sits on an empty table.
@@ -558,10 +570,12 @@ public class GameFlowController : MonoBehaviour
         GameEvents.RaiseGlassChanged(oldLives, newLives, reason);
     }
 
-    /// The blind result stays on screen for a moment before the blind menu opens.
+    /// The blind result stays on screen for a moment before the blind menu opens,
+    /// and a little longer if its effects (a slam, a count) are still playing. Never waits forever.
     IEnumerator ShowBlindResult()
     {
         yield return new WaitForSeconds(config.blindEndPauseSeconds);
+        yield return PresentationGate.WaitUntilClear(config.maxPresentationWait);
     }
 
     /// Cleared or Shattered. The end panel shows the Run Total.
@@ -582,7 +596,8 @@ public class GameFlowController : MonoBehaviour
         yield return CommitPhase();                         // until "Play Hand" is accepted
         yield return BuildPhase();                          // until every committed card is placed
         ScorePhase();
-        yield return ShakePhase();                          // physics -> one ShakeResult -> Pot updated once
+        yield return PresentationGate.WaitUntilClear(config.maxScoreRevealWait);   // score effects still playing
+        yield return ShakePhase();                         // physics -> one ShakeResult -> Pot updated once
 
         if (LastShake.Collapsed) yield break;               // jump: tower fell, the Pot is already lost
         if (blind.HandsLeft == 0) { BankThePot(); yield break; }   // jump: the last hand banks by itself
@@ -649,6 +664,13 @@ public class GameFlowController : MonoBehaviour
         SpendCommittedCards();
     }
 
+    List<int> GetCommittedCardIds()
+    {
+        var ids = new List<int>(Commit.CommittedCards.Count);
+        foreach (CardInstance card in Commit.CommittedCards) ids.Add(card.Id);
+        return ids;
+    }
+
     // The committed cards are used up: they go to the discard pile
     void SpendCommittedCards()
     {
@@ -683,6 +705,7 @@ public class GameFlowController : MonoBehaviour
         Debug.Log($"[Flow] shake {LastShake.ShakeId}: {LastShake.BrokenCount} broken, {LastShake.StandingLevels} levels, " +
                   $"collapsed {LastShake.Collapsed}, pot {oldChips} -> {pot.PotChips}");
         GameEvents.RaiseShakeResolved(LastShake);
+        if (LastShake.Collapsed) GameEvents.RaiseTowerCollapsed(LastShake);
         AnnouncePotChanged(oldChips, LastShake.Collapsed ? PotChangeReason.Collapsed : PotChangeReason.ShakeResolved);
     }
 

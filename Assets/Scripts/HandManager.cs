@@ -678,11 +678,9 @@ public class HandManager : MonoBehaviour
     public void SelectCardSound()
     {
         AudioManager.Instance.PlayOneShotSFX(SoundType.SelectCard);
-
     }
     public void ClearSelectedCardSound()
     {
         AudioManager.Instance.PlayOneShotSFX(SoundType.UnselectCard);
-
     }
 }

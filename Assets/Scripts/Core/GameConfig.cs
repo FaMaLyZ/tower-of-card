@@ -41,7 +41,10 @@ public class GameConfig : ScriptableObject
 
     [Header("Presentation")]
     [Min(0f)] public float maxPresentationWait = 3.0f;
-    [Tooltip("How long the blind result stays on screen before the next blind starts (until the blind menu in A4c).")]
+    [Tooltip("Longest the shake waits for the score count-up and its effects (a big 5-card hand takes about 5.5 s)")]
+    [Min(0f)] public float maxScoreRevealWait = 8.0f;
+    [Tooltip("Longest the run's start waits for the intro (cards forming the deck)")]
+    [Min(0f)] public float maxRunIntroWait = 5.0f;
     [Min(0f)] public float blindEndPauseSeconds = 2.5f;
     [Tooltip("Pause after drawing, so the new cards can be seen before swapping starts.")]
     [FormerlySerializedAs("oldLoopDrawSeconds")]
