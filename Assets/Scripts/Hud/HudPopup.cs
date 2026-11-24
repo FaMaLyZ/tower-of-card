@@ -21,12 +21,12 @@ public class HudPopup : MonoBehaviour
     public void Open()
     {
         PanelSlideJuice.Show(panel, true);
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void Close()
     {
         PanelSlideJuice.Show(panel, false);
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 }

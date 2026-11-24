@@ -61,12 +61,12 @@ public class ContinueLeaveView : MonoBehaviour
     public void OnContinueClicked()
     {
         if (flow != null) flow.RequestContinue();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void OnLeaveClicked()
     {
         if (flow != null) flow.RequestLeaveTable();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 }

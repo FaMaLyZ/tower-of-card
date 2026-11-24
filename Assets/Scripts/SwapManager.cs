@@ -99,6 +99,6 @@ public class SwapManager : MonoBehaviour
 
     public void SwapSound()
     {
-        AudioManager.SFX(SoundType.UnselectCard);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.UnselectCard);
     }
 }

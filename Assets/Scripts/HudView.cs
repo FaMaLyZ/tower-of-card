@@ -210,8 +210,8 @@ public class HudView : MonoBehaviour
 
     void PlayRunEndSound()
     {
-        AudioManager.MusicStop();
-        AudioManager.SFX(SoundType.SFX_EndGame);
+        AudioManager.Instance.StopLoopMusic();
+        AudioManager.Instance.PlayOneShotSFX(SoundType.SFX_EndGame);
     }
 
     // =====================================================================
@@ -226,13 +226,13 @@ public class HudView : MonoBehaviour
             if (flow.Phase == GamePhase.Swap) flow.RequestDoneSwapping();
             else flow.RequestPlayHand();
         }
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void OnUndoClicked()
     {
         if (flow != null) flow.RequestUndo();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     // =====================================================================

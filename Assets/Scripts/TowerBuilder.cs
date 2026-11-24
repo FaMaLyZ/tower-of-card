@@ -216,7 +216,7 @@ public class TowerBuilder : MonoBehaviour
         if (cards.TryGetValue(last.key, out Card towerCard) && towerCard != null) Destroy(towerCard.gameObject);
         cards.Remove(last.key);
 
-        AudioManager.SFX(SoundType.UnselectCard);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.UnselectCard);
         if (IsEmpty) ResetTower();                      // that was the only card: back to "click the table"
         return last.card;
     }
@@ -485,6 +485,6 @@ public class TowerBuilder : MonoBehaviour
 
     public void PlaceCardSound()
     {
-        AudioManager.SFX(SoundType.PlayCard);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.PlayCard);
     }
 }

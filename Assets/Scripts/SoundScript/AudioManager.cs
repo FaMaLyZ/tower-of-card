@@ -66,15 +66,7 @@ public class AudioManager : MonoBehaviour
         musicSource.outputAudioMixerGroup = musicGroup;
     }
 
-    // Null-safe entry points. The AudioManager only exists once a scene that holds it has been
-    // loaded, so pressing Play straight into a gameplay scene leaves Instance null. Call these
-    // instead of Instance.X() so a missing sound stays silent rather than throwing and aborting
-    // the gameplay code half way through.
-    public static void SFX(SoundType type) { if (Instance != null) Instance.PlayOneShotSFX(type); }
 
-    public static void UISFX(SoundType type) { if (Instance != null) Instance.PlayOneShotUISFX(type); }
-    public static void MusicStop() { if (Instance != null) Instance.StopLoopMusic(); }
-    public static void SFXStop() { if (Instance != null) Instance.StopSFX(); }
 
     // Method
     public void PlayOneShotSFX(SoundType type)

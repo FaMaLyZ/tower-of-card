@@ -82,12 +82,12 @@ public class BankRideView : MonoBehaviour
     public void OnBankClicked()
     {
         if (flow != null) flow.RequestBank();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 
     public void OnRideClicked()
     {
         if (flow != null) flow.RequestRide();
-        AudioManager.UISFX(SoundType.UI_Button);
+        AudioManager.Instance.PlayOneShotUISFX(SoundType.UI_Button);
     }
 }

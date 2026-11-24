@@ -317,12 +317,18 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     {
         PlayPunch(arrivePunchScale);
         PlayFlash(arriveFlashColor);
+
+        //เสียง Swap
+        AudioManager.Instance.PlayOneShotSFX(SoundType.CardSwap_Success);
     }
 
     void OnSwapRejected(SwapRejectReason reason)
     {
         shakeStart = Time.time;
         PlayFlash(rejectFlashColor);
+
+        //เสียง SwapReject
+        AudioManager.Instance.PlayOneShotSFX(SoundType.CardSwap_Reject);
     }
 
     void PlayPunch(float peak)

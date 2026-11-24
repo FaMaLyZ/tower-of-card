@@ -14,14 +14,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SoundDatabase
   sounds:
   - type: 1
-    clip: {fileID: 8300000, guid: 1e3eed476ca236040b315301ded9f4a2, type: 3}
+    clip: {fileID: 8300000, guid: 9d81c83a1c6016f41a4da117a66838d1, type: 3}
     volume: 1
   - type: 2
     clip: {fileID: 8300000, guid: d1dc6194dfc59eb4c8faa6ec1d71d52f, type: 3}
     volume: 1
   - type: 3
-    clip: {fileID: 8300000, guid: ef56708f13eb16e47acb505a6252ed93, type: 3}
-    volume: 0.8
+    clip: {fileID: 8300000, guid: 66bd8032c9c860e49a057c1fe8fadd29, type: 3}
+    volume: 1
   - type: 4
     clip: {fileID: 8300000, guid: f7a1b05d62fab77478cca00de45d8c9f, type: 3}
     volume: 1
@@ -42,4 +42,16 @@ MonoBehaviour:
     volume: 1
   - type: 10
     clip: {fileID: 8300000, guid: 43a1148050e60bc4680db47fd98fe9b7, type: 3}
+    volume: 1
+  - type: 11
+    clip: {fileID: 8300000, guid: 8f2d67bbd2e038e4ba6fdc37734946db, type: 3}
+    volume: 1
+  - type: 12
+    clip: {fileID: 8300000, guid: a0460f6655dd46f4ca924c1ceac60e8c, type: 3}
+    volume: 0.8
+  - type: 14
+    clip: {fileID: 8300000, guid: adf82e6a3ceaaf84fa3678aad08ce4f0, type: 3}
+    volume: 0.8
+  - type: 13
+    clip: {fileID: 8300000, guid: afd0484fdd4474c4fbc04ad92a4987f8, type: 3}
     volume: 1
