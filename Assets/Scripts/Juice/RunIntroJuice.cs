@@ -155,6 +155,7 @@ public class RunIntroJuice : MonoBehaviour
         PrepareEntrances();
         LaunchAllCards(cam);
         Begin(Stage.Cards);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.Intro_CardFlyIntoMid);
     }
 
     // Same distance from the camera, straight ahead of it, bigger and empty

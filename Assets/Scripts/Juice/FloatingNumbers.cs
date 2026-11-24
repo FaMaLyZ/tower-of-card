@@ -83,6 +83,7 @@ public class FloatingNumbers : MonoBehaviour
         Item item = Take(words, color, popFontSize);
         item.kind = Kind.Pop;
         item.from = worldPosition;
+        AudioManager.Instance.PlayOneShotSFX(SoundType.ScorePopUp_Pop);
     }
 
     /// "+260" lifts off `fromWorld`, then arcs into `target`; `arrived` runs when it lands (or is cut short)
@@ -94,6 +95,7 @@ public class FloatingNumbers : MonoBehaviour
         item.target = target;
         item.sparkColor = sparkColor;
         item.arrived = arrived;
+        AudioManager.Instance.PlayOneShotSFX(SoundType.ScorePopUp_Fly);
     }
 
     Item Take(string words, Color color, float fontSize)
