@@ -17,9 +17,9 @@ public class GameConfig : ScriptableObject
     [Header("Blind")]
     [Min(1)] public int handsPerBlind = 4;
     [Min(1)] public int antesPerRun = 4;
-    public int[] baseTargets = { 300, 450, 600 };
+    public int[] baseTargets = { 150, 225, 300 };
     public int[] rewardPercents = { 120, 140, 160 };
-    [Min(100)] public int targetGrowthPercent = 250;
+    [Min(100)] public int targetGrowthPercent = 150;
     [Range(0, 100)] public int leaveBonusPercent = 10;
 
     [Header("Pot")]
@@ -46,7 +46,7 @@ public class GameConfig : ScriptableObject
     [FormerlySerializedAs("oldLoopDrawSeconds")]
     [Min(0f)] public float drawPauseSeconds = 2.0f;
 
-    static readonly int[] DefaultBaseTargets = { 300, 450, 600 };
+    static readonly int[] DefaultBaseTargets = { 150, 225, 300 };
     static readonly int[] DefaultRewardPercents = { 120, 140, 160 };
 
     /// The Ante 1 target of a Small, Big or Boss blind (BlindManager grows it per Ante).
