@@ -208,10 +208,10 @@ public class HudView : MonoBehaviour
         if (runOver) PlayRunEndSound();
     }
 
+    // The music stops so the run-end voice (RunEndJuice) is heard clearly
     void PlayRunEndSound()
     {
         AudioManager.Instance.StopLoopMusic();
-        AudioManager.Instance.PlayOneShotSFX(SoundType.SFX_EndGame);
     }
 
     // =====================================================================

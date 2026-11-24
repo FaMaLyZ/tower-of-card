@@ -7,8 +7,14 @@ EditorBuildSettings:
   m_Scenes:
   - enabled: 1
     path: Assets/Scenes/MainMenu.unity
-    guid: c7fe193d6071748478cae3384a6ecacb
+    guid: 6f2c2f38b5c725348a5b83a5e3c7d06f
   - enabled: 1
+    path: Assets/Scenes/Pound.unity
+    guid: 5219eedafc3fd91498d7264b2c020a5c
+  - enabled: 0
+    path: Assets/Scenes/old MainMenu.unity
+    guid: c7fe193d6071748478cae3384a6ecacb
+  - enabled: 0
     path: Assets/Scenes/MainGame.unity
     guid: 8e667243fcaf6cd46842b30c92bdc825
   - enabled: 0

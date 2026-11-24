@@ -55,6 +55,7 @@ public class UiPunch
     public void ReturnToRest()
     {
         start = -1f;
+        if (rect == null) return;               // already destroyed (the scene is closing): nothing to reset
         SetPose(1f, 0f);
     }
 

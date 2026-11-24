@@ -33,20 +33,19 @@ public class AudioManager : MonoBehaviour
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        switch (scene.name)
+        // The old scenes ("MainMenu", "MainGame") still get their music too
+        if (scene.name == SceneLoader.MenuScene || scene.name == "MainMenu")
         {
-            case "MainMenu":
-                PlayLoopMusic(SoundType.Ost_MainMenu);
-                break;
-
-            case "MainGame":
-                PlayLoopMusic(SoundType.Ost_TowerOfCard);
-                break;
-
-            default:
-                musicSource.Stop();
-                musicSource.clip = null;
-                break;
+            PlayLoopMusic(SoundType.Ost_MainMenu);
+        }
+        else if (scene.name == SceneLoader.GameplayScene || scene.name == "MainGame")
+        {
+            PlayLoopMusic(SoundType.Ost_TowerOfCard);
+        }
+        else
+        {
+            musicSource.Stop();
+            musicSource.clip = null;
         }
     }
 
