@@ -646,6 +646,7 @@ The first playtest (P1) answers one question: *is Bank vs Ride interesting?* Bui
 > **Decisions for A3 (2026-11-15).**
 > - **Bank clears the whole tower.** Bank is a big reset: the height bonus is paid once and the next hand starts on an empty table. Ride is the only way to keep the tower.
 > - **P1 target is lowered to 150** for the first blind (was 300). Reason: a High Card scores about 12 and a Pair about 30–50, so 4 hands cannot reach 300 without luck, and a playtest where everyone fails tells us nothing. Big and Boss keep the same ratios (225, 300) but nothing reads them until A4. Set it in `GameConfig` during A3c, when `BlindManager` first reads it. Tune it again after P1.
+>   - **Retuned 2026-11-24:** base targets raised to **300 / 450 / 600** and target growth to **×2.5** per Ante (was ×1.5). Reason: an all-win Ante multiplies rewards by ×2.69, so ×1.5 let the targets fall far behind. Ante 4 is now 4687 / 7031 / 9375.
 > - **The split is by what can be checked, not by size.** Each A3 commit adds something you can see and break on purpose. Do not merge them, and do not split them finer into steps with nothing to play.
 >
 > **Note for Fable (the model doing A1–A3).** A3 is the step most likely to go wrong in small ways. Check these before committing each part:
