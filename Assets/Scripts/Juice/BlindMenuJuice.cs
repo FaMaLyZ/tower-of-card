@@ -76,8 +76,21 @@ public class BlindMenuJuice : MonoBehaviour
     {
         if (slam == null || header == null) return;
         float progress = antesPerRun > 1 ? Mathf.Clamp01((ante - 1f) / (antesPerRun - 1f)) : 0f;
+        AudioManager.Instance.PlayOneShotSFX(GetAnteVoice(ante));
         slam.Play(string.Format(anteFormat, ante), header, theme != null ? theme.goldLight : Color.yellow,
                   Mathf.Lerp(anteDrama.x, anteDrama.y, progress), null, hideTarget: true);
+    }
+
+    // WELCOME, GOOD WORKS, UNSTOPPABLE, SOMEBODY STOP HIM! (past Ante 4 the last one repeats)
+    static SoundType GetAnteVoice(int ante)
+    {
+        switch (ante)
+        {
+            case 1:  return SoundType.Ante1;
+            case 2:  return SoundType.Ante2;
+            case 3:  return SoundType.Ante3;
+            default: return ante >= 4 ? SoundType.Ante4 : SoundType.None;
+        }
     }
 
     void OnBlindStarted(BlindKind kind, int ante, long target)

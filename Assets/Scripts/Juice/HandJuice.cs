@@ -135,6 +135,7 @@ public class HandJuice : MonoBehaviour
     {
         if (!isActiveAndEnabled || hand == null) return;
         drama = Mathf.Clamp01(drama);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.HandCardsJump);
 
         for (int i = 0; i < hand.Count; i++)
         {

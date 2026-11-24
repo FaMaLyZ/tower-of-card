@@ -30,5 +30,23 @@ public enum SoundType
     TowerBlock,
     Spire,
     Palace,
+    YouWon,
+    YouFail,
+    Ante1,
+    Ante2,
+    Ante3,
+    Ante4,
+    RunCleared,
+    GlassShattered,
+    ScoreSlam,
+    PotLoss,
+    PotShatter,
+    GlassCrack,
+    GlassRepair,
+    GlassShatterAll,
+    IntroCardLand,
+    DeckSlam,
+    HandCardsJump,
 
+    // Add new sounds at the END only: GameSounds saves each one as its number
 }

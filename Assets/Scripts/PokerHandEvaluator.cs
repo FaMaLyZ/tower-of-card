@@ -54,6 +54,27 @@ public static class PokerHandEvaluator
         }
     }
 
+    /// The voice that says the building name. Keep it in step with GetShapeName.
+    /// Takes the whole result because a Royal Flush says "Palace" instead of "Spire".
+    public static SoundType GetShapeVoice(PokerHandResult hand)
+    {
+        if (hand == null) return SoundType.None;
+        if (hand.isRoyal) return SoundType.Palace;
+
+        switch (hand.hand)
+        {
+            case PokerHand.HighCard:      return SoundType.LoseCards;
+            case PokerHand.Pair:          return SoundType.Tent;
+            case PokerHand.TwoPair:       return SoundType.TwinTents;
+            case PokerHand.ThreeOfAKind:  return SoundType.TriPod;
+            case PokerHand.Straight:      return SoundType.StairCase;
+            case PokerHand.Flush:         return SoundType.Wall;
+            case PokerHand.FullHouse:     return SoundType.House;
+            case PokerHand.FourOfAKind:   return SoundType.TowerBlock;
+            default:                      return SoundType.Spire;
+        }
+    }
+
     /// Chips a card adds when it scores: 2-10 = face value, J/Q/K = 10, Ace = 11.
     public static int ChipValue(CardRank rank)
     {

@@ -158,6 +158,7 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
         introRockSide = -introRockSide;             // each landing knocks it the other way
         introPulseStart = Time.time;                // and makes it bigger, then the next one smaller
         PlayFlash(introFlashColor, introFlashSeconds);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.IntroCardLand);
         if (last) PlayPunch(1.4f);
         else if (squash) PlayPunch(arrivePunchScale);
     }
@@ -184,6 +185,7 @@ public class DeckJuice : MonoBehaviour, IPointerEnterHandler, IPointerExitHandle
     {
         if (!isActiveAndEnabled) return;
         drama = Mathf.Clamp01(drama);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.DeckSlam);
 
         slamStart = Time.time;
         slamLanded = false;

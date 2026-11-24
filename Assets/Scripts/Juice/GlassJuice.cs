@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -133,6 +134,7 @@ public class GlassJuice : MonoBehaviour
     {
         if (!IsStar(index)) return;
         if (view != null) view.HoldWhole(index);
+        PlaySoundAfter(SoundType.GlassCrack, delay);
 
         float now = Time.unscaledTime + delay;
         float lastLanding = now;
@@ -290,11 +292,26 @@ public class GlassJuice : MonoBehaviour
         if (!IsStar(index)) return;
         if (view != null) view.HoldCracked(index);
         healing.Add(new Healing { star = index, start = Time.unscaledTime + delay });
+        PlaySoundAfter(SoundType.GlassRepair, delay);
+    }
+
+    // The sound starts with its effect: right away, or after the same delay (real time, like the effects)
+    void PlaySoundAfter(SoundType sound, float delay)
+    {
+        if (delay <= 0f || !isActiveAndEnabled) AudioManager.Instance.PlayOneShotSFX(sound);
+        else StartCoroutine(PlaySoundLater(sound, delay));
+    }
+
+    IEnumerator PlaySoundLater(SoundType sound, float delay)
+    {
+        yield return new WaitForSecondsRealtime(delay);
+        AudioManager.Instance.PlayOneShotSFX(sound);
     }
 
     /// The run is lost: every crystal blows apart into red shards at once, with a big shake (RunEndJuice)
     public void ShatterAll()
     {
+        AudioManager.Instance.PlayOneShotSFX(SoundType.GlassShatterAll);
         for (int i = 0; i < stars.Count; i++)
         {
             if (!IsStar(i)) continue;

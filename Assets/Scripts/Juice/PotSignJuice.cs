@@ -109,6 +109,7 @@ public class PotSignJuice : MonoBehaviour
     /// The broken-cards jolt and red flash (public for the juice debug panel)
     public void PlayLoss()
     {
+        AudioManager.Instance.PlayOneShotSFX(SoundType.PotLoss);
         StartShake(lossShakePixels, lossShakeCycles, lossShakeSeconds);
         StartFlash(lossFlashSeconds);
         EmitShards(lossShards, 1f);
@@ -117,6 +118,7 @@ public class PotSignJuice : MonoBehaviour
     /// The collapse shatter: jolt, flash, fragments, bulbs pop off (public for the juice debug panel)
     public void PlayShatter()
     {
+        AudioManager.Instance.PlayOneShotSFX(SoundType.PotShatter);
         StartShake(collapseShakePixels, collapseShakeCycles, collapseShakeSeconds);
         StartFlash(collapseFlashSeconds);
         EmitShards(collapseShards, 1.8f);

@@ -80,6 +80,7 @@ public class BlindResultJuice : MonoBehaviour
 
         resultTitle.color = won ? Gold : Red;           // the slam copies this colour (the view sets the same one)
         Color accent = won ? GoldLight : Pale;
+        AudioManager.Instance.PlayOneShotSFX(won ? SoundType.YouWon : SoundType.YouFail);
         slam.Play(won ? wonWord : failedWord, resultTitle, accent, drama, () => Land(won, drama), hideTarget: true);
     }
 

@@ -147,6 +147,7 @@ public class HandPlaqueJuice : MonoBehaviour
     {
         if (slam == null || buildingName == null || string.IsNullOrEmpty(buildingName.text)) return;
         float drama = DramaOf(hand);
+        AudioManager.Instance.PlayOneShotSFX(PokerHandEvaluator.GetShapeVoice(hand));
         SlamInto(buildingName.text, buildingName, theme != null ? theme.goldLight : Color.yellow, drama);
     }
 
@@ -172,6 +173,7 @@ public class HandPlaqueJuice : MonoBehaviour
         if (potNumber != null) potNumber.Hold();
 
         float drama = DramaOf(score.result);
+        AudioManager.Instance.PlayOneShotSFX(SoundType.ScoreSlam);
         SlamInto(string.Format("{0:N0}", score.finalScore), totalText, theme != null ? theme.mult : Color.red, drama,
                  () => SendScoreToPot(score.finalScore));
     }
@@ -255,6 +257,7 @@ public class HandPlaqueJuice : MonoBehaviour
     public void DebugSlamHand(PokerHand hand, bool royal, long score)
     {
         var result = new PokerHandResult { hand = hand, isRoyal = royal };
+        AudioManager.Instance.PlayOneShotSFX(PokerHandEvaluator.GetShapeVoice(result));
         DebugSlamAtDrama(royal ? "Palace" : PokerHandEvaluator.GetShapeName(hand), DramaOf(result), score);
     }
 
@@ -264,7 +267,11 @@ public class HandPlaqueJuice : MonoBehaviour
         if (slam == null || buildingName == null || totalText == null) return;
         Color gold = theme != null ? theme.goldLight : Color.yellow;
         Color red = theme != null ? theme.mult : Color.red;
-        SlamInto(title, buildingName, gold, drama, () => SlamInto(string.Format("{0:N0}", score), totalText, red, drama));
+        SlamInto(title, buildingName, gold, drama, () =>
+        {
+            AudioManager.Instance.PlayOneShotSFX(SoundType.ScoreSlam);
+            SlamInto(string.Format("{0:N0}", score), totalText, red, drama);
+        });
     }
 
     /// "+11" pops by the card-chips box, and a "+score" flies from the total into the Pot (no Pot change)

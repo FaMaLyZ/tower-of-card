@@ -93,6 +93,7 @@ public class RunEndJuice : MonoBehaviour
         }
         Color accent = cleared ? (theme != null ? theme.goldLight : Color.yellow) : (theme != null ? theme.cream : Color.white);
         title.color = cleared ? (theme != null ? theme.goldText : Color.yellow) : (theme != null ? theme.danger : Color.red);
+        AudioManager.Instance.PlayOneShotSFX(cleared ? SoundType.RunCleared : SoundType.GlassShattered);
         slam.Play(cleared ? clearedWords : shatteredWords, title, accent, cleared ? 1f : 0.9f, () => Landed(cleared), hideTarget: true);
     }
 
