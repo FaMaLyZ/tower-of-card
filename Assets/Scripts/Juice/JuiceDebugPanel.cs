@@ -86,6 +86,7 @@ public class JuiceDebugPanel : MonoBehaviour
         DrawPotSign();
         DrawGlass();
         DrawBlindScreens();
+        DrawBackground();
 
         GUILayout.EndScrollView();
         GUILayout.EndArea();
@@ -170,6 +171,25 @@ public class JuiceDebugPanel : MonoBehaviour
         if (runEnd != null && GUILayout.Button("RUN CLEARED (with confetti)")) runEnd.Play(true);
         if (runEnd != null && GUILayout.Button("GLASS SHATTERED (crystals burst)")) runEnd.Play(false);
         if (runIntro != null && GUILayout.Button("Run intro: cards fly in and form the deck")) runIntro.Play();
+    }
+
+    // The swirling sky (it adds itself after the panel, so look it up when drawn)
+    void DrawBackground()
+    {
+        Section("Background sky");
+        BackgroundMood sky = FindAnyObjectByType<BackgroundMood>();
+        if (sky == null) { GUILayout.Label("No swirl skybox in this scene"); return; }
+
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Small")) sky.SetBlind(BlindKind.Small, 1);
+        if (GUILayout.Button("Big")) sky.SetBlind(BlindKind.Big, 2);
+        if (GUILayout.Button("Boss")) sky.SetBlind(BlindKind.Boss, 3);
+        if (GUILayout.Button("Boss Ante 4")) sky.SetBlind(BlindKind.Boss, 4);
+        GUILayout.EndHorizontal();
+        GUILayout.BeginHorizontal();
+        if (GUILayout.Button("Run cleared")) sky.SetMood(sky.cleared);
+        if (GUILayout.Button("Shattered")) sky.SetMood(sky.shattered);
+        GUILayout.EndHorizontal();
     }
 
     // ---------- Helpers ----------
