@@ -1723,7 +1723,7 @@ Transform:
   m_GameObject: {fileID: 67061917}
   serializedVersion: 2
   m_LocalRotation: {x: 0.2588191, y: 0, z: 0, w: 0.9659258}
-  m_LocalPosition: {x: 0, y: 4, z: -7}
+  m_LocalPosition: {x: 0, y: 4.35, z: -7.6}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4876,6 +4876,7 @@ GameObject:
   - component: {fileID: 195017822}
   - component: {fileID: 195017821}
   - component: {fileID: 195017823}
+  - component: {fileID: 195017824}
   m_Layer: 0
   m_Name: TowerBuilder
   m_TagString: Untagged
@@ -4905,6 +4906,8 @@ MonoBehaviour:
     manualEuler: {x: 0, y: 0, z: 0}
     flipFace: 0
   groundY: 0.25
+  towerSpotPosition: {x: -0.0001290226, y: 0.003030785, z: 0.00008953639}
+  towerSpot: {fileID: 0}
   tiltAngle: 27
   maxBaseTents: 4
   fallenDistance: 0.35
@@ -4950,6 +4953,25 @@ MonoBehaviour:
     camera: A / D.'
   choosingHint: 'Pick one of your raised cards to place it. Right-click: undo the
     last card.'
+--- !u!114 &195017824
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 195017820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f53499643a9bc7f499090c15b199c691, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::StageLight
+  intensity: 35
+  color: {r: 1, g: 0.92, b: 0.78, a: 1}
+  height: 5
+  spotAngle: 76.6
+  innerAngle: 47.3
+  castShadows: 1
+  shadowStrength: 0.1
 --- !u!1 &202365840
 GameObject:
   m_ObjectHideFlags: 0
@@ -21963,7 +21985,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1050913182
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -22003,11 +22025,11 @@ Light:
   m_Enabled: 1
   serializedVersion: 13
   m_Type: 0
-  m_Color: {r: 1, g: 0.93837994, b: 0.83962256, a: 1}
-  m_Intensity: 100
+  m_Color: {r: 1, g: 0.9075472, b: 0.7688679, a: 1}
+  m_Intensity: 84.7
   m_Range: 10.7
-  m_SpotAngle: 90
-  m_InnerSpotAngle: 15
+  m_SpotAngle: 82.01856
+  m_InnerSpotAngle: 12.450377
   m_CookieSize2D: {x: 0.5, y: 0.5}
   m_Shadows:
     m_Type: 0
@@ -22043,7 +22065,7 @@ Light:
     serializedVersion: 2
     m_Bits: 4294967295
   m_RenderingLayerMask: 1
-  m_Lightmapping: 4
+  m_Lightmapping: 2
   m_LightShadowCasterMode: 0
   m_AreaSize: {x: 1, y: 1}
   m_BounceIntensity: 1
@@ -22067,7 +22089,7 @@ Transform:
   m_GameObject: {fileID: 1050913181}
   serializedVersion: 2
   m_LocalRotation: {x: 0.7071068, y: 0, z: 0, w: 0.7071068}
-  m_LocalPosition: {x: 0, y: 6.11, z: -1.04}
+  m_LocalPosition: {x: 0, y: 6.43, z: -1.62}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
