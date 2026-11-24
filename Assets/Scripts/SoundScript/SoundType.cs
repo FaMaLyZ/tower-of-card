@@ -17,4 +17,18 @@ public enum SoundType
     CardSwap_Reject,
     CardSwap_Success, 
     CardHover,
+    Intro_CardFlyIntoMid,
+    ScorePopUp_Pop,
+    ScorePopUp_Fly,
+    LoseCards,
+    Tent,
+    TwinTents,
+    TriPod,
+    StairCase,
+    Wall,
+    House,
+    TowerBlock,
+    Spire,
+    Palace,
+
 }
