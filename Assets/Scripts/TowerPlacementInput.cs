@@ -7,7 +7,7 @@ using UnityEngine.UI;
 /// The player's hand on the tower: the card being held, the see-through preview that follows the
 /// mouse, snapping it to the nearest free slot, and the clicks.
 ///
-///   Empty tower  -> a click on the table places the next card there
+///   Empty tower  -> a click anywhere on the table starts the tower on the tower spot (TowerBuilder)
 ///   Holding card -> the preview snaps to the nearest slot; left-click places, right-click puts it back
 ///   No card held -> right-click undoes this hand's last card
 ///
@@ -42,7 +42,7 @@ public class TowerPlacementInput : MonoBehaviour
     Vector2 mouseScreenPos;
     Ray mouseRay;
     bool mouseOverUI;
-    Vector3? clickedTablePoint;       // where the table was clicked (only while that click is being handled)
+    bool clickedTable;                // true only while a click on the table is being handled
 
     // ---------- Public info (the conductor, HudView and SnapMarkerView read these) ----------
 
@@ -124,9 +124,9 @@ public class TowerPlacementInput : MonoBehaviour
         CardInstance placed = heldCard;
         if (tower.IsEmpty)
         {
-            Vector3? tablePoint = clickedTablePoint ?? FindTablePointUnderMouse();   // a click, or a drag let go here
-            if (!tablePoint.HasValue) return null;
-            tower.PlaceFirstCard(tablePoint.Value, placed);
+            // A click (or a drag let go) anywhere on the table: the tower always starts on the tower spot
+            if (!clickedTable && !IsMouseOverTable()) return null;
+            tower.PlaceFirstCard(placed);
         }
         else
         {
@@ -197,14 +197,13 @@ public class TowerPlacementInput : MonoBehaviour
         return false;
     }
 
-    // The table under the mouse right now, or null (over the HUD or a hand card, or off the table)
-    Vector3? FindTablePointUnderMouse()
+    // Is the mouse on the table right now? (not over the HUD or a hand card, not off the table)
+    bool IsMouseOverTable()
     {
-        if (cam == null || Mouse.current == null) return null;
+        if (cam == null || Mouse.current == null) return false;
         Vector2 screen = Mouse.current.position.ReadValue();
-        if (IsPointerOverBlockingUI(screen)) return null;
-        if (!Physics.Raycast(cam.ScreenPointToRay(screen), out RaycastHit hit, 1000f, tableLayerMask)) return null;
-        return hit.point;
+        if (IsPointerOverBlockingUI(screen)) return false;
+        return Physics.Raycast(cam.ScreenPointToRay(screen), 1000f, tableLayerMask);
     }
 
     // ----- Empty tower: a click on the table -----
@@ -213,12 +212,12 @@ public class TowerPlacementInput : MonoBehaviour
     {
         if (!mouse.leftButton.wasPressedThisFrame || mouseOverUI) return;
 
-        // Only start a tower where the click actually lands on the table, not anywhere on the infinite ground plane.
-        if (!Physics.Raycast(mouseRay, out RaycastHit hit, 1000f, tableLayerMask)) return;
+        // The click must land on the table (not the empty ground around it); where on the table doesn't matter
+        if (!Physics.Raycast(mouseRay, 1000f, tableLayerMask)) return;
 
-        clickedTablePoint = hit.point;
+        clickedTable = true;
         RequestPlaceHeldCard();
-        clickedTablePoint = null;
+        clickedTable = false;
     }
 
     // ----- No card held: right-click undoes -----

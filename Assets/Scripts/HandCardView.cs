@@ -44,6 +44,7 @@ public class HandCardView : MonoBehaviour, IPointerClickHandler, IPointerEnterHa
         Visual = visual;
         RememberVisualRestPose();
         visualRenderers = visual != null ? visual.GetComponentsInChildren<Renderer>() : new Renderer[0];
+        HandFillLight.MarkHandCard(visualRenderers);      // only hand cards get the camera's fill light
     }
 
     /// Darkens the card (the cards waiting while the committed ones are played). "brightness" is the

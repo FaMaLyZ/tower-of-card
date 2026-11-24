@@ -26,6 +26,10 @@ public class TowerBuilder : MonoBehaviour
     [RequiredField] public Card cardPrefab;
     public CardModelSettings cardModel = new CardModelSettings();
     public float groundY = 0f;
+    [Tooltip("Where the tower always stands: the middle of the table (x and z; the height is Ground Y)")]
+    public Vector3 towerSpotPosition = new Vector3(-0.0001290226f, 0.003030785f, 8.953639e-05f);
+    [Tooltip("Optional: drag an object here and the tower stands on it instead of Tower Spot Position")]
+    public Transform towerSpot;
 
     [Header("House of cards")]
     [Range(5f, 45f)] public float tiltAngle = 20f;
@@ -66,7 +70,7 @@ public class TowerBuilder : MonoBehaviour
 
     public int CardsPlacedThisHand => placementsThisHand.Count;
 
-    /// No card stands: the next card starts a new tower where the table is clicked.
+    /// No card stands: the next card starts a new tower on the tower spot.
     public bool IsEmpty => cards.Count == 0;
 
     /// What the last shake did. Made once per shake by ResolveShake; the Pot is updated from it.
@@ -76,7 +80,17 @@ public class TowerBuilder : MonoBehaviour
     public float GetCardMass(CardData data) => Mathf.Max(0.001f, data.mass * cardModel.massMultiplier);
 
     // The point the camera looks at when there is no tower (game start, or after the tower is gone)
-    public Vector3 StartFocusPoint => new Vector3(0, groundY + 1f, 0);
+    public Vector3 StartFocusPoint => TowerSpot + Vector3.up * 1f;
+
+    /// The middle of the table, on the ground: every tower is built around this point.
+    public Vector3 TowerSpot
+    {
+        get
+        {
+            Vector3 spot = towerSpot != null ? towerSpot.position : towerSpotPosition;
+            return new Vector3(spot.x, groundY, spot.z);
+        }
+    }
 
     /// Above the middle of the tower, at its highest card (for HUD tags that float over the tower).
     /// The start point when there are no cards.
@@ -179,12 +193,12 @@ public class TowerBuilder : MonoBehaviour
         return open;
     }
 
-    /// The first card of a tower: the tower starts where the table was clicked.
-    public void PlaceFirstCard(Vector3 tablePoint, CardInstance card)
+    /// The first card of a tower: the first tent always stands right on the tower spot.
+    public void PlaceFirstCard(CardInstance card)
     {
         if (!IsEmpty || card == null) return;
 
-        origin = new Vector3(tablePoint.x, groundY, tablePoint.z);
+        origin = TowerSpot;
         PlaceCard((LEFT, 0, 0), card);
     }
 
