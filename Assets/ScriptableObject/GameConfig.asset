@@ -17,9 +17,9 @@ MonoBehaviour:
   maxCommitCards: 5
   handsPerBlind: 4
   antesPerRun: 4
-  baseTargets: 96000000e10000002c010000
+  baseTargets: 2c010000c201000058020000
   rewardPercents: 780000008c000000a0000000
-  targetGrowthPercent: 150
+  targetGrowthPercent: 250
   leaveBonusPercent: 10
   breakPercent: 10
   heightPercent: 10
